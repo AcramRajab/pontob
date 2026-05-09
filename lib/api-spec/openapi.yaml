@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Método Ponto B - RE/MAX SC API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: franchises
+  - name: users
+  - name: dimensions
+  - name: keyProcesses
+  - name: strategicInitiatives
+  - name: goals
+  - name: kpis
+  - name: goalInitiatives
+  - name: dailyCheckins
+  - name: weeklyCheckins
+  - name: monthlyCheckins
+  - name: alerts
+  - name: helpRequests
+  - name: dashboard
+  - name: exports
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,894 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  /franchises:
+    get:
+      operationId: listFranchises
+      tags: [franchises]
+      summary: List all franchises
+      responses:
+        "200":
+          description: List of franchises
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Franchise"
+    post:
+      operationId: createFranchise
+      tags: [franchises]
+      summary: Create a franchise
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FranchiseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+
+  /franchises/{id}:
+    get:
+      operationId: getFranchise
+      tags: [franchises]
+      summary: Get a franchise by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Franchise
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+    patch:
+      operationId: updateFranchise
+      tags: [franchises]
+      summary: Update a franchise
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FranchiseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /dimensions:
+    get:
+      operationId: listDimensions
+      tags: [dimensions]
+      summary: List all dimensions
+      responses:
+        "200":
+          description: List of dimensions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dimension"
+
+  /key-processes:
+    get:
+      operationId: listKeyProcesses
+      tags: [keyProcesses]
+      summary: List key processes
+      parameters:
+        - name: dimensionId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of key processes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KeyProcess"
+
+  /strategic-initiatives:
+    get:
+      operationId: listStrategicInitiatives
+      tags: [strategicInitiatives]
+      summary: List strategic initiatives
+      parameters:
+        - name: dimensionId
+          in: query
+          schema:
+            type: integer
+        - name: keyProcessId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of strategic initiatives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StrategicInitiative"
+
+  /goals:
+    get:
+      operationId: listGoals
+      tags: [goals]
+      summary: List goals
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: dimensionId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Goal"
+    post:
+      operationId: createGoal
+      tags: [goals]
+      summary: Create a goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+
+  /goals/{id}:
+    get:
+      operationId: getGoal
+      tags: [goals]
+      summary: Get a goal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalDetail"
+    patch:
+      operationId: updateGoal
+      tags: [goals]
+      summary: Update a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+
+  /goals/{id}/kpis:
+    get:
+      operationId: listGoalKpis
+      tags: [kpis]
+      summary: List KPIs for a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of KPIs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Kpi"
+    post:
+      operationId: createKpi
+      tags: [kpis]
+      summary: Create a KPI for a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kpi"
+
+  /kpis/{id}:
+    patch:
+      operationId: updateKpi
+      tags: [kpis]
+      summary: Update a KPI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kpi"
+    delete:
+      operationId: deleteKpi
+      tags: [kpis]
+      summary: Delete a KPI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /goals/{id}/initiatives:
+    get:
+      operationId: listGoalInitiatives
+      tags: [goalInitiatives]
+      summary: List initiatives for a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of goal initiatives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GoalInitiative"
+    post:
+      operationId: createGoalInitiative
+      tags: [goalInitiatives]
+      summary: Add an initiative to a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInitiativeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalInitiative"
+
+  /goal-initiatives/{id}:
+    get:
+      operationId: getGoalInitiative
+      tags: [goalInitiatives]
+      summary: Get a goal initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Goal initiative
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalInitiative"
+    patch:
+      operationId: updateGoalInitiative
+      tags: [goalInitiatives]
+      summary: Update a goal initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInitiativeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalInitiative"
+
+  /daily-checkins:
+    get:
+      operationId: listDailyCheckins
+      tags: [dailyCheckins]
+      summary: List daily check-ins
+      parameters:
+        - name: goalId
+          in: query
+          schema:
+            type: integer
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: date
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of daily check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyCheckin"
+    post:
+      operationId: createDailyCheckin
+      tags: [dailyCheckins]
+      summary: Create a daily check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyCheckinInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyCheckin"
+
+  /weekly-checkins:
+    get:
+      operationId: listWeeklyCheckins
+      tags: [weeklyCheckins]
+      summary: List weekly check-ins
+      parameters:
+        - name: goalId
+          in: query
+          schema:
+            type: integer
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of weekly check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WeeklyCheckin"
+    post:
+      operationId: createWeeklyCheckin
+      tags: [weeklyCheckins]
+      summary: Create a weekly check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeeklyCheckinInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyCheckin"
+
+  /monthly-checkins:
+    get:
+      operationId: listMonthlyCheckins
+      tags: [monthlyCheckins]
+      summary: List monthly check-ins
+      parameters:
+        - name: goalId
+          in: query
+          schema:
+            type: integer
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of monthly check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MonthlyCheckin"
+    post:
+      operationId: createMonthlyCheckin
+      tags: [monthlyCheckins]
+      summary: Create a monthly check-in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonthlyCheckinInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlyCheckin"
+
+  /alerts:
+    get:
+      operationId: listAlerts
+      tags: [alerts]
+      summary: List alerts
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+
+  /alerts/{id}/resolve:
+    patch:
+      operationId: resolveAlert
+      tags: [alerts]
+      summary: Resolve an alert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Alert resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+
+  /help-requests:
+    get:
+      operationId: listHelpRequests
+      tags: [helpRequests]
+      summary: List help requests
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of help requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HelpRequest"
+    post:
+      operationId: createHelpRequest
+      tags: [helpRequests]
+      summary: Create a help request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HelpRequestInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpRequest"
+
+  /help-requests/{id}:
+    patch:
+      operationId: updateHelpRequest
+      tags: [helpRequests]
+      summary: Update a help request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HelpRequestUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpRequest"
+
+  /dashboard/franchise:
+    get:
+      operationId: getFranchiseDashboard
+      tags: [dashboard]
+      summary: Get franchise dashboard summary
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Franchise dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FranchiseDashboard"
+
+  /dashboard/regional:
+    get:
+      operationId: getRegionalDashboard
+      tags: [dashboard]
+      summary: Get regional dashboard summary (admin/staff)
+      responses:
+        "200":
+          description: Regional dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegionalDashboard"
+
+  /dashboard/ranking:
+    get:
+      operationId: getFranchiseRanking
+      tags: [dashboard]
+      summary: Get franchise ranking
+      parameters:
+        - name: by
+          in: query
+          schema:
+            type: string
+            enum: [score, execution, consistency, kri]
+      responses:
+        "200":
+          description: Franchise ranking
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FranchiseRankingItem"
+
+  /dashboard/today:
+    get:
+      operationId: getTodayOverview
+      tags: [dashboard]
+      summary: Get today overview for franchisee
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Today overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayOverview"
+
+  /progress-history:
+    get:
+      operationId: listProgressHistory
+      tags: [dashboard]
+      summary: List progress history
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Progress history list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProgressHistoryItem"
+
+  /exports/goals:
+    get:
+      operationId: exportGoalsCsv
+      tags: [exports]
+      summary: Export goals as CSV
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /exports/checkins:
+    get:
+      operationId: exportCheckinsCsv
+      tags: [exports]
+      summary: Export all check-ins as CSV
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +935,1027 @@ components:
       required:
         - status
 
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [master_admin, staff_regional, franqueado, responsavel_interno]
+        franchiseId:
+          type: ["integer", "null"]
+        franchiseName:
+          type: ["string", "null"]
+
+    Franchise:
+      type: object
+      required: [id, name, city, state, active, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        brokerOwnerName:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    FranchiseInput:
+      type: object
+      required: [name, city, state]
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        brokerOwnerName:
+          type: string
+
+    FranchiseUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        brokerOwnerName:
+          type: string
+        active:
+          type: boolean
+
+    User:
+      type: object
+      required: [id, name, email, role, active, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [master_admin, staff_regional, franqueado, responsavel_interno]
+        franchiseId:
+          type: ["integer", "null"]
+        franchiseName:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [master_admin, staff_regional, franqueado, responsavel_interno]
+        franchiseId:
+          type: ["integer", "null"]
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [master_admin, staff_regional, franqueado, responsavel_interno]
+        franchiseId:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+
+    Dimension:
+      type: object
+      required: [id, name, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        active:
+          type: boolean
+
+    KeyProcess:
+      type: object
+      required: [id, dimensionId, name, orderIndex]
+      properties:
+        id:
+          type: integer
+        dimensionId:
+          type: integer
+        dimensionName:
+          type: ["string", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        orderIndex:
+          type: integer
+
+    StrategicInitiative:
+      type: object
+      required: [id, dimensionId, keyProcessId, name, kri, kpi]
+      properties:
+        id:
+          type: integer
+        dimensionId:
+          type: integer
+        keyProcessId:
+          type: integer
+        dimensionName:
+          type: ["string", "null"]
+        keyProcessName:
+          type: ["string", "null"]
+        name:
+          type: string
+        kri:
+          type: string
+        kpi:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    Goal:
+      type: object
+      required: [id, franchiseId, dimensionId, keyProcessId, title, status, progressPercentage, score, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        dimensionId:
+          type: integer
+        dimensionName:
+          type: ["string", "null"]
+        keyProcessId:
+          type: integer
+        keyProcessName:
+          type: ["string", "null"]
+        title:
+          type: string
+        kriDescription:
+          type: ["string", "null"]
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        ownerUserId:
+          type: ["integer", "null"]
+        ownerName:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [nao_iniciada, em_andamento, em_atencao, atrasada, concluida, pausada]
+        progressPercentage:
+          type: number
+        riskStatus:
+          type: ["string", "null"]
+          enum: [atrasado, no_prazo, adiantado, null]
+        score:
+          type: number
+        activeInitiativesCount:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    GoalDetail:
+      type: object
+      required: [id, franchiseId, dimensionId, keyProcessId, title, status, progressPercentage, score, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        dimensionId:
+          type: integer
+        dimensionName:
+          type: ["string", "null"]
+        keyProcessId:
+          type: integer
+        keyProcessName:
+          type: ["string", "null"]
+        title:
+          type: string
+        kriDescription:
+          type: ["string", "null"]
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        ownerUserId:
+          type: ["integer", "null"]
+        ownerName:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        status:
+          type: string
+        progressPercentage:
+          type: number
+        riskStatus:
+          type: ["string", "null"]
+        score:
+          type: number
+        activeInitiativesCount:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        kpis:
+          type: array
+          items:
+            $ref: "#/components/schemas/Kpi"
+        initiatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalInitiative"
+
+    GoalInput:
+      type: object
+      required: [franchiseId, dimensionId, keyProcessId, title]
+      properties:
+        franchiseId:
+          type: integer
+        dimensionId:
+          type: integer
+        keyProcessId:
+          type: integer
+        title:
+          type: string
+        kriDescription:
+          type: string
+        currentValue:
+          type: number
+        targetValue:
+          type: number
+        unit:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        ownerUserId:
+          type: integer
+        frequency:
+          type: string
+          enum: [diario, semanal, mensal, trimestral, semestral, anual]
+
+    GoalUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        kriDescription:
+          type: string
+        currentValue:
+          type: number
+        targetValue:
+          type: number
+        unit:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        ownerUserId:
+          type: integer
+        frequency:
+          type: string
+        status:
+          type: string
+          enum: [nao_iniciada, em_andamento, em_atencao, atrasada, concluida, pausada]
+
+    Kpi:
+      type: object
+      required: [id, goalId, name, indicatorType, desiredDirection, createdAt]
+      properties:
+        id:
+          type: integer
+        goalId:
+          type: integer
+        name:
+          type: string
+        initialValue:
+          type: ["number", "null"]
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        indicatorType:
+          type: string
+          enum: [numero_absoluto, percentual, valor_financeiro, quantidade, sim_nao]
+        desiredDirection:
+          type: string
+          enum: [aumentar, reduzir, manter]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    KpiInput:
+      type: object
+      required: [name, indicatorType, desiredDirection]
+      properties:
+        name:
+          type: string
+        initialValue:
+          type: number
+        currentValue:
+          type: number
+        targetValue:
+          type: number
+        unit:
+          type: string
+        frequency:
+          type: string
+          enum: [diario, semanal, mensal, trimestral, semestral, anual]
+        indicatorType:
+          type: string
+          enum: [numero_absoluto, percentual, valor_financeiro, quantidade, sim_nao]
+        desiredDirection:
+          type: string
+          enum: [aumentar, reduzir, manter]
+        notes:
+          type: string
+
+    KpiUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        currentValue:
+          type: number
+        targetValue:
+          type: number
+        unit:
+          type: string
+        frequency:
+          type: string
+        indicatorType:
+          type: string
+        desiredDirection:
+          type: string
+        notes:
+          type: string
+
+    GoalInitiative:
+      type: object
+      required: [id, goalId, strategicInitiativeId, status, progressPercentage, createdAt]
+      properties:
+        id:
+          type: integer
+        goalId:
+          type: integer
+        strategicInitiativeId:
+          type: integer
+        initiativeName:
+          type: ["string", "null"]
+        dimensionName:
+          type: ["string", "null"]
+        keyProcessName:
+          type: ["string", "null"]
+        desiredResult:
+          type: ["string", "null"]
+        actualResult:
+          type: ["string", "null"]
+        mainKpiId:
+          type: ["integer", "null"]
+        ownerUserId:
+          type: ["integer", "null"]
+        ownerName:
+          type: ["string", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        frequency:
+          type: ["string", "null"]
+        executionDay:
+          type: ["string", "null"]
+        executionTime:
+          type: ["string", "null"]
+        estimatedTime:
+          type: ["string", "null"]
+        whatWillBeDone:
+          type: ["string", "null"]
+        whyItMatters:
+          type: ["string", "null"]
+        whoIsResponsible:
+          type: ["string", "null"]
+        whereItWillBeDone:
+          type: ["string", "null"]
+        howItWillBeDone:
+          type: ["string", "null"]
+        investmentOrEffort:
+          type: ["string", "null"]
+        progressPercentage:
+          type: number
+        status:
+          type: string
+          enum: [ativa, concluida, pausada, cancelada]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    GoalInitiativeInput:
+      type: object
+      required: [strategicInitiativeId]
+      properties:
+        strategicInitiativeId:
+          type: integer
+        desiredResult:
+          type: string
+        mainKpiId:
+          type: integer
+        ownerUserId:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+        frequency:
+          type: string
+          enum: [diario, semanal, mensal, trimestral, semestral, anual]
+        executionDay:
+          type: string
+        executionTime:
+          type: string
+        estimatedTime:
+          type: string
+        whatWillBeDone:
+          type: string
+        whyItMatters:
+          type: string
+        whoIsResponsible:
+          type: string
+        whereItWillBeDone:
+          type: string
+        howItWillBeDone:
+          type: string
+        investmentOrEffort:
+          type: string
+        notes:
+          type: string
+
+    GoalInitiativeUpdate:
+      type: object
+      properties:
+        desiredResult:
+          type: string
+        actualResult:
+          type: string
+        ownerUserId:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+        frequency:
+          type: string
+        executionDay:
+          type: string
+        executionTime:
+          type: string
+        estimatedTime:
+          type: string
+        whatWillBeDone:
+          type: string
+        whyItMatters:
+          type: string
+        whoIsResponsible:
+          type: string
+        whereItWillBeDone:
+          type: string
+        howItWillBeDone:
+          type: string
+        investmentOrEffort:
+          type: string
+        progressPercentage:
+          type: number
+        status:
+          type: string
+          enum: [ativa, concluida, pausada, cancelada]
+        notes:
+          type: string
+
+    DailyCheckin:
+      type: object
+      required: [id, goalId, franchiseId, userId, date, executedToday, createdAt]
+      properties:
+        id:
+          type: integer
+        goalId:
+          type: integer
+        goalTitle:
+          type: ["string", "null"]
+        goalInitiativeId:
+          type: ["integer", "null"]
+        franchiseId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        date:
+          type: string
+        executedToday:
+          type: string
+          enum: [sim, parcialmente, nao]
+        progressToday:
+          type: ["number", "null"]
+        timeSpent:
+          type: ["string", "null"]
+        blocker:
+          type: ["string", "null"]
+        nextStep:
+          type: ["string", "null"]
+        needsHelp:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    DailyCheckinInput:
+      type: object
+      required: [goalId, franchiseId, date, executedToday]
+      properties:
+        goalId:
+          type: integer
+        goalInitiativeId:
+          type: integer
+        franchiseId:
+          type: integer
+        date:
+          type: string
+        executedToday:
+          type: string
+          enum: [sim, parcialmente, nao]
+        progressToday:
+          type: number
+        timeSpent:
+          type: string
+        blocker:
+          type: string
+        nextStep:
+          type: string
+        needsHelp:
+          type: boolean
+        notes:
+          type: string
+
+    WeeklyCheckin:
+      type: object
+      required: [id, goalId, franchiseId, userId, weekStartDate, createdAt]
+      properties:
+        id:
+          type: integer
+        goalId:
+          type: integer
+        goalTitle:
+          type: ["string", "null"]
+        franchiseId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        weekStartDate:
+          type: string
+        weekEndDate:
+          type: ["string", "null"]
+        planned:
+          type: ["string", "null"]
+        executed:
+          type: ["string", "null"]
+        progressSummary:
+          type: ["string", "null"]
+        blockers:
+          type: ["string", "null"]
+        adjustments:
+          type: ["string", "null"]
+        nextWeekPriority:
+          type: ["string", "null"]
+        needsRegionalSupport:
+          type: boolean
+        initiativeDecision:
+          type: ["string", "null"]
+          enum: [continuar, pausar, ajustar, concluir, null]
+        executionPercentage:
+          type: ["number", "null"]
+        checkinDaysCount:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    WeeklyCheckinInput:
+      type: object
+      required: [goalId, franchiseId, weekStartDate]
+      properties:
+        goalId:
+          type: integer
+        franchiseId:
+          type: integer
+        weekStartDate:
+          type: string
+        weekEndDate:
+          type: string
+        planned:
+          type: string
+        executed:
+          type: string
+        progressSummary:
+          type: string
+        blockers:
+          type: string
+        adjustments:
+          type: string
+        nextWeekPriority:
+          type: string
+        needsRegionalSupport:
+          type: boolean
+        initiativeDecision:
+          type: string
+          enum: [continuar, pausar, ajustar, concluir]
+        executionPercentage:
+          type: number
+        checkinDaysCount:
+          type: integer
+
+    MonthlyCheckin:
+      type: object
+      required: [id, goalId, franchiseId, userId, month, year, createdAt]
+      properties:
+        id:
+          type: integer
+        goalId:
+          type: integer
+        goalTitle:
+          type: ["string", "null"]
+        franchiseId:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        month:
+          type: integer
+        year:
+          type: integer
+        kriProgress:
+          type: ["string", "null"]
+        improvedKpis:
+          type: ["string", "null"]
+        worsenedKpis:
+          type: ["string", "null"]
+        initiativesThatWorked:
+          type: ["string", "null"]
+        initiativesThatDidNotWork:
+          type: ["string", "null"]
+        continueDoing:
+          type: ["string", "null"]
+        stopDoing:
+          type: ["string", "null"]
+        startDoing:
+          type: ["string", "null"]
+        nextMonthFocus:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    MonthlyCheckinInput:
+      type: object
+      required: [goalId, franchiseId, month, year]
+      properties:
+        goalId:
+          type: integer
+        franchiseId:
+          type: integer
+        month:
+          type: integer
+        year:
+          type: integer
+        kriProgress:
+          type: string
+        improvedKpis:
+          type: string
+        worsenedKpis:
+          type: string
+        initiativesThatWorked:
+          type: string
+        initiativesThatDidNotWork:
+          type: string
+        continueDoing:
+          type: string
+        stopDoing:
+          type: string
+        startDoing:
+          type: string
+        nextMonthFocus:
+          type: string
+
+    Alert:
+      type: object
+      required: [id, type, severity, message, status, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: ["integer", "null"]
+        franchiseName:
+          type: ["string", "null"]
+        goalId:
+          type: ["integer", "null"]
+        goalTitle:
+          type: ["string", "null"]
+        goalInitiativeId:
+          type: ["integer", "null"]
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        message:
+          type: string
+        status:
+          type: string
+          enum: [open, resolved]
+        createdAt:
+          type: string
+        resolvedAt:
+          type: ["string", "null"]
+
+    HelpRequest:
+      type: object
+      required: [id, franchiseId, userId, description, status, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        goalId:
+          type: ["integer", "null"]
+        goalTitle:
+          type: ["string", "null"]
+        goalInitiativeId:
+          type: ["integer", "null"]
+        userId:
+          type: integer
+        userName:
+          type: ["string", "null"]
+        description:
+          type: string
+        status:
+          type: string
+          enum: [aberto, em_atendimento, resolvido]
+        assignedTo:
+          type: ["integer", "null"]
+        assignedToName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        resolvedAt:
+          type: ["string", "null"]
+
+    HelpRequestInput:
+      type: object
+      required: [franchiseId, description]
+      properties:
+        franchiseId:
+          type: integer
+        goalId:
+          type: integer
+        goalInitiativeId:
+          type: integer
+        description:
+          type: string
+
+    HelpRequestUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [aberto, em_atendimento, resolvido]
+        assignedTo:
+          type: integer
+
+    FranchiseDashboard:
+      type: object
+      required: [franchiseId, score, activeGoals, completedGoals, delayedGoals, weekExecution, checkinConsistency]
+      properties:
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        score:
+          type: number
+        scoreLabel:
+          type: string
+        activeGoals:
+          type: integer
+        completedGoals:
+          type: integer
+        delayedGoals:
+          type: integer
+        weekExecution:
+          type: number
+        checkinConsistency:
+          type: number
+        progressByDimension:
+          type: array
+          items:
+            $ref: "#/components/schemas/DimensionProgress"
+        topBlockers:
+          type: array
+          items:
+            type: string
+        activeInitiatives:
+          type: integer
+        completedInitiatives:
+          type: integer
+        pendingAlerts:
+          type: integer
+        pendingHelpRequests:
+          type: integer
+        recentCheckins:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyCheckin"
+
+    RegionalDashboard:
+      type: object
+      required: [totalFranchises, activeFranchises, avgScore]
+      properties:
+        totalFranchises:
+          type: integer
+        activeFranchises:
+          type: integer
+        franchisesWithCheckinToday:
+          type: integer
+        franchisesWithoutCheckin7Days:
+          type: integer
+        avgScore:
+          type: number
+        progressByDimension:
+          type: array
+          items:
+            $ref: "#/components/schemas/DimensionProgress"
+        franchisesAtRisk:
+          type: integer
+        openHelpRequests:
+          type: integer
+        topBlockers:
+          type: array
+          items:
+            type: string
+
+    DimensionProgress:
+      type: object
+      required: [dimensionId, dimensionName, progressPercentage]
+      properties:
+        dimensionId:
+          type: integer
+        dimensionName:
+          type: string
+        progressPercentage:
+          type: number
+        goalsCount:
+          type: ["integer", "null"]
+
+    FranchiseRankingItem:
+      type: object
+      required: [franchiseId, franchiseName, score, rank]
+      properties:
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: string
+        score:
+          type: number
+        rank:
+          type: integer
+        weekExecution:
+          type: ["number", "null"]
+        checkinConsistency:
+          type: ["number", "null"]
+        riskStatus:
+          type: ["string", "null"]
+
+    TodayOverview:
+      type: object
+      required: [date, franchiseId]
+      properties:
+        date:
+          type: string
+        franchiseId:
+          type: integer
+        activeGoals:
+          type: integer
+        initiativesForToday:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalInitiative"
+        todayCheckins:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyCheckin"
+        pendingAlerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Alert"
+        pendingHelpRequests:
+          type: integer
+        weekScore:
+          type: ["number", "null"]
+
+    ProgressHistoryItem:
+      type: object
+      required: [id, entityType, entityId, createdAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        franchiseId:
+          type: ["integer", "null"]
+        userId:
+          type: ["integer", "null"]
+        userName:
+          type: ["string", "null"]
+        previousProgress:
+          type: ["number", "null"]
+        newProgress:
+          type: ["number", "null"]
+        previousStatus:
+          type: ["string", "null"]
+        newStatus:
+          type: ["string", "null"]
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string

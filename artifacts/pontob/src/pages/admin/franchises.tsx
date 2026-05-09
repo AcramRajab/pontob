@@ -1,0 +1,146 @@
+import { useListFranchises, useCreateFranchise, useUpdateFranchise, getListFranchisesQueryKey } from "@workspace/api-client-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { Building2, Plus } from "lucide-react";
+import { useState } from "react";
+
+interface FranchiseForm {
+  name: string;
+  city: string;
+  state: string;
+  brokerOwnerName: string;
+}
+
+export default function AdminFranchises() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+
+  const { data: franchises = [], isLoading } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
+  const create = useCreateFranchise();
+  const update = useUpdateFranchise();
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FranchiseForm>();
+
+  const onSubmit = async (data: FranchiseForm) => {
+    try {
+      if (editId) {
+        await update.mutateAsync({ id: editId, data });
+        toast({ title: "Franquia atualizada" });
+      } else {
+        await create.mutateAsync({ data });
+        toast({ title: "Franquia criada" });
+      }
+      qc.invalidateQueries({ queryKey: getListFranchisesQueryKey() });
+      setOpen(false);
+      setEditId(null);
+      reset();
+    } catch {
+      toast({ title: "Erro ao salvar franquia", variant: "destructive" });
+    }
+  };
+
+  const handleEdit = (f: any) => {
+    setEditId(f.id);
+    reset({ name: f.name, city: f.city, state: f.state, brokerOwnerName: f.brokerOwnerName || "" });
+    setOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Franquias</h1>
+          <p className="text-muted-foreground mt-1">Gestão de franquias RE/MAX SC</p>
+        </div>
+        <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setEditId(null); reset(); } }}>
+          <DialogTrigger asChild>
+            <Button size="sm" data-testid="button-new-franchise">
+              <Plus className="h-4 w-4 mr-1.5" /> Nova Franquia
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editId ? "Editar Franquia" : "Nova Franquia"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input {...register("name", { required: true })} data-testid="input-name" />
+                {errors.name && <p className="text-xs text-destructive">Nome obrigatório</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Cidade *</Label>
+                  <Input {...register("city", { required: true })} data-testid="input-city" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Estado *</Label>
+                  <Input {...register("state", { required: true })} placeholder="SC" data-testid="input-state" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Broker Owner</Label>
+                <Input {...register("brokerOwnerName")} data-testid="input-broker-owner" />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={create.isPending || update.isPending} data-testid="button-save">
+                  {create.isPending || update.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+        </div>
+      ) : franchises.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Building2 className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">Nenhuma franquia cadastrada</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {franchises.map((f: any) => (
+            <Card key={f.id} data-testid={`card-franchise-${f.id}`}>
+              <CardContent className="pt-3 pb-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-sm">{f.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {f.city}, {f.state}
+                      {f.brokerOwnerName && <span className="ml-2">— {f.brokerOwnerName}</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="outline" className={f.active ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}>
+                      {f.active ? "Ativa" : "Inativa"}
+                    </Badge>
+                    <Button size="sm" variant="ghost" onClick={() => handleEdit(f)} data-testid={`button-edit-${f.id}`}>
+                      Editar
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

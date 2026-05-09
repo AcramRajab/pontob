@@ -1,8 +1,17 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import session from "express-session";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: number;
+    userRole?: string;
+    franchiseId?: number | null;
+  }
+}
 
 const app: Express = express();
 
@@ -25,9 +34,23 @@ app.use(
     },
   }),
 );
-app.use(cors());
+
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "pontob-dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  }),
+);
 
 app.use("/api", router);
 

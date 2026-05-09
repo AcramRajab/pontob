@@ -1,0 +1,1422 @@
+Você é um desenvolvedor full-stack sênior, especialista em SaaS, UX simples, dashboards executivos, banco de dados relacional e sistemas de acompanhamento de metas.
+
+Crie um app web responsivo para a RE/MAX SC chamado provisoriamente:
+
+MÉTODO PONTO B
+Execução Estratégica RE/MAX SC
+
+O app será usado por franqueados RE/MAX, responsáveis internos das franquias, staff da Master Franquia Regional e usuário Master Admin.
+
+OBJETIVO DO APP
+
+Construir um app simples, visual e prático para transformar metas estratégicas em execução diária, semanal e mensal.
+
+O app deve permitir que cada franquia:
+
+1. Cadastre metas estratégicas.
+2. Defina indicadores prioritários.
+3. Escolha iniciativas estratégicas do cardápio oficial RE/MAX.
+4. Registre execução diária.
+5. Faça check-in semanal.
+6. Faça revisão mensal.
+7. Acompanhe progresso por meta, indicador, iniciativa, processo-chave e dimensão.
+8. Identifique atrasos, travas e próximos passos.
+9. Solicite apoio da Master Franquia Regional quando necessário.
+
+O usuário Master Admin deve conseguir acompanhar o progresso consolidado de todas as franquias da Regional.
+
+FILOSOFIA DO PRODUTO
+
+Este app não pode parecer uma planilha de consultoria.
+
+Ele precisa parecer uma ferramenta simples de execução.
+
+A lógica central é:
+
+Meta → Indicadores → Iniciativas → Hábitos/Ações → Check-in → Progresso
+
+A pergunta central do app é:
+
+“Você está executando ou apenas desejando?”
+
+METODOLOGIA
+
+Usar o framework:
+
+KRI = resultado final desejado.
+KPI = indicador que mede o caminho.
+Iniciativa estratégica = ação estruturada para mover o indicador.
+Hábito/Ação = execução prática na agenda.
+Check-in = acompanhamento e correção de rota.
+Progresso = leitura visual do avanço real.
+
+MÉTODO PONTO B
+
+Toda meta deve responder:
+
+1. Onde estou agora?
+2. Onde quero chegar?
+3. Quais indicadores mostram avanço?
+4. Quais ações preciso repetir?
+5. Estou executando ou só desejando?
+
+PRIMEIRA VERSÃO DO APP
+
+A primeira versão deve conter:
+
+1. Cadastro de franquias.
+2. Cadastro de usuários.
+3. Permissões por perfil.
+4. Cadastro de metas.
+5. Cadastro de até 3 indicadores prioritários por meta.
+6. Cadastro de até 3 iniciativas prioritárias por meta.
+7. Bloqueio para impedir mais de 3 iniciativas ativas por meta.
+8. Liberação de nova iniciativa apenas quando uma das 3 estiver concluída, pausada ou cancelada.
+9. Check-in diário simples.
+10. Check-in semanal com reflexão e PDCA.
+11. Check-in mensal.
+12. Dashboard de progresso.
+13. Alertas de atraso.
+14. Histórico visual.
+15. Visão por franquia.
+16. Visão consolidada Master Admin.
+17. Exportação CSV.
+
+DIMENSÕES DO APP
+
+A RE/MAX possui 4 pilares:
+
+1. Pessoas
+2. Cultura
+3. Real Estate
+4. Lucratividade e Gestão
+
+Mas esta versão do app deve abordar somente:
+
+1. Pessoas
+2. Real Estate
+
+Não criar funcionalidades operacionais para Cultura.
+Não criar funcionalidades operacionais para Lucratividade e Gestão.
+
+Esses pilares podem aparecer apenas como “futuras dimensões”, sem telas funcionais nesta versão.
+
+DIMENSÃO PESSOAS
+
+A dimensão Pessoas possui exatamente 6 processos-chave:
+
+1. Atração
+2. Recrutamento
+3. Integrar
+4. Desenvolver
+5. Reconhecer
+6. Encerrar
+
+DIMENSÃO REAL ESTATE
+
+A dimensão Real Estate possui exatamente 8 processos-chave:
+
+1. Posicionamento da Imobiliária
+2. Funil de Captação
+3. Marketing Para Atração de Clientes Vendedores
+4. Precificação
+5. Marketing Para Atração de Clientes Compradores
+6. Funil de Vendas
+7. Ticket Médio de Carteira
+8. Ciclo de Vendas
+
+CARDÁPIO OFICIAL DE INICIATIVAS ESTRATÉGICAS
+
+Criar no banco de dados o cardápio oficial abaixo.
+
+Não adicionar nenhuma iniciativa fora desta lista.
+Não excluir nenhuma iniciativa desta lista.
+Não renomear as iniciativas.
+Não trocar dimensão.
+Não trocar processo-chave.
+Não fundir iniciativas parecidas.
+Não deduplicar iniciativas com nomes semelhantes, pois algumas aparecem em contextos diferentes.
+
+========================================
+DIMENSÃO: PESSOAS
+========================================
+
+PROCESSO-CHAVE: ATRAÇÃO
+
+1. Construa uma imobiliária inspiradora física e emocionalmente
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+2. Tenha presença digital de forma intencional
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+3. Eventos para fortalecer a conexão com a comunidade
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+4. Engaje vizinhos e parceiros próximos
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+5. Ative sua rede de contatos
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+6. Presença digital ativa da imobiliária
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+7. Promova momentos de relacionamento e networking
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+8. Estabeleça parceria com escolas de TTI
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+9. Identificação da imobiliária antes da inauguração
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+PROCESSO-CHAVE: RECRUTAMENTO
+
+1. Ritmo e Cadência de Recrutamento
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+2. Meta de Recrutamento
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+3. Pipeline FROG+C
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+4. Pipeline de Indicações Internas
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+5. Pipeline de Indicações de Clientes
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+6. Presença em Cerimônias do CRECI e Eventos Profissionais
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+7. Abordagem Direta
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+8. Campanhas Digitais com Agência
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+9. Estímulo à Comunicação dos Corretores
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+10. CRM de Recrutamento
+KRI: Corretores Associados
+KPI: Novos Corretores
+
+PROCESSO-CHAVE: INTEGRAR
+
+1. Programa 100 Dias de Onboarding
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+2. Programa de Apadrinhamento
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+3. Reuniões de Acompanhamento - Rotinas de Integração de novos corretores
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+4. Marcos de Produtividade
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+PROCESSO-CHAVE: DESENVOLVER
+
+1. Escola RE/MAX
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+2. Rituais Semanais (Reuniões 1:1, Escola RE/MAX, Role Plays)
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+3. Academias e Universidade RE/MAX
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+4. Reuniões com Foco em Resultado
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+5. Desenvolvimento Pessoal
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+6. Plano de Desenvolvimento Individual (PDI)
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+7. Feedback SCI (Situação - Contexto - Impacto)
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+8. Matriz de Feedback (Performance x Cultura)
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+PROCESSO-CHAVE: RECONHECER
+
+1. Calendário de Awards e Eventos
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+2. Rituais de Reconhecimento Mensal
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+3. Painel de Progresso nos Clubs
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+4. Campanhas de Reconhecimento Interno
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+PROCESSO-CHAVE: ENCERRAR
+
+1. Processo de Distrato e Entrevista de Desligamento
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+2. Encerramento dos Canais e Relacionamentos
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+3. Análise de Causas e Ajustes
+KRI: Corretores Associados
+KPI: Perda de Corretores
+
+========================================
+DIMENSÃO: REAL ESTATE
+========================================
+
+PROCESSO-CHAVE: POSICIONAMENTO DA IMOBILIÁRIA
+
+1. Eventos para fortalecer a conexão com a comunidade
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+2. Eventos para fortalecer a conexão com a comunidade
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+Observação técnica: manter as duas iniciativas separadas, pois no cardápio oficial elas aparecem como duas versões diferentes dentro do mesmo processo-chave.
+
+3. Engaje vizinhos e parceiros próximos
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+PROCESSO-CHAVE: FUNIL DE CAPTAÇÃO
+
+1. Gestão à Vista
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+2. Analisar as etapas do funil de captação
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+3. Campanha de Incentivo à Captação
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+4. Implantar o Checklist de Captação
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+5. Reativar a Base de Dados Parada de Cada Corretor
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+6. Blitz para captação
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+PROCESSO-CHAVE: MARKETING PARA ATRAÇÃO DE CLIENTES VENDEDORES
+
+1. Parcerias Estruturadas
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+2. Campanhas Digitais Vendedores
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+3. Analisar as ofertas do mercado na área de posicionamento de cada corretor
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: Novas CREs
+
+PROCESSO-CHAVE: PRECIFICAÇÃO
+
+1. Treinamento Contínuo ACM
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Canceladas/ Vencidas
+
+2. Comitê de Precificação
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Canceladas/ Vencidas
+
+3. Reconhecer e Promover Cases de Sucesso de Precificação Corretas
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Canceladas/ Vencidas
+
+PROCESSO-CHAVE: MARKETING PARA ATRAÇÃO DE CLIENTES COMPRADORES
+
+1. Open House
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Vendidas
+
+2. Leads Perdidos / Estagnados
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Vendidas
+
+3. Leads Perdidos / Estagnados
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Vendidas
+
+Observação técnica: manter as duas iniciativas separadas, pois no cardápio oficial aparecem como iniciativas distintas, uma relacionada à base da imobiliária e outra relacionada à base dos corretores.
+
+4. Análise das Campanhas Digitais e Portais
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Vendidas
+
+5. Campanhas Digitais Compradores
+KRI: CREs - Captações com Representações Exclusivas Ativas
+KPI: CREs Vendidas
+
+PROCESSO-CHAVE: FUNIL DE VENDAS
+
+1. Implementar a Cultura de CRM
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+2. Treinamento Contínuo de Vendas
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+PROCESSO-CHAVE: TICKET MÉDIO DE CARTEIRA
+
+1. Analisar o Posicionamento da Imobiliária com Base na Carteira de Imóveis
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+2. Analisar o Posicionamento dos Corretores com Base na Carteira de Imóveis
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+3. Treinamento Contínuo Alto Padrão
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+4. Mentoria Alto Padrão
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+PROCESSO-CHAVE: CICLO DE VENDAS
+
+1. Acompanhamento do Ciclo de Vendas de Cada Corretor
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+2. Otimizar o Ciclo de Vendas - Revisão de Preço e Estratégia de Vendas
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+3. Acompanhamento de tempo de estoque
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+4. Otimizar o Ciclo de Vendas - Validação do Processo de Captação
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+5. Otimizar o Ciclo de Vendas - Investimento de Marketing
+KRI: Valor Geral de Comissão
+KPI: Quantidade de Transações
+
+REGRAS DE CADASTRO DE METAS
+
+Cada meta deve ter:
+
+1. Nome da meta.
+2. Dimensão:
+   - Pessoas
+   - Real Estate
+3. Processo-chave.
+4. KRI.
+5. Valor atual.
+6. Valor desejado.
+7. Unidade de medida.
+8. Data de início.
+9. Data final.
+10. Responsável direto.
+11. Periodicidade:
+   - Diário
+   - Semanal
+   - Mensal
+   - Trimestral
+   - Semestral
+   - Anual
+12. Status:
+   - Não iniciada
+   - Em andamento
+   - Em atenção
+   - Atrasada
+   - Concluída
+   - Pausada
+
+Exemplo de lógica:
+KRI: terminar o ano com 20 corretores com CRECI.
+Valor atual: 10 corretores.
+Valor desejado: 20 corretores.
+Unidade: corretores.
+
+REGRAS DE CADASTRO DE INDICADORES
+
+Cada meta pode ter no máximo 3 KPIs prioritários.
+
+Cada KPI deve ter:
+
+1. Nome do indicador.
+2. Valor inicial.
+3. Valor atual.
+4. Meta do período.
+5. Unidade de medida.
+6. Frequência de atualização:
+   - Diário
+   - Semanal
+   - Mensal
+   - Trimestral
+   - Semestral
+   - Anual
+7. Tipo:
+   - Número absoluto
+   - Percentual
+   - Valor financeiro
+   - Quantidade
+   - Sim/Não
+8. Direção desejada:
+   - Aumentar
+   - Reduzir
+   - Manter
+9. Observações.
+
+Exemplo de lógica:
+Tenho 10 corretores.
+Recrutei 2 no mês.
+Saiu 1.
+Net gain do mês: 1.
+Agora estou com 11 corretores.
+
+REGRAS DE CADASTRO DE INICIATIVAS
+
+Cada meta pode ter no máximo 3 iniciativas prioritárias ativas.
+
+O usuário só pode iniciar uma nova iniciativa quando uma das 3 iniciativas ativas estiver:
+
+1. Concluída
+2. Pausada
+3. Cancelada
+
+Cada iniciativa selecionada deve usar 5W2H simplificado.
+
+5W2H SIMPLIFICADO
+
+Não usar linguagem burocrática.
+
+Usar estes campos:
+
+1. O que será feito?
+2. Por que isso importa?
+3. Quem é o responsável?
+4. Quando será executado?
+5. Onde será executado?
+6. Como será feito?
+7. Quanto precisa investir ou dedicar?
+
+Campos da iniciativa:
+
+1. Iniciativa estratégica.
+2. Dimensão.
+3. Processo-chave.
+4. KRI relacionado.
+5. KPI relacionado.
+6. Resultado desejado.
+7. Resultado realizado.
+8. Responsável direto.
+9. Data de início.
+10. Data final.
+11. Periodicidade:
+    - Diário
+    - Semanal
+    - Mensal
+    - Trimestral
+    - Semestral
+    - Anual
+12. Dia da semana de execução.
+13. Horário de execução.
+14. Tempo estimado por execução.
+15. O que será feito?
+16. Por que isso importa?
+17. Quem executa?
+18. Onde será feito?
+19. Como será feito?
+20. Quanto será investido ou dedicado?
+21. Progresso percentual.
+22. Status.
+23. Observações.
+
+TELA PRINCIPAL: EXECUÇÃO DE HOJE
+
+A tela principal do franqueado deve se chamar:
+
+Hoje
+
+Essa tela deve perguntar:
+
+1. Você executou hoje?
+   Opções:
+   - Sim
+   - Parcialmente
+   - Não
+
+2. Quanto avançou?
+   Campo numérico ou slider de 0% a 100%.
+
+3. O que travou?
+   Campo curto de texto.
+
+4. Qual o próximo passo?
+   Campo curto de texto.
+
+Campos adicionais:
+
+1. Tempo dedicado hoje.
+2. Evidência ou observação.
+3. Precisa de ajuda da Master Regional?
+4. Botão: Salvar check-in.
+
+O check-in diário deve ser preenchido em menos de 2 minutos.
+
+CHECK-IN SEMANAL
+
+Criar check-in semanal com PDCA simples.
+
+Perguntas:
+
+1. O que foi planejado?
+2. O que foi executado?
+3. O que avançou?
+4. O que travou?
+5. O que precisa ser ajustado?
+6. Qual será a prioridade da próxima semana?
+7. Precisa de apoio da Master Regional?
+8. A iniciativa deve continuar, pausar, ajustar ou concluir?
+
+Exibir automaticamente:
+
+1. Execução da semana em percentual.
+2. Número de dias com check-in.
+3. Consistência da semana.
+4. Travas mais recorrentes.
+5. Próximos passos.
+
+CHECK-IN MENSAL
+
+Criar revisão mensal com as perguntas:
+
+1. O KRI avançou?
+2. Quais KPIs melhoraram?
+3. Quais KPIs pioraram?
+4. Quais iniciativas geraram resultado?
+5. Quais iniciativas não moveram o indicador?
+6. O que deve continuar?
+7. O que deve parar?
+8. O que deve começar?
+9. Qual será o foco do próximo mês?
+
+SCORE DE PROGRESSO
+
+Criar score simples e visual.
+
+Cada meta deve mostrar:
+
+1. Meta: percentual concluído.
+2. Execução da semana: percentual.
+3. Consistência: quantidade de dias seguidos.
+4. Risco:
+   - Atrasado
+   - No prazo
+   - Adiantado
+5. Status geral:
+   - Crítico
+   - Atenção
+   - Saudável
+   - Excelente
+   - Concluído
+
+Cálculo do score geral de 0 a 100:
+
+1. 40% progresso do KRI.
+2. 30% execução das iniciativas.
+3. 20% consistência de check-ins.
+4. 10% atualização dos KPIs.
+
+Classificação:
+
+0 a 39 = Crítico
+40 a 69 = Atenção
+70 a 89 = Saudável
+90 a 100 = Excelente
+
+Cálculo de risco de prazo:
+
+1. Se o percentual de tempo decorrido for maior que o percentual de progresso da meta por mais de 15 pontos, marcar como Atrasado.
+2. Se o progresso estiver até 15 pontos abaixo ou acima do tempo decorrido, marcar como No prazo.
+3. Se o progresso estiver mais de 15 pontos acima do tempo decorrido, marcar como Adiantado.
+
+PERFIS DE USUÁRIO
+
+Criar 4 perfis:
+
+1. Master Admin
+2. Staff Regional
+3. Franqueado
+4. Responsável Interno da Franquia
+
+PERMISSÕES DO MASTER ADMIN
+
+O Master Admin pode:
+
+1. Ver todas as franquias.
+2. Criar franquias.
+3. Editar franquias.
+4. Desativar franquias.
+5. Criar usuários.
+6. Editar usuários.
+7. Desativar usuários.
+8. Atribuir usuários a franquias.
+9. Ver dashboard regional consolidado.
+10. Filtrar por franquia.
+11. Filtrar por dimensão.
+12. Filtrar por processo-chave.
+13. Filtrar por iniciativa estratégica.
+14. Ver ranking de execução.
+15. Ver ranking de progresso.
+16. Ver ranking de consistência.
+17. Ver franquias atrasadas.
+18. Ver franquias sem check-in.
+19. Ver principais travas.
+20. Ver pedidos de ajuda.
+21. Exportar relatórios CSV.
+22. Ver histórico completo.
+23. Gerenciar o cardápio oficial apenas em modo administrativo protegido.
+
+PERMISSÕES DO STAFF REGIONAL
+
+O Staff Regional pode:
+
+1. Ver todas as franquias.
+2. Acompanhar progresso.
+3. Comentar check-ins.
+4. Registrar apoio prestado.
+5. Filtrar por dimensão.
+6. Filtrar por processo-chave.
+7. Filtrar por iniciativa.
+8. Ver pedidos de ajuda.
+9. Exportar relatórios.
+10. Não pode excluir dados críticos.
+11. Não pode alterar o cardápio oficial.
+
+PERMISSÕES DO FRANQUEADO
+
+O Franqueado pode:
+
+1. Ver apenas sua franquia.
+2. Cadastrar metas da sua franquia.
+3. Cadastrar até 3 KPIs por meta.
+4. Selecionar até 3 iniciativas prioritárias por meta.
+5. Fazer check-in diário.
+6. Fazer check-in semanal.
+7. Fazer check-in mensal.
+8. Ver dashboard da própria franquia.
+9. Ver histórico da própria franquia.
+10. Pedir ajuda da Master Regional.
+11. Atribuir responsáveis internos.
+
+PERMISSÕES DO RESPONSÁVEL INTERNO DA FRANQUIA
+
+O Responsável Interno pode:
+
+1. Ver metas atribuídas a ele.
+2. Ver iniciativas atribuídas a ele.
+3. Fazer check-in das ações sob sua responsabilidade.
+4. Atualizar progresso.
+5. Registrar travas.
+6. Informar próximo passo.
+7. Não pode ver dados de outras franquias.
+8. Não pode alterar metas gerais sem permissão do franqueado.
+
+TELAS DO APP
+
+Criar as seguintes telas:
+
+1. Login
+2. Hoje
+3. Dashboard Principal
+4. Minhas Metas
+5. Criar Meta
+6. Detalhe da Meta
+7. Indicadores da Meta
+8. Iniciativas da Meta
+9. Check-in Diário
+10. Check-in Semanal
+11. Check-in Mensal
+12. Histórico
+13. Dashboard da Franquia
+14. Dashboard Regional
+15. Ranking de Franquias
+16. Pedidos de Ajuda
+17. Cardápio de Iniciativas
+18. Usuários e Permissões
+19. Cadastro de Franquias
+20. Configurações
+
+DASHBOARD DO FRANQUEADO
+
+Mostrar:
+
+1. Score geral da franquia.
+2. Metas ativas.
+3. Metas concluídas.
+4. Metas atrasadas.
+5. Execução da semana.
+6. Consistência de check-in.
+7. Progresso por dimensão.
+8. Progresso por processo-chave.
+9. Progresso por iniciativa estratégica.
+10. Principais travas.
+11. Próximos passos.
+12. Alertas de atraso.
+13. Iniciativas em andamento.
+14. Iniciativas concluídas.
+15. Iniciativas sem movimentação.
+
+DASHBOARD MASTER ADMIN
+
+Mostrar:
+
+1. Número total de franquias.
+2. Franquias ativas no app.
+3. Franquias com check-in hoje.
+4. Franquias sem check-in nos últimos 7 dias.
+5. Score médio regional.
+6. Progresso médio por dimensão.
+7. Progresso médio por processo-chave.
+8. Progresso médio por iniciativa estratégica.
+9. Ranking de franquias por execução.
+10. Ranking de franquias por evolução do KRI.
+11. Ranking de franquias por consistência.
+12. Franquias em risco.
+13. Franquias atrasadas.
+14. Franquias adiantadas.
+15. Iniciativas mais implementadas.
+16. Iniciativas menos implementadas.
+17. Iniciativas com maior impacto nos KPIs.
+18. Principais travas registradas.
+19. Pedidos de ajuda pendentes.
+20. Evolução histórica mensal.
+
+GRÁFICOS
+
+Usar gráficos simples:
+
+1. Cards numéricos.
+2. Barras de progresso.
+3. Linha do tempo para evolução.
+4. Barras para comparar franquias.
+5. Donut apenas quando útil.
+6. Heatmap simples de consistência semanal.
+
+Filtros obrigatórios:
+
+1. Hoje
+2. Esta semana
+3. Este mês
+4. Este trimestre
+5. Este semestre
+6. Este ano
+7. Período personalizado
+8. Franquia
+9. Dimensão
+10. Processo-chave
+11. Iniciativa estratégica
+12. Status
+13. Responsável
+
+ALERTAS
+
+Criar alertas para:
+
+1. Meta atrasada.
+2. Iniciativa sem check-in.
+3. KPI sem atualização.
+4. Franquia sem check-in por 7 dias.
+5. Iniciativa próxima do prazo final.
+6. Pedido de ajuda aberto.
+7. Meta concluída.
+8. Iniciativa concluída.
+
+HISTÓRICO VISUAL
+
+Criar linha do tempo com:
+
+1. Data
+2. Meta
+3. KPI
+4. Iniciativa
+5. Quem atualizou
+6. Progresso anterior
+7. Progresso novo
+8. Status anterior
+9. Status novo
+10. Trava registrada
+11. Próximo passo
+
+MICROCOPY DO APP
+
+Usar frases curtas e diretas.
+
+Na tela inicial:
+
+“Seu Ponto B só existe quando vira agenda.”
+
+Na tela de check-in:
+
+“Dois minutos para não perder a semana.”
+
+No dashboard:
+
+“Bata o olho e saiba onde avançar.”
+
+Na área de travas:
+
+“O que não é registrado não pode ser resolvido.”
+
+Na área de iniciativas:
+
+“Escolha poucas. Execute bem. Conclua antes de começar mais.”
+
+Frase-guia do produto:
+
+“Menos planejamento bonito. Mais execução visível.”
+
+BANCO DE DADOS
+
+Criar banco relacional com as tabelas:
+
+1. users
+2. franchises
+3. roles
+4. dimensions
+5. key_processes
+6. strategic_initiatives
+7. goals
+8. kpis
+9. goal_initiatives
+10. daily_checkins
+11. weekly_checkins
+12. monthly_checkins
+13. progress_history
+14. alerts
+15. help_requests
+16. comments
+17. audit_logs
+
+TABELA users
+
+Campos:
+
+- id
+- name
+- email
+- password_hash
+- role
+- franchise_id
+- active
+- created_at
+- updated_at
+
+TABELA franchises
+
+Campos:
+
+- id
+- name
+- city
+- state
+- broker_owner_name
+- active
+- created_at
+- updated_at
+
+TABELA dimensions
+
+Campos:
+
+- id
+- name
+- description
+- active
+- created_at
+- updated_at
+
+TABELA key_processes
+
+Campos:
+
+- id
+- dimension_id
+- name
+- description
+- order_index
+- active
+- created_at
+- updated_at
+
+TABELA strategic_initiatives
+
+Campos:
+
+- id
+- dimension_id
+- key_process_id
+- name
+- kri
+- kpi
+- description
+- source_document
+- active
+- created_at
+- updated_at
+
+TABELA goals
+
+Campos:
+
+- id
+- franchise_id
+- dimension_id
+- key_process_id
+- title
+- kri_description
+- current_value
+- target_value
+- unit
+- start_date
+- end_date
+- owner_user_id
+- frequency
+- status
+- progress_percentage
+- risk_status
+- score
+- created_at
+- updated_at
+
+TABELA kpis
+
+Campos:
+
+- id
+- goal_id
+- name
+- initial_value
+- current_value
+- target_value
+- unit
+- frequency
+- indicator_type
+- desired_direction
+- notes
+- created_at
+- updated_at
+
+Regra:
+Cada goal pode ter no máximo 3 KPIs ativos.
+
+TABELA goal_initiatives
+
+Campos:
+
+- id
+- goal_id
+- strategic_initiative_id
+- desired_result
+- actual_result
+- main_kpi_id
+- owner_user_id
+- start_date
+- end_date
+- frequency
+- execution_day
+- execution_time
+- estimated_time
+- what_will_be_done
+- why_it_matters
+- who_is_responsible
+- where_it_will_be_done
+- how_it_will_be_done
+- investment_or_effort
+- progress_percentage
+- status
+- notes
+- created_at
+- updated_at
+
+Regra:
+Cada goal pode ter no máximo 3 initiatives ativas.
+
+TABELA daily_checkins
+
+Campos:
+
+- id
+- goal_id
+- goal_initiative_id
+- franchise_id
+- user_id
+- date
+- executed_today
+- progress_today
+- time_spent
+- blocker
+- next_step
+- needs_help
+- notes
+- created_at
+
+TABELA weekly_checkins
+
+Campos:
+
+- id
+- goal_id
+- franchise_id
+- user_id
+- week_start_date
+- week_end_date
+- planned
+- executed
+- progress_summary
+- blockers
+- adjustments
+- next_week_priority
+- needs_regional_support
+- initiative_decision
+- execution_percentage
+- checkin_days_count
+- created_at
+
+TABELA monthly_checkins
+
+Campos:
+
+- id
+- goal_id
+- franchise_id
+- user_id
+- month
+- year
+- kri_progress
+- improved_kpis
+- worsened_kpis
+- initiatives_that_worked
+- initiatives_that_did_not_work
+- continue_doing
+- stop_doing
+- start_doing
+- next_month_focus
+- created_at
+
+TABELA alerts
+
+Campos:
+
+- id
+- franchise_id
+- goal_id
+- goal_initiative_id
+- type
+- severity
+- message
+- status
+- created_at
+- resolved_at
+
+TABELA help_requests
+
+Campos:
+
+- id
+- franchise_id
+- goal_id
+- goal_initiative_id
+- user_id
+- description
+- status
+- assigned_to
+- created_at
+- resolved_at
+
+TABELA progress_history
+
+Campos:
+
+- id
+- entity_type
+- entity_id
+- franchise_id
+- user_id
+- previous_progress
+- new_progress
+- previous_status
+- new_status
+- note
+- created_at
+
+TABELA comments
+
+Campos:
+
+- id
+- entity_type
+- entity_id
+- user_id
+- comment
+- created_at
+
+TABELA audit_logs
+
+Campos:
+
+- id
+- user_id
+- action
+- entity_type
+- entity_id
+- old_value
+- new_value
+- created_at
+
+UX E DESIGN
+
+Criar layout:
+
+1. Mobile first.
+2. Limpo.
+3. Premium.
+4. Executivo.
+5. Sem aparência de planilha.
+6. Poucos cliques.
+7. Botões grandes.
+8. Campos curtos.
+9. Dashboard visual.
+10. Fácil de usar no celular.
+
+Cores:
+
+1. Branco
+2. Cinza claro
+3. Grafite
+4. Azul RE/MAX
+5. Vermelho RE/MAX
+6. Verde para progresso positivo
+7. Amarelo ou laranja para atenção
+8. Vermelho para atraso ou risco
+
+Não exagerar nas cores.
+Usar cor como sinalização.
+
+NAVEGAÇÃO
+
+Desktop:
+Menu lateral.
+
+Mobile:
+Menu inferior simples.
+
+Itens:
+
+1. Hoje
+2. Metas
+3. Iniciativas
+4. Dashboard
+5. Histórico
+6. Ajuda
+7. Admin, apenas para Master Admin e Staff Regional
+
+TECNOLOGIA
+
+Usar stack adequada ao Replit:
+
+Frontend:
+React + TypeScript
+
+Estilo:
+TailwindCSS
+
+Componentes:
+shadcn/ui ou componentes próprios simples
+
+Backend:
+Node.js + Express ou Next.js API routes
+
+Banco:
+PostgreSQL
+
+ORM:
+Prisma ou Drizzle
+
+Gráficos:
+Recharts
+
+Autenticação:
+JWT ou sessão segura
+
+Deploy:
+Compatível com Replit
+
+SEGURANÇA
+
+1. Senhas com hash.
+2. Permissões por perfil.
+3. Franqueado só vê sua franquia.
+4. Responsável interno só vê o que está atribuído a ele.
+5. Staff Regional e Master Admin veem todas as franquias.
+6. Registrar alterações relevantes em audit_logs.
+7. Não expor dados sensíveis no frontend.
+
+DADOS DE TESTE
+
+Criar dados mínimos de teste.
+
+Usuário Master Admin:
+email: admin@remaxsc.com.br
+senha: admin123
+
+Usuário Staff Regional:
+email: regional@remaxsc.com.br
+senha: regional123
+
+Usuário Franqueado:
+email: franqueado@remaxsc.com.br
+senha: franqueado123
+
+Usuário Responsável Interno:
+email: responsavel@remaxsc.com.br
+senha: responsavel123
+
+Franquia teste:
+Nome: RE/MAX Franquia Teste
+Cidade: Florianópolis
+Estado: SC
+
+Observação:
+As senhas são apenas para desenvolvimento.
+No README, orientar troca obrigatória em produção.
+
+RELATÓRIOS CSV
+
+Permitir exportar:
+
+1. Metas.
+2. KPIs.
+3. Iniciativas.
+4. Check-ins diários.
+5. Check-ins semanais.
+6. Check-ins mensais.
+7. Progresso por franquia.
+8. Progresso regional.
+9. Alertas.
+10. Pedidos de ajuda.
+
+CRITÉRIOS DE ACEITE
+
+O app só estará correto se:
+
+1. Tiver login funcional.
+2. Tiver permissões por perfil.
+3. Master Admin visualizar todas as franquias.
+4. Franqueado visualizar apenas sua franquia.
+5. Responsável interno visualizar apenas suas iniciativas.
+6. Tiver as 2 dimensões corretas.
+7. Tiver os 14 processos-chave corretos.
+8. Tiver todas as iniciativas oficiais listadas neste prompt.
+9. Não tiver nenhuma iniciativa fictícia.
+10. Cada meta permitir no máximo 3 KPIs.
+11. Cada meta permitir no máximo 3 iniciativas ativas.
+12. Check-in diário tiver as 4 perguntas principais:
+    - Você executou hoje?
+    - Quanto avançou?
+    - O que travou?
+    - Qual o próximo passo?
+13. Check-in semanal usar PDCA simples.
+14. Dashboard mostrar progresso, execução, consistência e risco.
+15. Master Admin conseguir ver visão consolidada regional.
+16. Houver alertas de atraso.
+17. Houver histórico visual.
+18. A interface for simples, limpa e fácil de usar no celular.
+19. O app não parecer uma planilha de consultoria.
+20. O usuário entender em poucos segundos se está avançando ou se está se enganando.
+
+ENTREGÁVEIS
+
+Ao finalizar, entregar:
+
+1. App funcional.
+2. Banco de dados criado.
+3. Seed inicial com dimensões.
+4. Seed inicial com processos-chave.
+5. Seed inicial com todas as iniciativas oficiais.
+6. Login funcional.
+7. Permissões por perfil.
+8. Fluxo de criação de metas.
+9. Fluxo de criação de KPIs.
+10. Fluxo de seleção de iniciativas.
+11. Check-in diário.
+12. Check-in semanal.
+13. Check-in mensal.
+14. Dashboard do franqueado.
+15. Dashboard Master Admin.
+16. Alertas.
+17. Histórico.
+18. Exportação CSV.
+19. README com instruções para rodar o projeto.
+
+FINALIDADE
+
+Este app deve ajudar franqueados RE/MAX SC e a Master Franquia Regional a transformar estratégia em execução visível.
+
+Não é um app para armazenar planos bonitos.
+
+É um app para mostrar, todos os dias, se a franquia está executando, avançando ou se enganando.

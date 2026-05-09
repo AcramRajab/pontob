@@ -1,0 +1,1 @@
+export default function GoalNew() { return <div>Nova Meta</div>; }
