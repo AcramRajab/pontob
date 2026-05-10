@@ -27,6 +27,8 @@ tags:
   - name: franchiseKris
   - name: vagas
   - name: candidatos
+  - name: recruitingAI
+    description: AI-powered recruiting assistant for candidate planning and search
 paths:
   /healthz:
     get:

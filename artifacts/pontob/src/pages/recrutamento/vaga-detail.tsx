@@ -1,9 +1,11 @@
 import { useRoute, useLocation } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useGetVaga, getGetVagaQueryKey,
   useCreateCandidato, useUpdateCandidato, useDeleteCandidato,
   useUpdateVaga, VagaUpdateStatus,
 } from "@workspace/api-client-react";
+import { VagaAiPanel } from "./vaga-ai-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -212,38 +214,56 @@ export default function VagaDetail() {
         </div>
       </div>
 
-      {/* Profile / must-haves */}
-      {(vaga.profileSummary || vaga.mustHaves) && (
-        <Card>
-          <CardContent className="pt-4 grid md:grid-cols-2 gap-4">
-            {vaga.profileSummary && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Perfil buscado</p>
-                <p className="text-sm">{vaga.profileSummary}</p>
-              </div>
-            )}
-            {vaga.mustHaves && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Must-haves</p>
-                <p className="text-sm whitespace-pre-line">{vaga.mustHaves}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <Tabs defaultValue="pipeline">
+        <TabsList className="mb-4">
+          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5">
+            <span>IA Recruiter</span>
+            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">IA</span>
+          </TabsTrigger>
+          {(vaga.profileSummary || vaga.mustHaves) && (
+            <TabsTrigger value="profile">Perfil</TabsTrigger>
+          )}
+        </TabsList>
 
-      {/* Pipeline summary bar */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-        {STAGES.map((stage) => (
-          <div key={stage} className={`rounded-lg p-3 text-center ${stageColor[stage]}`}>
-            <p className="text-xl font-bold">{byStage[stage].length}</p>
-            <p className="text-xs font-medium leading-tight mt-0.5">{stageLabel[stage]}</p>
-          </div>
-        ))}
-      </div>
+        <TabsContent value="ai">
+          <VagaAiPanel vagaId={id} />
+        </TabsContent>
 
-      {/* Kanban columns — scrollable horizontal on mobile */}
-      {candidatos.length === 0 ? (
+        {(vaga.profileSummary || vaga.mustHaves) && (
+          <TabsContent value="profile">
+            <Card>
+              <CardContent className="pt-4 grid md:grid-cols-2 gap-4">
+                {vaga.profileSummary && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Perfil buscado</p>
+                    <p className="text-sm">{vaga.profileSummary}</p>
+                  </div>
+                )}
+                {vaga.mustHaves && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Must-haves</p>
+                    <p className="text-sm whitespace-pre-line">{vaga.mustHaves}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        <TabsContent value="pipeline">
+        {/* Pipeline summary bar */}
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+          {STAGES.map((stage) => (
+            <div key={stage} className={`rounded-lg p-3 text-center ${stageColor[stage]}`}>
+              <p className="text-xl font-bold">{byStage[stage].length}</p>
+              <p className="text-xs font-medium leading-tight mt-0.5">{stageLabel[stage]}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Kanban columns */}
+        {candidatos.length === 0 ? (
         <Card>
           <CardContent className="pt-8 pb-8 text-center">
             <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
@@ -319,6 +339,8 @@ export default function VagaDetail() {
           ))}
         </div>
       )}
+        </TabsContent>
+      </Tabs>
 
       {/* Add candidate dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

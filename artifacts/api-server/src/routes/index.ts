@@ -11,6 +11,7 @@ import dashboardRouter from "./dashboard";
 import exportsRouter from "./exports";
 import krisRouter from "./kris";
 import recruitingRouter from "./recruiting";
+import recruitingAiRouter from "./recruiting-ai";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(dashboardRouter);
 router.use(exportsRouter);
 router.use(krisRouter);
 router.use(recruitingRouter);
+router.use(recruitingAiRouter);
 
 export default router;
