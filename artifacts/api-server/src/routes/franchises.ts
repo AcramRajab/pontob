@@ -95,4 +95,21 @@ router.patch("/franchises/:id", requireRole("master_admin"), async (req, res) =>
   }
 });
 
+router.delete("/franchises/:id", requireRole("master_admin"), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const linked = await db.select().from(usersTable).where(eq(usersTable.franchiseId, id)).limit(1);
+    if (linked.length > 0) {
+      res.status(409).json({ error: "Franquia possui usuários vinculados. Remova os usuários primeiro." });
+      return;
+    }
+    const [f] = await db.delete(franchisesTable).where(eq(franchisesTable.id, id)).returning();
+    if (!f) { res.status(404).json({ error: "Not found" }); return; }
+    res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

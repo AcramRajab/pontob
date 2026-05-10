@@ -1,15 +1,16 @@
 import { useListFranchises, useCreateFranchise, useUpdateFranchise, getListFranchisesQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus } from "lucide-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { Building2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface FranchiseForm {
@@ -24,10 +25,30 @@ export default function AdminFranchises() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
   const { data: franchises = [], isLoading } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
   const create = useCreateFranchise();
   const update = useUpdateFranchise();
+
+  const deleteFranchise = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/franchises/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Erro ao excluir franquia");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getListFranchisesQueryKey() });
+      toast({ title: "Franquia excluída com sucesso" });
+      setDeleteTarget(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, variant: "destructive" });
+      setDeleteTarget(null);
+    },
+  });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FranchiseForm>();
 
@@ -134,6 +155,15 @@ export default function AdminFranchises() {
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(f)} data-testid={`button-edit-${f.id}`}>
                       Editar
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteTarget({ id: f.id, name: f.name })}
+                      data-testid={`button-delete-${f.id}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -141,6 +171,28 @@ export default function AdminFranchises() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir franquia?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.
+              Só é possível excluir franquias sem usuários vinculados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteFranchise.mutate(deleteTarget.id)}
+              disabled={deleteFranchise.isPending}
+            >
+              {deleteFranchise.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
