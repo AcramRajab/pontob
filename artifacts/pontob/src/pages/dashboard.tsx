@@ -15,7 +15,8 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTH_NAMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];

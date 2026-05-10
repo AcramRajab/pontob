@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
-import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
 interface WeeklyForm {
   goalId: string;

@@ -12,7 +12,8 @@ import {
   History, TrendingUp, TrendingDown, CheckSquare, Calendar, BarChart2,
   CheckCircle2, MinusCircle, XCircle, AlertCircle,
 } from "lucide-react";
-import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useState } from "react";
 
 function formatDate(iso: string) {

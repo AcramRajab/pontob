@@ -3,7 +3,8 @@ import { useGetTodayOverview, getGetTodayOverviewQueryKey } from "@workspace/api
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
-import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Link } from "wouter";
 
 export default function Today() {

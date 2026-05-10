@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
 export default function Goals() {
   const { user } = useAuth();
