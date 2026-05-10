@@ -919,6 +919,174 @@ export interface FranchiseKriInput {
   notes?: string | null;
 }
 
+export type VagaStatus = (typeof VagaStatus)[keyof typeof VagaStatus];
+
+export const VagaStatus = {
+  ativa: "ativa",
+  pausada: "pausada",
+  preenchida: "preenchida",
+  rascunho: "rascunho",
+} as const;
+
+export interface Vaga {
+  id: number;
+  franchiseId: number;
+  /** @nullable */
+  franchiseName?: string | null;
+  /** @nullable */
+  goalId?: number | null;
+  /** @nullable */
+  goalTitle?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  profileSummary?: string | null;
+  /** @nullable */
+  mustHaves?: string | null;
+  status: VagaStatus;
+  candidatosCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CandidatoStage =
+  (typeof CandidatoStage)[keyof typeof CandidatoStage];
+
+export const CandidatoStage = {
+  interessado: "interessado",
+  triagem: "triagem",
+  entrevista: "entrevista",
+  proposta: "proposta",
+  contratado: "contratado",
+  arquivado: "arquivado",
+} as const;
+
+/**
+ * @nullable
+ */
+export type CandidatoRecommendation =
+  | (typeof CandidatoRecommendation)[keyof typeof CandidatoRecommendation]
+  | null;
+
+export const CandidatoRecommendation = {
+  avancar: "avancar",
+  aguardar: "aguardar",
+  rejeitar: "rejeitar",
+} as const;
+
+export interface Candidato {
+  id: number;
+  vagaId: number;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  currentRole?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  stage: CandidatoStage;
+  /** @nullable */
+  recommendation?: CandidatoRecommendation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VagaDetail {
+  id: number;
+  franchiseId: number;
+  /** @nullable */
+  franchiseName?: string | null;
+  /** @nullable */
+  goalId?: number | null;
+  /** @nullable */
+  goalTitle?: string | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  profileSummary?: string | null;
+  /** @nullable */
+  mustHaves?: string | null;
+  status: string;
+  candidatosCount?: number;
+  candidatos: Candidato[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VagaInput {
+  franchiseId: number;
+  /** @nullable */
+  goalId?: number | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  profileSummary?: string | null;
+  /** @nullable */
+  mustHaves?: string | null;
+}
+
+export type VagaUpdateStatus =
+  (typeof VagaUpdateStatus)[keyof typeof VagaUpdateStatus];
+
+export const VagaUpdateStatus = {
+  ativa: "ativa",
+  pausada: "pausada",
+  preenchida: "preenchida",
+  rascunho: "rascunho",
+} as const;
+
+export interface VagaUpdate {
+  /** @nullable */
+  goalId?: number | null;
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  profileSummary?: string | null;
+  /** @nullable */
+  mustHaves?: string | null;
+  status?: VagaUpdateStatus;
+}
+
+export interface CandidatoInput {
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  currentRole?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  stage?: string;
+}
+
+export interface CandidatoUpdate {
+  name?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  currentRole?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  stage?: string;
+  /** @nullable */
+  recommendation?: string | null;
+}
+
 export interface ProgressHistoryItem {
   id: number;
   entityType: string;
@@ -1043,3 +1211,8 @@ export const ExportCheckinsCsvType = {
   weekly: "weekly",
   monthly: "monthly",
 } as const;
+
+export type ListVagasParams = {
+  franchiseId?: number;
+  status?: string;
+};

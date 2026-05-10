@@ -1394,3 +1394,203 @@ export const ExportCheckinsCsvQueryParams = zod.object({
   franchiseId: zod.coerce.number().optional(),
   type: zod.enum(["daily", "weekly", "monthly"]).optional(),
 });
+
+/**
+ * @summary List job openings
+ */
+export const ListVagasQueryParams = zod.object({
+  franchiseId: zod.coerce.number().optional(),
+  status: zod.coerce.string().optional(),
+});
+
+export const ListVagasResponseItem = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  goalId: zod.number().nullish(),
+  goalTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  profileSummary: zod.string().nullish(),
+  mustHaves: zod.string().nullish(),
+  status: zod.enum(["ativa", "pausada", "preenchida", "rascunho"]),
+  candidatosCount: zod.number().optional(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListVagasResponse = zod.array(ListVagasResponseItem);
+
+/**
+ * @summary Create a new job opening
+ */
+export const CreateVagaBody = zod.object({
+  franchiseId: zod.number(),
+  goalId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  profileSummary: zod.string().nullish(),
+  mustHaves: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a job opening with its candidates
+ */
+export const GetVagaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetVagaResponse = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  goalId: zod.number().nullish(),
+  goalTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  profileSummary: zod.string().nullish(),
+  mustHaves: zod.string().nullish(),
+  status: zod.string(),
+  candidatosCount: zod.number().optional(),
+  candidatos: zod.array(
+    zod.object({
+      id: zod.number(),
+      vagaId: zod.number(),
+      name: zod.string(),
+      email: zod.string().nullish(),
+      phone: zod.string().nullish(),
+      source: zod.string().nullish(),
+      currentRole: zod.string().nullish(),
+      notes: zod.string().nullish(),
+      stage: zod.enum([
+        "interessado",
+        "triagem",
+        "entrevista",
+        "proposta",
+        "contratado",
+        "arquivado",
+      ]),
+      recommendation: zod
+        .union([
+          zod.literal("avancar"),
+          zod.literal("aguardar"),
+          zod.literal("rejeitar"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update a job opening
+ */
+export const UpdateVagaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateVagaBody = zod.object({
+  goalId: zod.number().nullish(),
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  profileSummary: zod.string().nullish(),
+  mustHaves: zod.string().nullish(),
+  status: zod.enum(["ativa", "pausada", "preenchida", "rascunho"]).optional(),
+});
+
+export const UpdateVagaResponse = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  goalId: zod.number().nullish(),
+  goalTitle: zod.string().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  profileSummary: zod.string().nullish(),
+  mustHaves: zod.string().nullish(),
+  status: zod.enum(["ativa", "pausada", "preenchida", "rascunho"]),
+  candidatosCount: zod.number().optional(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a job opening
+ */
+export const DeleteVagaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Add a candidate to a vaga
+ */
+export const CreateCandidatoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateCandidatoBody = zod.object({
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  source: zod.string().nullish(),
+  currentRole: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  stage: zod.string().optional(),
+});
+
+/**
+ * @summary Update a candidate (stage, notes, recommendation)
+ */
+export const UpdateCandidatoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCandidatoBody = zod.object({
+  name: zod.string().optional(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  source: zod.string().nullish(),
+  currentRole: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  stage: zod.string().optional(),
+  recommendation: zod.string().nullish(),
+});
+
+export const UpdateCandidatoResponse = zod.object({
+  id: zod.number(),
+  vagaId: zod.number(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  source: zod.string().nullish(),
+  currentRole: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  stage: zod.enum([
+    "interessado",
+    "triagem",
+    "entrevista",
+    "proposta",
+    "contratado",
+    "arquivado",
+  ]),
+  recommendation: zod
+    .union([
+      zod.literal("avancar"),
+      zod.literal("aguardar"),
+      zod.literal("rejeitar"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a candidate
+ */
+export const DeleteCandidatoParams = zod.object({
+  id: zod.coerce.number(),
+});

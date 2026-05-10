@@ -19,6 +19,9 @@ import type {
 import type {
   Alert,
   AuthUser,
+  Candidato,
+  CandidatoInput,
+  CandidatoUpdate,
   DailyCheckin,
   DailyCheckinInput,
   Dimension,
@@ -60,6 +63,7 @@ import type {
   ListProgressHistoryParams,
   ListStrategicInitiativesParams,
   ListUsersParams,
+  ListVagasParams,
   ListWeeklyCheckinsParams,
   LoginInput,
   MonthlyCheckin,
@@ -71,6 +75,10 @@ import type {
   User,
   UserInput,
   UserUpdate,
+  Vaga,
+  VagaDetail,
+  VagaInput,
+  VagaUpdate,
   WeeklyCheckin,
   WeeklyCheckinInput,
 } from "./api.schemas";
@@ -4326,3 +4334,689 @@ export function useExportCheckinsCsv<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List job openings
+ */
+export const getListVagasUrl = (params?: ListVagasParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/vagas?${stringifiedParams}`
+    : `/api/vagas`;
+};
+
+export const listVagas = async (
+  params?: ListVagasParams,
+  options?: RequestInit,
+): Promise<Vaga[]> => {
+  return customFetch<Vaga[]>(getListVagasUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVagasQueryKey = (params?: ListVagasParams) => {
+  return [`/api/vagas`, ...(params ? [params] : [])] as const;
+};
+
+export const getListVagasQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVagas>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVagasParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVagas>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListVagasQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listVagas>>> = ({
+    signal,
+  }) => listVagas(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVagas>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVagasQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVagas>>
+>;
+export type ListVagasQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List job openings
+ */
+
+export function useListVagas<
+  TData = Awaited<ReturnType<typeof listVagas>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListVagasParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVagas>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVagasQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new job opening
+ */
+export const getCreateVagaUrl = () => {
+  return `/api/vagas`;
+};
+
+export const createVaga = async (
+  vagaInput: VagaInput,
+  options?: RequestInit,
+): Promise<Vaga> => {
+  return customFetch<Vaga>(getCreateVagaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(vagaInput),
+  });
+};
+
+export const getCreateVagaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVaga>>,
+    TError,
+    { data: BodyType<VagaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVaga>>,
+  TError,
+  { data: BodyType<VagaInput> },
+  TContext
+> => {
+  const mutationKey = ["createVaga"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVaga>>,
+    { data: BodyType<VagaInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createVaga(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVagaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVaga>>
+>;
+export type CreateVagaMutationBody = BodyType<VagaInput>;
+export type CreateVagaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new job opening
+ */
+export const useCreateVaga = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVaga>>,
+    TError,
+    { data: BodyType<VagaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVaga>>,
+  TError,
+  { data: BodyType<VagaInput> },
+  TContext
+> => {
+  return useMutation(getCreateVagaMutationOptions(options));
+};
+
+/**
+ * @summary Get a job opening with its candidates
+ */
+export const getGetVagaUrl = (id: number) => {
+  return `/api/vagas/${id}`;
+};
+
+export const getVaga = async (
+  id: number,
+  options?: RequestInit,
+): Promise<VagaDetail> => {
+  return customFetch<VagaDetail>(getGetVagaUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetVagaQueryKey = (id: number) => {
+  return [`/api/vagas/${id}`] as const;
+};
+
+export const getGetVagaQueryOptions = <
+  TData = Awaited<ReturnType<typeof getVaga>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getVaga>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetVagaQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getVaga>>> = ({
+    signal,
+  }) => getVaga(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getVaga>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetVagaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getVaga>>
+>;
+export type GetVagaQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a job opening with its candidates
+ */
+
+export function useGetVaga<
+  TData = Awaited<ReturnType<typeof getVaga>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getVaga>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetVagaQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a job opening
+ */
+export const getUpdateVagaUrl = (id: number) => {
+  return `/api/vagas/${id}`;
+};
+
+export const updateVaga = async (
+  id: number,
+  vagaUpdate: VagaUpdate,
+  options?: RequestInit,
+): Promise<Vaga> => {
+  return customFetch<Vaga>(getUpdateVagaUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(vagaUpdate),
+  });
+};
+
+export const getUpdateVagaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVaga>>,
+    TError,
+    { id: number; data: BodyType<VagaUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVaga>>,
+  TError,
+  { id: number; data: BodyType<VagaUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateVaga"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVaga>>,
+    { id: number; data: BodyType<VagaUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateVaga(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVagaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVaga>>
+>;
+export type UpdateVagaMutationBody = BodyType<VagaUpdate>;
+export type UpdateVagaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a job opening
+ */
+export const useUpdateVaga = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVaga>>,
+    TError,
+    { id: number; data: BodyType<VagaUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVaga>>,
+  TError,
+  { id: number; data: BodyType<VagaUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateVagaMutationOptions(options));
+};
+
+/**
+ * @summary Delete a job opening
+ */
+export const getDeleteVagaUrl = (id: number) => {
+  return `/api/vagas/${id}`;
+};
+
+export const deleteVaga = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteVagaUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVagaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVaga>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVaga>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteVaga"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVaga>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVaga(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVagaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVaga>>
+>;
+
+export type DeleteVagaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a job opening
+ */
+export const useDeleteVaga = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVaga>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVaga>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteVagaMutationOptions(options));
+};
+
+/**
+ * @summary Add a candidate to a vaga
+ */
+export const getCreateCandidatoUrl = (id: number) => {
+  return `/api/vagas/${id}/candidatos`;
+};
+
+export const createCandidato = async (
+  id: number,
+  candidatoInput: CandidatoInput,
+  options?: RequestInit,
+): Promise<Candidato> => {
+  return customFetch<Candidato>(getCreateCandidatoUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(candidatoInput),
+  });
+};
+
+export const getCreateCandidatoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCandidato>>,
+    TError,
+    { id: number; data: BodyType<CandidatoInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCandidato>>,
+  TError,
+  { id: number; data: BodyType<CandidatoInput> },
+  TContext
+> => {
+  const mutationKey = ["createCandidato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCandidato>>,
+    { id: number; data: BodyType<CandidatoInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createCandidato(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCandidatoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCandidato>>
+>;
+export type CreateCandidatoMutationBody = BodyType<CandidatoInput>;
+export type CreateCandidatoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a candidate to a vaga
+ */
+export const useCreateCandidato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCandidato>>,
+    TError,
+    { id: number; data: BodyType<CandidatoInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCandidato>>,
+  TError,
+  { id: number; data: BodyType<CandidatoInput> },
+  TContext
+> => {
+  return useMutation(getCreateCandidatoMutationOptions(options));
+};
+
+/**
+ * @summary Update a candidate (stage, notes, recommendation)
+ */
+export const getUpdateCandidatoUrl = (id: number) => {
+  return `/api/candidatos/${id}`;
+};
+
+export const updateCandidato = async (
+  id: number,
+  candidatoUpdate: CandidatoUpdate,
+  options?: RequestInit,
+): Promise<Candidato> => {
+  return customFetch<Candidato>(getUpdateCandidatoUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(candidatoUpdate),
+  });
+};
+
+export const getUpdateCandidatoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCandidato>>,
+    TError,
+    { id: number; data: BodyType<CandidatoUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCandidato>>,
+  TError,
+  { id: number; data: BodyType<CandidatoUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateCandidato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCandidato>>,
+    { id: number; data: BodyType<CandidatoUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCandidato(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCandidatoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCandidato>>
+>;
+export type UpdateCandidatoMutationBody = BodyType<CandidatoUpdate>;
+export type UpdateCandidatoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a candidate (stage, notes, recommendation)
+ */
+export const useUpdateCandidato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCandidato>>,
+    TError,
+    { id: number; data: BodyType<CandidatoUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCandidato>>,
+  TError,
+  { id: number; data: BodyType<CandidatoUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateCandidatoMutationOptions(options));
+};
+
+/**
+ * @summary Delete a candidate
+ */
+export const getDeleteCandidatoUrl = (id: number) => {
+  return `/api/candidatos/${id}`;
+};
+
+export const deleteCandidato = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCandidatoUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCandidatoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCandidato>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCandidato>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCandidato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCandidato>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCandidato(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCandidatoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCandidato>>
+>;
+
+export type DeleteCandidatoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a candidate
+ */
+export const useDeleteCandidato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCandidato>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCandidato>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCandidatoMutationOptions(options));
+};

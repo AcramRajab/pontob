@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange } from "lucide-react";
+import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange, Briefcase } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function AppSidebar() {
@@ -158,6 +158,24 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {(isFranqueado || isMasterAdmin || isStaffRegional) && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Pessoas</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActivePrefix("/recrutamento")}>
+                    <Link href="/recrutamento">
+                      <Briefcase />
+                      <span>Recrutamento</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {isFranqueado && (
           <SidebarGroup>

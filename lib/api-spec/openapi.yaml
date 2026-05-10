@@ -25,6 +25,8 @@ tags:
   - name: dashboard
   - name: exports
   - name: franchiseKris
+  - name: vagas
+  - name: candidatos
 paths:
   /healthz:
     get:
@@ -1000,6 +1002,167 @@ paths:
             text/csv:
               schema:
                 type: string
+
+  /vagas:
+    get:
+      operationId: listVagas
+      tags: [vagas]
+      summary: List job openings
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of vagas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vaga"
+    post:
+      operationId: createVaga
+      tags: [vagas]
+      summary: Create a new job opening
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VagaInput"
+      responses:
+        "201":
+          description: Created vaga
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vaga"
+
+  /vagas/{id}:
+    get:
+      operationId: getVaga
+      tags: [vagas]
+      summary: Get a job opening with its candidates
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vaga detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VagaDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateVaga
+      tags: [vagas]
+      summary: Update a job opening
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VagaUpdate"
+      responses:
+        "200":
+          description: Updated vaga
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vaga"
+    delete:
+      operationId: deleteVaga
+      tags: [vagas]
+      summary: Delete a job opening
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /vagas/{id}/candidatos:
+    post:
+      operationId: createCandidato
+      tags: [candidatos]
+      summary: Add a candidate to a vaga
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidatoInput"
+      responses:
+        "201":
+          description: Created candidato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidato"
+
+  /candidatos/{id}:
+    patch:
+      operationId: updateCandidato
+      tags: [candidatos]
+      summary: Update a candidate (stage, notes, recommendation)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CandidatoUpdate"
+      responses:
+        "200":
+          description: Updated candidato
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Candidato"
+    delete:
+      operationId: deleteCandidato
+      tags: [candidatos]
+      summary: Delete a candidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
 components:
   schemas:
@@ -2061,6 +2224,177 @@ components:
         vgh:
           type: ["number", "null"]
         notes:
+          type: ["string", "null"]
+
+    Vaga:
+      type: object
+      required: [id, franchiseId, title, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        goalId:
+          type: ["integer", "null"]
+        goalTitle:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        profileSummary:
+          type: ["string", "null"]
+        mustHaves:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ativa, pausada, preenchida, rascunho]
+        candidatosCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    VagaDetail:
+      type: object
+      required: [id, franchiseId, title, status, createdAt, updatedAt, candidatos]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        goalId:
+          type: ["integer", "null"]
+        goalTitle:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        profileSummary:
+          type: ["string", "null"]
+        mustHaves:
+          type: ["string", "null"]
+        status:
+          type: string
+        candidatosCount:
+          type: integer
+        candidatos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candidato"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    VagaInput:
+      type: object
+      required: [franchiseId, title]
+      properties:
+        franchiseId:
+          type: integer
+        goalId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        profileSummary:
+          type: ["string", "null"]
+        mustHaves:
+          type: ["string", "null"]
+
+    VagaUpdate:
+      type: object
+      properties:
+        goalId:
+          type: ["integer", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        profileSummary:
+          type: ["string", "null"]
+        mustHaves:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ativa, pausada, preenchida, rascunho]
+
+    Candidato:
+      type: object
+      required: [id, vagaId, name, stage, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        vagaId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        currentRole:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        stage:
+          type: string
+          enum: [interessado, triagem, entrevista, proposta, contratado, arquivado]
+        recommendation:
+          type: ["string", "null"]
+          enum: [avancar, aguardar, rejeitar, null]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    CandidatoInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        currentRole:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        stage:
+          type: string
+
+    CandidatoUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        currentRole:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        stage:
+          type: string
+        recommendation:
           type: ["string", "null"]
 
     ProgressHistoryItem:

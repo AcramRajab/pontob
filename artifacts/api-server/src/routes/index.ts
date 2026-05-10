@@ -10,6 +10,7 @@ import supportRouter from "./support";
 import dashboardRouter from "./dashboard";
 import exportsRouter from "./exports";
 import krisRouter from "./kris";
+import recruitingRouter from "./recruiting";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(supportRouter);
 router.use(dashboardRouter);
 router.use(exportsRouter);
 router.use(krisRouter);
+router.use(recruitingRouter);
 
 export default router;
