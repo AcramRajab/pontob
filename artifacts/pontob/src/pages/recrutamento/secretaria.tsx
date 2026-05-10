@@ -224,6 +224,9 @@ export default function Secretaria() {
   );
   const interviewCandidatos = candidatos.filter((c) => c.stage === "entrevista");
 
+  // --- Tab control (lifted so PendenciaCard can switch) ---
+  const [activeTab, setActiveTab] = useState("pendencias");
+
   // --- Mensagens tab state ---
   const [selCandidato, setSelCandidato] = useState<string>("");
   const [msgType, setMsgType] = useState<string>("");
@@ -357,7 +360,7 @@ export default function Secretaria() {
         </div>
       )}
 
-      <Tabs defaultValue="pendencias">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-4 w-full">
           <TabsTrigger value="pendencias" className="gap-1.5">
             <Clock className="h-3.5 w-3.5" />
@@ -402,7 +405,7 @@ export default function Secretaria() {
                     <AlertCircle className="h-3.5 w-3.5" /> Urgente — sem movimento há 5+ dias
                   </p>
                   {urgentCandidatos.map((c) => (
-                    <PendenciaCard key={c.id} candidato={c} />
+                    <PendenciaCard key={c.id} candidato={c} onDraftMessage={(id) => { setSelCandidato(id); setMsgText(""); setActiveTab("mensagens"); }} />
                   ))}
                 </div>
               )}
@@ -412,7 +415,7 @@ export default function Secretaria() {
                     <TriangleAlert className="h-3.5 w-3.5" /> Atenção — sem movimento há 2-4 dias
                   </p>
                   {attentionCandidatos.map((c) => (
-                    <PendenciaCard key={c.id} candidato={c} />
+                    <PendenciaCard key={c.id} candidato={c} onDraftMessage={(id) => { setSelCandidato(id); setMsgText(""); setActiveTab("mensagens"); }} />
                   ))}
                 </div>
               )}
@@ -668,25 +671,47 @@ export default function Secretaria() {
   );
 }
 
-function PendenciaCard({ candidato }: { candidato: CandidatoWithMeta }) {
+function PendenciaCard({
+  candidato,
+  onDraftMessage,
+}: {
+  candidato: CandidatoWithMeta;
+  onDraftMessage: (id: string) => void;
+}) {
   const level = urgencyLevel(candidato);
   return (
-    <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-sm
+    <div className={`flex items-center justify-between px-3 py-2.5 rounded-lg border
       ${level === "red" ? "border-destructive/30 bg-destructive/5" : "border-yellow-500/30 bg-yellow-500/5"}`}>
       <div className="flex items-center gap-3 min-w-0">
         <div className={`h-2 w-2 rounded-full shrink-0 ${level === "red" ? "bg-destructive" : "bg-yellow-500"}`} />
         <div className="min-w-0">
-          <p className="font-medium text-sm truncate">{candidato.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm truncate">{candidato.name}</p>
+            {candidato.recommendation === "avancar" && (
+              <Badge className="text-[10px] h-4 px-1.5 bg-green-500/15 text-green-700 border-green-500/30 hover:bg-green-500/15">
+                Recomendado avançar
+              </Badge>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground truncate">{candidato.vagaTitle}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0 ml-3">
+      <div className="flex items-center gap-2 shrink-0 ml-3">
         <Badge variant="secondary" className="text-xs">
           {stageLabel[candidato.stage] || candidato.stage}
         </Badge>
         <span className={`text-xs font-medium whitespace-nowrap ${level === "red" ? "text-destructive" : "text-yellow-600"}`}>
-          {candidato.daysSinceUpdate}d sem atualização
+          {candidato.daysSinceUpdate}d
         </span>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs px-2 gap-1"
+          onClick={() => onDraftMessage(String(candidato.id))}
+        >
+          <MessageSquare className="h-3 w-3" />
+          Redigir
+        </Button>
       </div>
     </div>
   );

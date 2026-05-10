@@ -165,7 +165,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/recrutamento") || (isActivePrefix("/recrutamento/vagas") )}>
+                  <SidebarMenuButton asChild isActive={isActive("/recrutamento") || isActivePrefix("/recrutamento/vagas")}>
                     <Link href="/recrutamento">
                       <Briefcase />
                       <span>Recrutamento</span>
