@@ -19,7 +19,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Plus, Loader2, Users, ChevronRight, ChevronLeft, MessageCircle, CalendarDays, ArrowRight } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Users, ChevronRight, ChevronLeft, MessageCircle, CalendarDays, ArrowRight, Pencil, Search, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const STAGES = ["interessado", "triagem", "entrevista", "proposta", "contratado", "arquivado"] as const;
@@ -130,6 +130,9 @@ export default function VagaDetail() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [selectedCandidato, setSelectedCandidato] = useState<any>(null);
+  const [editVagaOpen, setEditVagaOpen] = useState(false);
+  const [editVagaForm, setEditVagaForm] = useState({ title: "", description: "", profileSummary: "", mustHaves: "" });
+  const [search, setSearch] = useState("");
 
   const canWrite = user?.role !== "responsavel_interno";
 
@@ -214,6 +217,32 @@ export default function VagaDetail() {
     }
   };
 
+  const onOpenEditVaga = () => {
+    setEditVagaForm({
+      title: vaga?.title ?? "",
+      description: (vaga as any)?.description ?? "",
+      profileSummary: vaga?.profileSummary ?? "",
+      mustHaves: vaga?.mustHaves ?? "",
+    });
+    setEditVagaOpen(true);
+  };
+
+  const onSaveVaga = async () => {
+    try {
+      await updateVaga.mutateAsync({ id, data: {
+        title: editVagaForm.title || undefined,
+        description: editVagaForm.description || undefined,
+        profileSummary: editVagaForm.profileSummary || undefined,
+        mustHaves: editVagaForm.mustHaves || undefined,
+      } as any });
+      await invalidate();
+      setEditVagaOpen(false);
+      toast({ title: "Vaga atualizada" });
+    } catch {
+      toast({ title: "Erro ao atualizar vaga", variant: "destructive" });
+    }
+  };
+
   const onUpdateVagaStatus = async (status: string) => {
     try {
       await updateVaga.mutateAsync({ id, data: { status: status as VagaUpdateStatus } });
@@ -240,6 +269,14 @@ export default function VagaDetail() {
     return acc;
   }, {} as Record<Stage, any[]>);
 
+  const filteredByStage = STAGES.reduce((acc, s) => {
+    const term = search.toLowerCase().trim();
+    acc[s] = term
+      ? byStage[s].filter((c) => c.name.toLowerCase().includes(term))
+      : byStage[s];
+    return acc;
+  }, {} as Record<Stage, any[]>);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-3">
@@ -248,10 +285,17 @@ export default function VagaDetail() {
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-tight truncate">{vaga.title}</h1>
-              {vaga.goalTitle && (
-                <p className="text-xs text-muted-foreground mt-0.5">Meta: {vaga.goalTitle}</p>
+            <div className="min-w-0 flex items-center gap-2">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight truncate">{vaga.title}</h1>
+                {vaga.goalTitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Meta: {vaga.goalTitle}</p>
+                )}
+              </div>
+              {canWrite && (
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-foreground" onClick={onOpenEditVaga}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
               )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -319,6 +363,24 @@ export default function VagaDetail() {
           {/* Pipeline conversion metrics */}
           <PipelineMetrics candidatos={candidatos} />
 
+          {/* Search */}
+          {candidatos.length > 0 && (
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                className="pl-8 h-8 text-xs"
+                placeholder="Buscar candidato..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setSearch("")}>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Kanban */}
           {candidatos.length === 0 ? (
             <Card>
@@ -336,14 +398,14 @@ export default function VagaDetail() {
           ) : (
             <div className="space-y-4">
               {STAGES.filter(s => s !== "arquivado" || byStage.arquivado.length > 0).map((stage) => (
-                byStage[stage].length > 0 && (
+                filteredByStage[stage].length > 0 && (
                   <div key={stage}>
                     <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium mb-2 ${stageColor[stage]}`}>
                       <span>{stageLabel[stage]}</span>
                       <span className="font-bold">{byStage[stage].length}</span>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {byStage[stage].map((c: any) => (
+                      {filteredByStage[stage].map((c: any) => (
                         <Card
                           key={c.id}
                           className="cursor-pointer hover:border-primary/40 transition-all"
@@ -426,6 +488,63 @@ export default function VagaDetail() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Edit vaga dialog */}
+      <Dialog open={editVagaOpen} onOpenChange={setEditVagaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Vaga</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Título *</Label>
+              <Input
+                value={editVagaForm.title}
+                onChange={(e) => setEditVagaForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="Ex: Corretor de Imóveis"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Descrição</Label>
+              <Textarea
+                rows={3}
+                value={editVagaForm.description}
+                onChange={(e) => setEditVagaForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Descreva o papel e responsabilidades..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Perfil ideal</Label>
+              <Textarea
+                rows={2}
+                value={editVagaForm.profileSummary}
+                onChange={(e) => setEditVagaForm(p => ({ ...p, profileSummary: e.target.value }))}
+                placeholder="Características e experiência desejadas..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Requisitos obrigatórios</Label>
+              <Textarea
+                rows={2}
+                value={editVagaForm.mustHaves}
+                onChange={(e) => setEditVagaForm(p => ({ ...p, mustHaves: e.target.value }))}
+                placeholder="CRECI ativo, experiência em vendas..."
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setEditVagaOpen(false)}>Cancelar</Button>
+              <Button
+                className="flex-1"
+                disabled={!editVagaForm.title.trim() || updateVaga.isPending}
+                onClick={onSaveVaga}
+              >
+                {updateVaga.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add candidate dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

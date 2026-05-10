@@ -74,6 +74,37 @@ router.post("/auth/logout", (req, res) => {
   });
 });
 
+router.post("/auth/change-password", requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: "currentPassword and newPassword required" });
+      return;
+    }
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: "newPassword must be at least 8 characters" });
+      return;
+    }
+    const [user] = await db
+      .select({ id: usersTable.id, passwordHash: usersTable.passwordHash })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId!))
+      .limit(1);
+
+    if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) { res.status(400).json({ error: "Senha atual incorreta" }); return; }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/auth/me", requireAuth, async (req, res) => {
   try {
     const users = await db

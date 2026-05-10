@@ -12,6 +12,7 @@ import exportsRouter from "./exports";
 import krisRouter from "./kris";
 import recruitingRouter from "./recruiting";
 import recruitingAiRouter from "./recruiting-ai";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(exportsRouter);
 router.use(krisRouter);
 router.use(recruitingRouter);
 router.use(recruitingAiRouter);
+router.use(notificationsRouter);
 
 export default router;
