@@ -31,6 +31,7 @@ import MyTeam from "@/pages/my-team";
 import Recrutamento from "@/pages/recrutamento/index";
 import VagaNew from "@/pages/recrutamento/vagas-new";
 import VagaDetail from "@/pages/recrutamento/vaga-detail";
+import Secretaria from "@/pages/recrutamento/secretaria";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +68,7 @@ function Router() {
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/my-team" component={MyTeam} />
         <Route path="/settings" component={Settings} />
+        <Route path="/recrutamento/secretaria" component={Secretaria} />
         <Route path="/recrutamento/vagas/new" component={VagaNew} />
         <Route path="/recrutamento/vagas/:id" component={VagaDetail} />
         <Route path="/recrutamento" component={Recrutamento} />

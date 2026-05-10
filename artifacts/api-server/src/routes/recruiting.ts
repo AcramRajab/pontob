@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, vagasTable, candidatosTable, franchisesTable, goalsTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
@@ -242,6 +242,55 @@ router.delete("/candidatos/:id", requireAuth, requireWriteAccess, async (req, re
     if (!canAccessFranchise(req, existing.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
     await db.delete(candidatosTable).where(eq(candidatosTable.id, id));
     res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /recruiting/candidatos — all candidatos for a franchise with vaga info
+router.get("/recruiting/candidatos", requireAuth, async (req, res) => {
+  try {
+    const { franchiseId: fqId } = req.query;
+    const role = req.session.userRole!;
+
+    const effectiveFranchiseId =
+      role === "master_admin" || role === "staff_regional"
+        ? fqId ? parseInt(fqId as string) : undefined
+        : req.session.franchiseId;
+
+    if (!effectiveFranchiseId) {
+      res.json([]);
+      return;
+    }
+
+    const vagas = await db
+      .select()
+      .from(vagasTable)
+      .where(and(eq(vagasTable.franchiseId, effectiveFranchiseId), eq(vagasTable.status, "ativa")));
+
+    if (vagas.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const vagaIds = vagas.map((v) => v.id);
+    const candidatos = await db
+      .select()
+      .from(candidatosTable)
+      .where(inArray(candidatosTable.vagaId, vagaIds));
+
+    const vagaMap = Object.fromEntries(vagas.map((v) => [v.id, v]));
+
+    const result = candidatos.map((c) => ({
+      ...c,
+      vagaTitle: vagaMap[c.vagaId]?.title ?? "",
+      daysSinceUpdate: Math.floor(
+        (Date.now() - new Date(c.updatedAt).getTime()) / 86_400_000
+      ),
+    }));
+
+    res.json(result);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
