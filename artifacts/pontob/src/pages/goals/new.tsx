@@ -4,13 +4,14 @@ import { useAuth } from "@/lib/auth";
 import {
   useListDimensions, getListDimensionsQueryKey,
   useListKeyProcesses, getListKeyProcessesQueryKey,
+  useListFranchises, getListFranchisesQueryKey,
   useCreateGoal,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -57,7 +58,10 @@ interface GoalForm {
   dimensionId: string;
   keyProcessId: string;
   frequency: string;
+  franchiseId: string;
 }
+
+const isAdminRole = (role?: string) => role === "master_admin" || role === "staff_regional";
 
 export default function GoalNew() {
   const [, navigate] = useLocation();
@@ -68,11 +72,23 @@ export default function GoalNew() {
   const [step, setStep] = useState<1 | 2>(1);
   const [kriType, setKriType] = useState<KriType | null>(null);
 
+  const isAdmin = isAdminRole(user?.role);
+
   const dimKey = getListDimensionsQueryKey();
   const { data: dimensions = [] } = useListDimensions({ query: { queryKey: dimKey } });
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<GoalForm>({
-    defaultValues: { frequency: "mensal" },
+  const franchisesKey = getListFranchisesQueryKey();
+  const { data: franchises = [] } = useListFranchises(
+    { query: { enabled: isAdmin, queryKey: franchisesKey } }
+  );
+
+  const defaultFranchiseId = isAdmin ? "" : String(user?.franchiseId ?? "");
+
+  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<GoalForm>({
+    defaultValues: {
+      frequency: "mensal",
+      franchiseId: defaultFranchiseId,
+    },
   });
 
   const dimensionId = watch("dimensionId");
@@ -94,12 +110,22 @@ export default function GoalNew() {
   }
 
   async function onSubmit(form: GoalForm) {
-    if (!user?.franchiseId || !kriType) return;
+    if (!kriType) return;
+
+    const franchiseId = isAdmin
+      ? (form.franchiseId ? parseInt(form.franchiseId) : undefined)
+      : user?.franchiseId;
+
+    if (!franchiseId) {
+      toast({ title: "Selecione uma franquia", variant: "destructive" });
+      return;
+    }
+
     const found = KRI_OPTIONS.find(k => k.type === kriType)!;
     try {
       const goal = await createGoal.mutateAsync({
         data: {
-          franchiseId: user.franchiseId,
+          franchiseId,
           dimensionId: parseInt(form.dimensionId),
           keyProcessId: parseInt(form.keyProcessId),
           title: form.title,
@@ -139,12 +165,18 @@ export default function GoalNew() {
       {/* Step indicators */}
       <div className="flex items-center gap-3 text-sm">
         <div className={cn("flex items-center gap-2 font-medium", step >= 1 ? "text-primary" : "text-muted-foreground")}>
-          {step > 1 ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <span className="h-6 w-6 rounded-full border-2 border-primary flex items-center justify-center text-xs font-bold">1</span>}
+          {step > 1
+            ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+            : <span className="h-6 w-6 rounded-full border-2 border-primary flex items-center justify-center text-xs font-bold">1</span>
+          }
           Escolher KRI
         </div>
         <div className="flex-1 h-px bg-border" />
         <div className={cn("flex items-center gap-2 font-medium", step >= 2 ? "text-primary" : "text-muted-foreground")}>
-          <span className={cn("h-6 w-6 rounded-full border-2 flex items-center justify-center text-xs font-bold", step >= 2 ? "border-primary" : "border-muted-foreground")}>2</span>
+          <span className={cn(
+            "h-6 w-6 rounded-full border-2 flex items-center justify-center text-xs font-bold",
+            step >= 2 ? "border-primary" : "border-muted-foreground"
+          )}>2</span>
           Detalhar
         </div>
       </div>
@@ -186,16 +218,48 @@ export default function GoalNew() {
               <div className={cn("flex items-center gap-3 p-3 rounded-lg bg-muted text-sm font-medium", found.color)}>
                 <Icon className="h-4 w-4" />
                 KRI: {found.label} — unidade: <span className="font-bold">{found.unit}</span>
-                <button type="button" className="ml-auto text-xs text-muted-foreground underline" onClick={() => setStep(1)}>
+                <button
+                  type="button"
+                  className="ml-auto text-xs text-muted-foreground underline"
+                  onClick={() => setStep(1)}
+                >
                   Trocar
                 </button>
               </div>
             );
           })()}
 
+          {/* Franchise selector (admins only) */}
+          {isAdmin && (
+            <div className="space-y-1.5">
+              <Label>Franquia *</Label>
+              <Controller
+                name="franchiseId"
+                control={control}
+                rules={{ required: "Selecione a franquia" }}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a franquia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {franchises.map((f: any) => (
+                        <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.franchiseId && <p className="text-xs text-destructive">{errors.franchiseId.message}</p>}
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Título da Meta *</Label>
-            <Input {...register("title", { required: "Obrigatório" })} placeholder="Ex: Meta de Corretores 2026" />
+            <Input
+              {...register("title", { required: "Obrigatório" })}
+              placeholder="Ex: Meta de Corretores 2026"
+            />
             {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
           </div>
 
@@ -211,7 +275,13 @@ export default function GoalNew() {
             </div>
             <div className="space-y-1.5">
               <Label>Meta (valor alvo) *</Label>
-              <Input type="number" step="any" min={0} placeholder="Ex: 30" {...register("targetValue", { required: "Obrigatório" })} />
+              <Input
+                type="number"
+                step="any"
+                min={0}
+                placeholder="Ex: 30"
+                {...register("targetValue", { required: "Obrigatório" })}
+              />
               {errors.targetValue && <p className="text-xs text-destructive">{errors.targetValue.message}</p>}
             </div>
           </div>
@@ -227,53 +297,84 @@ export default function GoalNew() {
             </div>
           </div>
 
+          {/* Dimensão — using Controller so value is properly tracked */}
           <div className="space-y-1.5">
             <Label>Dimensão *</Label>
-            <Select onValueChange={v => { setValue("dimensionId", v); setValue("keyProcessId", ""); }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione a dimensão" />
-              </SelectTrigger>
-              <SelectContent>
-                {dimensions.map(d => (
-                  <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" {...register("dimensionId", { required: true })} />
-            {errors.dimensionId && <p className="text-xs text-destructive">Obrigatório</p>}
+            <Controller
+              name="dimensionId"
+              control={control}
+              rules={{ required: "Selecione a dimensão" }}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={v => {
+                    field.onChange(v);
+                    setValue("keyProcessId", "");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a dimensão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dimensions.map(d => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.dimensionId && <p className="text-xs text-destructive">{errors.dimensionId.message}</p>}
           </div>
 
+          {/* Processo-Chave */}
           <div className="space-y-1.5">
             <Label>Processo-Chave *</Label>
-            <Select disabled={!dimensionId} onValueChange={v => setValue("keyProcessId", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder={dimensionId ? "Selecione o processo" : "Selecione a dimensão primeiro"} />
-              </SelectTrigger>
-              <SelectContent>
-                {keyProcesses.map(kp => (
-                  <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <input type="hidden" {...register("keyProcessId", { required: true })} />
-            {errors.keyProcessId && <p className="text-xs text-destructive">Obrigatório</p>}
+            <Controller
+              name="keyProcessId"
+              control={control}
+              rules={{ required: "Selecione o processo-chave" }}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={!dimensionId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={dimensionId ? "Selecione o processo" : "Selecione a dimensão primeiro"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {keyProcesses.map(kp => (
+                      <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {errors.keyProcessId && <p className="text-xs text-destructive">{errors.keyProcessId.message}</p>}
           </div>
 
+          {/* Frequência */}
           <div className="space-y-1.5">
             <Label>Frequência de Acompanhamento</Label>
-            <Select defaultValue="mensal" onValueChange={v => setValue("frequency", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="diario">Diário</SelectItem>
-                <SelectItem value="semanal">Semanal</SelectItem>
-                <SelectItem value="mensal">Mensal</SelectItem>
-                <SelectItem value="trimestral">Trimestral</SelectItem>
-                <SelectItem value="semestral">Semestral</SelectItem>
-                <SelectItem value="anual">Anual</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="frequency"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="diario">Diário</SelectItem>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="mensal">Mensal</SelectItem>
+                    <SelectItem value="trimestral">Trimestral</SelectItem>
+                    <SelectItem value="semestral">Semestral</SelectItem>
+                    <SelectItem value="anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
 
           <div className="flex gap-3 pt-2">
