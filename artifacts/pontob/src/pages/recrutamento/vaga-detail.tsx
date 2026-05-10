@@ -6,6 +6,7 @@ import {
   useUpdateVaga, VagaUpdateStatus,
 } from "@workspace/api-client-react";
 import { VagaAiPanel } from "./vaga-ai-panel";
+import { CandidatoDialog } from "./candidato-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Plus, Trash2, Loader2, Users, GripVertical, ChevronRight, ChevronLeft } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Users, ChevronRight, ChevronLeft, MessageCircle, CalendarDays, ArrowRight } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 const STAGES = ["interessado", "triagem", "entrevista", "proposta", "contratado", "arquivado"] as const;
@@ -67,6 +68,55 @@ interface CandidatoForm {
   source: string;
   currentRole: string;
   notes: string;
+}
+
+function whatsappUrl(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${withCountry}`;
+}
+
+function formatInterviewDate(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+// Pipeline conversion metrics bar
+function PipelineMetrics({ candidatos }: { candidatos: any[] }) {
+  const FUNNEL_STAGES: Stage[] = ["interessado", "triagem", "entrevista", "proposta", "contratado"];
+  const counts = FUNNEL_STAGES.reduce((acc, s) => {
+    acc[s] = candidatos.filter((c) => c.stage === s).length;
+    return acc;
+  }, {} as Record<Stage, number>);
+
+  if (candidatos.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-0 bg-muted/40 rounded-xl px-3 py-2 mb-4 overflow-x-auto">
+      {FUNNEL_STAGES.map((stage, i) => {
+        const count = counts[stage];
+        const prevCount = i > 0 ? counts[FUNNEL_STAGES[i - 1]] : null;
+        const pct = prevCount && prevCount > 0 ? Math.round((count / prevCount) * 100) : null;
+        return (
+          <div key={stage} className="flex items-center gap-0 shrink-0">
+            {i > 0 && (
+              <div className="flex flex-col items-center mx-1.5">
+                <ArrowRight className="h-3 w-3 text-muted-foreground/50" />
+                {pct !== null && (
+                  <span className="text-[9px] text-muted-foreground font-medium">{pct}%</span>
+                )}
+              </div>
+            )}
+            <div className={`flex flex-col items-center px-2.5 py-1.5 rounded-lg ${stageColor[stage]}`}>
+              <span className="text-lg font-bold leading-none">{count}</span>
+              <span className="text-[10px] font-medium leading-tight mt-0.5">{stageLabel[stage]}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function VagaDetail() {
@@ -136,6 +186,20 @@ export default function VagaDetail() {
       await invalidate();
     } catch {
       toast({ title: "Erro ao atualizar recomendação", variant: "destructive" });
+    }
+  };
+
+  const onSetInterviewDate = async (candidatoId: number, dateStr: string) => {
+    try {
+      await fetch(`/api/recruiting/candidatos/${candidatoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ interviewAt: dateStr ? new Date(dateStr).toISOString() : null }),
+      });
+      await invalidate();
+    } catch {
+      toast({ title: "Erro ao salvar data da entrevista", variant: "destructive" });
     }
   };
 
@@ -252,93 +316,114 @@ export default function VagaDetail() {
         )}
 
         <TabsContent value="pipeline">
-        {/* Pipeline summary bar */}
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
-          {STAGES.map((stage) => (
-            <div key={stage} className={`rounded-lg p-3 text-center ${stageColor[stage]}`}>
-              <p className="text-xl font-bold">{byStage[stage].length}</p>
-              <p className="text-xs font-medium leading-tight mt-0.5">{stageLabel[stage]}</p>
-            </div>
-          ))}
-        </div>
+          {/* Pipeline conversion metrics */}
+          <PipelineMetrics candidatos={candidatos} />
 
-        {/* Kanban columns */}
-        {candidatos.length === 0 ? (
-        <Card>
-          <CardContent className="pt-8 pb-8 text-center">
-            <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Nenhum candidato ainda</p>
-            {canWrite && (
-              <Button size="sm" className="mt-4" onClick={() => setAddOpen(true)}>
-                <Plus className="h-4 w-4 mr-1.5" />
-                Adicionar candidato
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {STAGES.filter(s => s !== "arquivado" || byStage.arquivado.length > 0).map((stage) => (
-            byStage[stage].length > 0 && (
-              <div key={stage}>
-                <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium mb-2 ${stageColor[stage]}`}>
-                  <span>{stageLabel[stage]}</span>
-                  <span className="font-bold">{byStage[stage].length}</span>
-                </div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {byStage[stage].map((c: any) => (
-                    <Card
-                      key={c.id}
-                      className="cursor-pointer hover:border-primary/40 transition-all"
-                      onClick={() => setSelectedCandidato(c)}
-                    >
-                      <CardContent className="pt-3 pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm truncate">{c.name}</p>
-                            {c.currentRole && <p className="text-xs text-muted-foreground truncate">{c.currentRole}</p>}
-                            {c.source && <p className="text-xs text-muted-foreground/70">via {c.source}</p>}
-                          </div>
-                          {c.recommendation && (
-                            <Badge variant="outline" className={`text-xs shrink-0 ${recColor[c.recommendation] || ""}`}>
-                              {recLabel[c.recommendation] || c.recommendation}
-                            </Badge>
-                          )}
-                        </div>
-                        {c.notes && (
-                          <p className="text-xs text-muted-foreground mt-2 pt-2 border-t line-clamp-2 italic">{c.notes}</p>
-                        )}
-                        {canWrite && (
-                          <div className="flex gap-1 mt-2 pt-2 border-t">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-xs flex-1"
-                              disabled={STAGES.indexOf(stage) === 0}
-                              onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "back"); }}
-                            >
-                              <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Voltar
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-xs flex-1"
-                              disabled={STAGES.indexOf(stage) === STAGES.length - 1}
-                              onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "forward"); }}
-                            >
-                              Avançar <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )
-          ))}
-        </div>
-      )}
+          {/* Kanban */}
+          {candidatos.length === 0 ? (
+            <Card>
+              <CardContent className="pt-8 pb-8 text-center">
+                <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">Nenhum candidato ainda</p>
+                {canWrite && (
+                  <Button size="sm" className="mt-4" onClick={() => setAddOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Adicionar candidato
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {STAGES.filter(s => s !== "arquivado" || byStage.arquivado.length > 0).map((stage) => (
+                byStage[stage].length > 0 && (
+                  <div key={stage}>
+                    <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium mb-2 ${stageColor[stage]}`}>
+                      <span>{stageLabel[stage]}</span>
+                      <span className="font-bold">{byStage[stage].length}</span>
+                    </div>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {byStage[stage].map((c: any) => (
+                        <Card
+                          key={c.id}
+                          className="cursor-pointer hover:border-primary/40 transition-all"
+                          onClick={() => setSelectedCandidato(c)}
+                        >
+                          <CardContent className="pt-3 pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-sm truncate">{c.name}</p>
+                                {c.currentRole && <p className="text-xs text-muted-foreground truncate">{c.currentRole}</p>}
+                                {c.source && <p className="text-xs text-muted-foreground/70">via {c.source}</p>}
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {c.phone && (
+                                  <a
+                                    href={whatsappUrl(c.phone)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </a>
+                                )}
+                                {c.recommendation && (
+                                  <Badge variant="outline" className={`text-xs ${recColor[c.recommendation] || ""}`}>
+                                    {recLabel[c.recommendation] || c.recommendation}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Interview date chip */}
+                            {c.interviewAt && (
+                              <div className="flex items-center gap-1 mt-2 text-purple-600">
+                                <CalendarDays className="h-3 w-3 shrink-0" />
+                                <span className="text-[11px] font-medium">{formatInterviewDate(c.interviewAt)}</span>
+                              </div>
+                            )}
+
+                            {c.notes && !c.interviewAt && (
+                              <p className="text-xs text-muted-foreground mt-2 pt-2 border-t line-clamp-2 italic">{c.notes}</p>
+                            )}
+
+                            {canWrite && (
+                              <div className="flex gap-1 mt-2 pt-2 border-t">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs flex-1"
+                                  disabled={STAGES.indexOf(stage) === 0}
+                                  onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "back"); }}
+                                >
+                                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Voltar
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs flex-1"
+                                  disabled={STAGES.indexOf(stage) === STAGES.length - 1}
+                                  onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "forward"); }}
+                                >
+                                  Avançar <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -388,95 +473,17 @@ export default function VagaDetail() {
 
       {/* Candidato detail dialog */}
       {selectedCandidato && (
-        <Dialog open={!!selectedCandidato} onOpenChange={() => setSelectedCandidato(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{selectedCandidato.name}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {selectedCandidato.currentRole && (
-                  <div><p className="text-xs text-muted-foreground">Cargo atual</p><p>{selectedCandidato.currentRole}</p></div>
-                )}
-                {selectedCandidato.source && (
-                  <div><p className="text-xs text-muted-foreground">Origem</p><p>{selectedCandidato.source}</p></div>
-                )}
-                {selectedCandidato.email && (
-                  <div><p className="text-xs text-muted-foreground">Email</p><p className="truncate">{selectedCandidato.email}</p></div>
-                )}
-                {selectedCandidato.phone && (
-                  <div><p className="text-xs text-muted-foreground">Telefone</p><p>{selectedCandidato.phone}</p></div>
-                )}
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Estágio atual</p>
-                <Badge className={`${stageColor[selectedCandidato.stage as Stage] || ""}`}>
-                  {stageLabel[selectedCandidato.stage as Stage] || selectedCandidato.stage}
-                </Badge>
-              </div>
-
-              {canWrite && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Recomendação</p>
-                  <div className="flex gap-2">
-                    {["avancar", "aguardar", "rejeitar"].map((rec) => (
-                      <button
-                        key={rec}
-                        className={`flex-1 text-xs py-1.5 rounded-md border font-medium transition-all ${selectedCandidato.recommendation === rec ? recColor[rec] : "text-muted-foreground border-border hover:border-primary/40"}`}
-                        onClick={() => {
-                          onSetRecommendation(selectedCandidato.id, rec);
-                          setSelectedCandidato({ ...selectedCandidato, recommendation: rec });
-                        }}
-                      >
-                        {recLabel[rec]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedCandidato.notes && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Notas</p>
-                  <p className="text-sm text-muted-foreground italic whitespace-pre-line">{selectedCandidato.notes}</p>
-                </div>
-              )}
-
-              {canWrite && (
-                <div className="flex gap-2 pt-2 border-t">
-                  <div className="flex gap-1 flex-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      disabled={STAGES.indexOf(selectedCandidato.stage) === 0}
-                      onClick={() => { onMoveStage(selectedCandidato.id, "back"); setSelectedCandidato(null); }}
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5 mr-1" />Voltar
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      disabled={STAGES.indexOf(selectedCandidato.stage) === STAGES.length - 1}
-                      onClick={() => { onMoveStage(selectedCandidato.id, "forward"); setSelectedCandidato(null); }}
-                    >
-                      Avançar<ChevronRight className="h-3.5 w-3.5 ml-1" />
-                    </Button>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => onDeleteCandidato(selectedCandidato.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <CandidatoDialog
+          candidato={selectedCandidato}
+          vagaId={id}
+          canWrite={canWrite}
+          onClose={() => setSelectedCandidato(null)}
+          onMoveStage={onMoveStage}
+          onSetRecommendation={onSetRecommendation}
+          onSetInterviewDate={onSetInterviewDate}
+          onDeleteCandidato={onDeleteCandidato}
+          onUpdate={(updated) => setSelectedCandidato(updated)}
+        />
       )}
     </div>
   );

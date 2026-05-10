@@ -27,6 +27,7 @@ interface CandidatoWithMeta {
   notes: string | null;
   stage: string;
   recommendation: string | null;
+  interviewAt: string | null;
   daysSinceUpdate: number;
   updatedAt: string;
   createdAt: string;
@@ -697,9 +698,16 @@ function PendenciaCard({
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 ml-3">
-        <Badge variant="secondary" className="text-xs">
-          {stageLabel[candidato.stage] || candidato.stage}
-        </Badge>
+        <div className="flex flex-col items-end gap-0.5">
+          <Badge variant="secondary" className="text-xs">
+            {stageLabel[candidato.stage] || candidato.stage}
+          </Badge>
+          {candidato.interviewAt && (
+            <span className="text-[10px] text-purple-600 font-medium whitespace-nowrap">
+              {new Date(candidato.interviewAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+        </div>
         <span className={`text-xs font-medium whitespace-nowrap ${level === "red" ? "text-destructive" : "text-yellow-600"}`}>
           {candidato.daysSinceUpdate}d
         </span>

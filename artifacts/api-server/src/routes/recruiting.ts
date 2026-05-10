@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, vagasTable, candidatosTable, franchisesTable, goalsTable } from "@workspace/db";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { db, vagasTable, candidatosTable, franchisesTable, goalsTable, candidatoAtividadesTable } from "@workspace/db";
+import { eq, and, sql, inArray, desc } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
@@ -209,7 +209,7 @@ router.patch("/candidatos/:id", requireAuth, requireWriteAccess, async (req, res
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, existing.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const { name, email, phone, source, currentRole, notes, stage, recommendation } = req.body;
+    const { name, email, phone, source, currentRole, notes, stage, recommendation, interviewAt } = req.body;
     const [updated] = await db.update(candidatosTable).set({
       ...(name !== undefined && { name }),
       ...(email !== undefined && { email }),
@@ -219,6 +219,7 @@ router.patch("/candidatos/:id", requireAuth, requireWriteAccess, async (req, res
       ...(notes !== undefined && { notes }),
       ...(stage !== undefined && { stage }),
       ...(recommendation !== undefined && { recommendation }),
+      ...(interviewAt !== undefined && { interviewAt: interviewAt ? new Date(interviewAt) : null }),
     }).where(eq(candidatosTable.id, id)).returning();
 
     res.json(updated);
@@ -242,6 +243,51 @@ router.delete("/candidatos/:id", requireAuth, requireWriteAccess, async (req, re
     if (!canAccessFranchise(req, existing.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
     await db.delete(candidatosTable).where(eq(candidatosTable.id, id));
     res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /recruiting/candidatos/:id/atividades
+router.get("/recruiting/candidatos/:id/atividades", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const atividades = await db
+      .select()
+      .from(candidatoAtividadesTable)
+      .where(eq(candidatoAtividadesTable.candidatoId, id))
+      .orderBy(desc(candidatoAtividadesTable.createdAt));
+    res.json(atividades);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /recruiting/candidatos/:id/atividades
+router.post("/recruiting/candidatos/:id/atividades", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    const [candidato] = await db
+      .select({ franchiseId: vagasTable.franchiseId })
+      .from(candidatosTable)
+      .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
+      .where(eq(candidatosTable.id, id));
+    if (!candidato) { res.status(404).json({ error: "Candidato not found" }); return; }
+    if (!canAccessFranchise(req, candidato.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const { type, description } = req.body;
+    if (!type) { res.status(400).json({ error: "type is required" }); return; }
+
+    const [atividade] = await db
+      .insert(candidatoAtividadesTable)
+      .values({ candidatoId: id, type, description: description || null })
+      .returning();
+    res.status(201).json(atividade);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

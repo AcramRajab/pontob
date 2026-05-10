@@ -32,6 +32,7 @@ export const candidatosTable = pgTable("candidatos", {
   notes: text("notes"),
   stage: text("stage").notNull().default("interessado"),
   recommendation: text("recommendation"),
+  interviewAt: timestamp("interview_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -39,3 +40,15 @@ export const candidatosTable = pgTable("candidatos", {
 export const insertCandidatoSchema = createInsertSchema(candidatosTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCandidato = z.infer<typeof insertCandidatoSchema>;
 export type Candidato = typeof candidatosTable.$inferSelect;
+
+export const candidatoAtividadesTable = pgTable("candidato_atividades", {
+  id: serial("id").primaryKey(),
+  candidatoId: integer("candidato_id").notNull().references(() => candidatosTable.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertCandidatoAtividadeSchema = createInsertSchema(candidatoAtividadesTable).omit({ id: true, createdAt: true });
+export type InsertCandidatoAtividade = z.infer<typeof insertCandidatoAtividadeSchema>;
+export type CandidatoAtividade = typeof candidatoAtividadesTable.$inferSelect;
