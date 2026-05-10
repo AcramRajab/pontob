@@ -18,9 +18,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { ArrowLeft, Plus, Loader2, Users, ChevronRight, ChevronLeft, MessageCircle, CalendarDays, ArrowRight, Pencil, Search, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Plus, Loader2, Users, ChevronRight, ChevronLeft, MessageCircle, CalendarDays, ArrowRight, Pencil, Search, X, GripVertical } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 
 const STAGES = ["interessado", "triagem", "entrevista", "proposta", "contratado", "arquivado"] as const;
 type Stage = typeof STAGES[number];
@@ -35,12 +47,21 @@ const stageLabel: Record<Stage, string> = {
 };
 
 const stageColor: Record<Stage, string> = {
-  interessado: "bg-gray-100 text-gray-700",
-  triagem: "bg-blue-100 text-blue-700",
-  entrevista: "bg-purple-100 text-purple-700",
-  proposta: "bg-orange-100 text-orange-700",
-  contratado: "bg-green-100 text-green-700",
-  arquivado: "bg-muted text-muted-foreground",
+  interessado: "bg-gray-100 text-gray-700 border-gray-200",
+  triagem: "bg-blue-100 text-blue-700 border-blue-200",
+  entrevista: "bg-purple-100 text-purple-700 border-purple-200",
+  proposta: "bg-orange-100 text-orange-700 border-orange-200",
+  contratado: "bg-green-100 text-green-700 border-green-200",
+  arquivado: "bg-muted text-muted-foreground border-muted",
+};
+
+const stageHeaderColor: Record<Stage, string> = {
+  interessado: "bg-gray-50 border-b border-gray-200",
+  triagem: "bg-blue-50 border-b border-blue-200",
+  entrevista: "bg-purple-50 border-b border-purple-200",
+  proposta: "bg-orange-50 border-b border-orange-200",
+  contratado: "bg-green-50 border-b border-green-200",
+  arquivado: "bg-muted/50 border-b border-muted",
 };
 
 const recLabel: Record<string, string> = {
@@ -119,6 +140,135 @@ function PipelineMetrics({ candidatos }: { candidatos: any[] }) {
   );
 }
 
+// ─── DnD sub-components ───────────────────────────────────────────────────────
+
+function DroppableColumn({ stageId, children }: { stageId: Stage; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stageId });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 min-h-[120px] rounded-b-lg p-2 transition-colors duration-100 ${
+        isOver ? "bg-primary/8 ring-2 ring-inset ring-primary/25" : "bg-muted/20"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CandidatoCard({
+  candidato,
+  canWrite,
+  isDragging = false,
+  onOpen,
+}: {
+  candidato: any;
+  canWrite: boolean;
+  isDragging?: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <Card
+      className={`group cursor-pointer hover:border-primary/40 transition-all select-none ${
+        isDragging ? "shadow-lg border-primary/30 rotate-1" : "hover:shadow-sm"
+      }`}
+      onClick={onOpen}
+    >
+      <CardContent className="pt-2.5 pb-2.5 px-3">
+        <div className="flex items-start gap-1.5">
+          {canWrite && (
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/60 shrink-0 mt-0.5 transition-colors" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-xs truncate">{candidato.name}</p>
+                {candidato.currentRole && (
+                  <p className="text-[11px] text-muted-foreground truncate">{candidato.currentRole}</p>
+                )}
+                {candidato.source && (
+                  <p className="text-[10px] text-muted-foreground/60 truncate">via {candidato.source}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0">
+                {candidato.phone && (
+                  <a
+                    href={whatsappUrl(candidato.phone)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                    >
+                      <MessageCircle className="h-3 w-3" />
+                    </Button>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {candidato.recommendation && (
+              <Badge variant="outline" className={`text-[10px] mt-1.5 px-1.5 py-0 ${recColor[candidato.recommendation] || ""}`}>
+                {recLabel[candidato.recommendation] || candidato.recommendation}
+              </Badge>
+            )}
+
+            {candidato.interviewAt && (
+              <div className="flex items-center gap-1 mt-1.5 text-purple-600">
+                <CalendarDays className="h-2.5 w-2.5 shrink-0" />
+                <span className="text-[10px] font-medium">{formatInterviewDate(candidato.interviewAt)}</span>
+              </div>
+            )}
+
+            {candidato.notes && !candidato.interviewAt && (
+              <p className="text-[10px] text-muted-foreground mt-1.5 pt-1.5 border-t line-clamp-1 italic">
+                {candidato.notes}
+              </p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DraggableCard({
+  candidato,
+  canWrite,
+  onOpen,
+}: {
+  candidato: any;
+  canWrite: boolean;
+  onOpen: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `c-${candidato.id}`,
+    data: { candidato },
+    disabled: !canWrite,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={
+        transform
+          ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50, position: "relative" }
+          : undefined
+      }
+      className={isDragging ? "opacity-30" : ""}
+    >
+      <CandidatoCard candidato={candidato} canWrite={canWrite} isDragging={false} onOpen={onOpen} />
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function VagaDetail() {
   const [, params] = useRoute("/recrutamento/vagas/:id");
   const id = parseInt(params?.id ?? "0");
@@ -133,6 +283,8 @@ export default function VagaDetail() {
   const [editVagaOpen, setEditVagaOpen] = useState(false);
   const [editVagaForm, setEditVagaForm] = useState({ title: "", description: "", profileSummary: "", mustHaves: "" });
   const [search, setSearch] = useState("");
+  const [localCandidatos, setLocalCandidatos] = useState<any[]>([]);
+  const [activeDrag, setActiveDrag] = useState<any | null>(null);
 
   const canWrite = user?.role !== "responsavel_interno";
 
@@ -141,6 +293,15 @@ export default function VagaDetail() {
   const updateCandidato = useUpdateCandidato();
   const deleteCandidato = useDeleteCandidato();
   const updateVaga = useUpdateVaga();
+
+  useEffect(() => {
+    setLocalCandidatos((vaga as any)?.candidatos ?? []);
+  }, [vaga]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
+  );
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CandidatoForm>();
 
@@ -170,15 +331,41 @@ export default function VagaDetail() {
   };
 
   const onMoveStage = async (candidatoId: number, direction: "forward" | "back") => {
-    const candidato = (vaga as any)?.candidatos?.find((c: any) => c.id === candidatoId);
+    const candidato = localCandidatos.find((c: any) => c.id === candidatoId);
     if (!candidato) return;
     const idx = STAGES.indexOf(candidato.stage as Stage);
     const newIdx = direction === "forward" ? Math.min(idx + 1, STAGES.length - 1) : Math.max(idx - 1, 0);
     if (newIdx === idx) return;
+    const newStage = STAGES[newIdx];
+    setLocalCandidatos((cs) => cs.map((c) => c.id === candidatoId ? { ...c, stage: newStage } : c));
     try {
-      await updateCandidato.mutateAsync({ id: candidatoId, data: { stage: STAGES[newIdx] } });
+      await updateCandidato.mutateAsync({ id: candidatoId, data: { stage: newStage } });
       await invalidate();
     } catch {
+      setLocalCandidatos((cs) => cs.map((c) => c.id === candidatoId ? { ...c, stage: candidato.stage } : c));
+      toast({ title: "Erro ao mover candidato", variant: "destructive" });
+    }
+  };
+
+  const onDragStart = ({ active }: DragStartEvent) => {
+    const candidato = localCandidatos.find((c) => `c-${c.id}` === active.id);
+    setActiveDrag(candidato ?? null);
+  };
+
+  const onDragEnd = async ({ active, over }: DragEndEvent) => {
+    setActiveDrag(null);
+    if (!over) return;
+    const targetStage = over.id as Stage;
+    const candidatoId = parseInt((active.id as string).replace("c-", ""));
+    const prev = localCandidatos.find((c) => c.id === candidatoId);
+    if (!prev || prev.stage === targetStage) return;
+
+    setLocalCandidatos((cs) => cs.map((c) => c.id === candidatoId ? { ...c, stage: targetStage } : c));
+    try {
+      await updateCandidato.mutateAsync({ id: candidatoId, data: { stage: targetStage } });
+      await invalidate();
+    } catch {
+      setLocalCandidatos((cs) => cs.map((c) => c.id === candidatoId ? { ...c, stage: prev.stage } : c));
       toast({ title: "Erro ao mover candidato", variant: "destructive" });
     }
   };
@@ -262,20 +449,18 @@ export default function VagaDetail() {
   }
   if (!vaga) return <div className="text-center py-20 text-muted-foreground">Vaga não encontrada.</div>;
 
-  const candidatos: any[] = (vaga as any).candidatos ?? [];
-
   const byStage = STAGES.reduce((acc, s) => {
-    acc[s] = candidatos.filter((c) => c.stage === s);
+    acc[s] = localCandidatos.filter((c) => c.stage === s);
     return acc;
   }, {} as Record<Stage, any[]>);
 
+  const term = search.toLowerCase().trim();
   const filteredByStage = STAGES.reduce((acc, s) => {
-    const term = search.toLowerCase().trim();
-    acc[s] = term
-      ? byStage[s].filter((c) => c.name.toLowerCase().includes(term))
-      : byStage[s];
+    acc[s] = term ? byStage[s].filter((c) => c.name.toLowerCase().includes(term)) : byStage[s];
     return acc;
   }, {} as Record<Stage, any[]>);
+
+  const visibleStages = STAGES.filter((s) => s !== "arquivado" || byStage.arquivado.length > 0);
 
   return (
     <div className="space-y-6">
@@ -306,7 +491,7 @@ export default function VagaDetail() {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(vagaStatusLabel).map(([v, l]) => (
-                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                      <SelectItem key={v} value={v} className="text-xs">{l}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -323,49 +508,57 @@ export default function VagaDetail() {
       </div>
 
       <Tabs defaultValue="pipeline">
-        <TabsList className="mb-4">
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="ai" className="gap-1.5">
-            <span>IA Recruiter</span>
-            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">IA</span>
+        <TabsList>
+          <TabsTrigger value="pipeline">
+            <Users className="h-3.5 w-3.5 mr-1.5" />
+            Pipeline ({localCandidatos.length})
           </TabsTrigger>
-          {(vaga.profileSummary || vaga.mustHaves) && (
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
+          <TabsTrigger value="info">Detalhes da Vaga</TabsTrigger>
+          {(vaga as any).goalId && (
+            <TabsTrigger value="ai">Análise IA</TabsTrigger>
           )}
         </TabsList>
 
-        <TabsContent value="ai">
-          <VagaAiPanel vagaId={id} />
-        </TabsContent>
-
-        {(vaga.profileSummary || vaga.mustHaves) && (
-          <TabsContent value="profile">
-            <Card>
-              <CardContent className="pt-4 grid md:grid-cols-2 gap-4">
-                {vaga.profileSummary && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Perfil buscado</p>
-                    <p className="text-sm">{vaga.profileSummary}</p>
-                  </div>
-                )}
-                {vaga.mustHaves && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Must-haves</p>
-                    <p className="text-sm whitespace-pre-line">{vaga.mustHaves}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Vaga info tab */}
+        {(vaga.profileSummary || vaga.mustHaves || (vaga as any).description) && (
+          <TabsContent value="info">
+            <div className="grid md:grid-cols-2 gap-4">
+              {(vaga as any).description && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Descrição</CardTitle></CardHeader>
+                  <CardContent className="text-sm text-muted-foreground whitespace-pre-line">{(vaga as any).description}</CardContent>
+                </Card>
+              )}
+              {vaga.profileSummary && (
+                <Card>
+                  <CardHeader><CardTitle className="text-sm">Perfil ideal</CardTitle></CardHeader>
+                  <CardContent className="text-sm text-muted-foreground whitespace-pre-line">{vaga.profileSummary}</CardContent>
+                </Card>
+              )}
+              {vaga.mustHaves && (
+                <Card className="md:col-span-2">
+                  <CardHeader><CardTitle className="text-sm">Requisitos obrigatórios</CardTitle></CardHeader>
+                  <CardContent className="text-sm text-muted-foreground whitespace-pre-line">{vaga.mustHaves}</CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         )}
 
+        {/* AI panel tab */}
+        {(vaga as any).goalId && (
+          <TabsContent value="ai">
+            <VagaAiPanel vagaId={id} />
+          </TabsContent>
+        )}
+
+        {/* Pipeline tab */}
         <TabsContent value="pipeline">
-          {/* Pipeline conversion metrics */}
-          <PipelineMetrics candidatos={candidatos} />
+          <PipelineMetrics candidatos={localCandidatos} />
 
           {/* Search */}
-          {candidatos.length > 0 && (
-            <div className="relative mb-3">
+          {localCandidatos.length > 0 && (
+            <div className="relative mb-4">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 className="pl-8 h-8 text-xs"
@@ -382,7 +575,7 @@ export default function VagaDetail() {
           )}
 
           {/* Kanban */}
-          {candidatos.length === 0 ? (
+          {localCandidatos.length === 0 ? (
             <Card>
               <CardContent className="pt-8 pb-8 text-center">
                 <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
@@ -396,95 +589,61 @@ export default function VagaDetail() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {STAGES.filter(s => s !== "arquivado" || byStage.arquivado.length > 0).map((stage) => (
-                filteredByStage[stage].length > 0 && (
-                  <div key={stage}>
-                    <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium mb-2 ${stageColor[stage]}`}>
-                      <span>{stageLabel[stage]}</span>
-                      <span className="font-bold">{byStage[stage].length}</span>
+            <DndContext
+              sensors={sensors}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+            >
+              {/* Horizontal Kanban board */}
+              <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
+                {visibleStages.map((stage) => (
+                  <div key={stage} className="flex-shrink-0 w-52 flex flex-col rounded-lg border overflow-hidden shadow-sm">
+                    {/* Column header */}
+                    <div className={`flex items-center justify-between px-3 py-2 ${stageHeaderColor[stage]}`}>
+                      <span className={`text-xs font-semibold`}>{stageLabel[stage]}</span>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${stageColor[stage]}`}>
+                        {byStage[stage].length}
+                      </span>
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {filteredByStage[stage].map((c: any) => (
-                        <Card
-                          key={c.id}
-                          className="cursor-pointer hover:border-primary/40 transition-all"
-                          onClick={() => setSelectedCandidato(c)}
-                        >
-                          <CardContent className="pt-3 pb-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-sm truncate">{c.name}</p>
-                                {c.currentRole && <p className="text-xs text-muted-foreground truncate">{c.currentRole}</p>}
-                                {c.source && <p className="text-xs text-muted-foreground/70">via {c.source}</p>}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {c.phone && (
-                                  <a
-                                    href={whatsappUrl(c.phone)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    >
-                                      <MessageCircle className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </a>
-                                )}
-                                {c.recommendation && (
-                                  <Badge variant="outline" className={`text-xs ${recColor[c.recommendation] || ""}`}>
-                                    {recLabel[c.recommendation] || c.recommendation}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
 
-                            {/* Interview date chip */}
-                            {c.interviewAt && (
-                              <div className="flex items-center gap-1 mt-2 text-purple-600">
-                                <CalendarDays className="h-3 w-3 shrink-0" />
-                                <span className="text-[11px] font-medium">{formatInterviewDate(c.interviewAt)}</span>
-                              </div>
-                            )}
-
-                            {c.notes && !c.interviewAt && (
-                              <p className="text-xs text-muted-foreground mt-2 pt-2 border-t line-clamp-2 italic">{c.notes}</p>
-                            )}
-
-                            {canWrite && (
-                              <div className="flex gap-1 mt-2 pt-2 border-t">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-xs flex-1"
-                                  disabled={STAGES.indexOf(stage) === 0}
-                                  onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "back"); }}
-                                >
-                                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Voltar
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-xs flex-1"
-                                  disabled={STAGES.indexOf(stage) === STAGES.length - 1}
-                                  onClick={(e) => { e.stopPropagation(); onMoveStage(c.id, "forward"); }}
-                                >
-                                  Avançar <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-                                </Button>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                    {/* Droppable zone */}
+                    <DroppableColumn stageId={stage}>
+                      <div className="space-y-2">
+                        {filteredByStage[stage].map((c) => (
+                          <DraggableCard
+                            key={c.id}
+                            candidato={c}
+                            canWrite={canWrite}
+                            onOpen={() => setSelectedCandidato(c)}
+                          />
+                        ))}
+                        {filteredByStage[stage].length === 0 && (
+                          <div className="border-2 border-dashed border-muted/50 rounded-lg h-16 flex items-center justify-center">
+                            <p className="text-[10px] text-muted-foreground/50">
+                              {term && byStage[stage].length > 0 ? "Sem resultados" : "Arraste aqui"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </DroppableColumn>
                   </div>
-                )
-              ))}
-            </div>
+                ))}
+              </div>
+
+              {/* Ghost card while dragging */}
+              <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+                {activeDrag ? (
+                  <div className="w-52 rotate-2 shadow-2xl">
+                    <CandidatoCard
+                      candidato={activeDrag}
+                      canWrite={canWrite}
+                      isDragging
+                      onOpen={() => {}}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           )}
         </TabsContent>
       </Tabs>
