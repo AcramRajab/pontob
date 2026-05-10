@@ -337,6 +337,7 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
         goalTitle: goalsTable.title,
         franchiseId: goalsTable.franchiseId,
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+        customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
@@ -387,6 +388,7 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
         id: goalInitiativesTable.id,
         goalId: goalInitiativesTable.goalId,
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+        customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
@@ -439,10 +441,16 @@ router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (re
       return;
     }
 
-    const { strategicInitiativeId, desiredResult, mainKpiId, ownerUserId, startDate, endDate, frequency, executionDay, executionTime, estimatedTime, whatWillBeDone, whyItMatters, whoIsResponsible, whereItWillBeDone, howItWillBeDone, investmentOrEffort, notes } = req.body;
+    const { strategicInitiativeId, customName, desiredResult, mainKpiId, ownerUserId, startDate, endDate, frequency, executionDay, executionTime, estimatedTime, whatWillBeDone, whyItMatters, whoIsResponsible, whereItWillBeDone, howItWillBeDone, investmentOrEffort, notes } = req.body;
+
+    if (!strategicInitiativeId && !customName) {
+      res.status(400).json({ error: "Either strategicInitiativeId or customName is required." });
+      return;
+    }
 
     const [initiative] = await db.insert(goalInitiativesTable).values({
-      goalId, strategicInitiativeId, desiredResult, mainKpiId, ownerUserId,
+      goalId, strategicInitiativeId: strategicInitiativeId || null, customName: customName || null,
+      desiredResult, mainKpiId, ownerUserId,
       startDate, endDate, frequency, executionDay, executionTime, estimatedTime,
       whatWillBeDone, whyItMatters, whoIsResponsible, whereItWillBeDone,
       howItWillBeDone, investmentOrEffort, notes, status: "ativa",
@@ -463,6 +471,7 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
         id: goalInitiativesTable.id,
         goalId: goalInitiativesTable.goalId,
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+        customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
@@ -507,7 +516,7 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
 router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const fields = ["desiredResult", "actualResult", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];
+    const fields = ["customName", "desiredResult", "actualResult", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
 

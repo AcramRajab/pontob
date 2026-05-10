@@ -401,7 +401,9 @@ export const GetGoalResponse = zod.object({
       zod.object({
         id: zod.number(),
         goalId: zod.number(),
-        strategicInitiativeId: zod.number(),
+        goalTitle: zod.string().nullish(),
+        strategicInitiativeId: zod.number().nullish(),
+        customName: zod.string().nullish(),
         initiativeName: zod.string().nullish(),
         dimensionName: zod.string().nullish(),
         keyProcessName: zod.string().nullish(),
@@ -612,7 +614,9 @@ export const ListGoalInitiativesParams = zod.object({
 export const ListGoalInitiativesResponseItem = zod.object({
   id: zod.number(),
   goalId: zod.number(),
-  strategicInitiativeId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  strategicInitiativeId: zod.number().nullish(),
+  customName: zod.string().nullish(),
   initiativeName: zod.string().nullish(),
   dimensionName: zod.string().nullish(),
   keyProcessName: zod.string().nullish(),
@@ -650,7 +654,8 @@ export const CreateGoalInitiativeParams = zod.object({
 });
 
 export const CreateGoalInitiativeBody = zod.object({
-  strategicInitiativeId: zod.number(),
+  strategicInitiativeId: zod.number().optional(),
+  customName: zod.string().optional(),
   desiredResult: zod.string().optional(),
   mainKpiId: zod.number().optional(),
   ownerUserId: zod.number().optional(),
@@ -682,7 +687,9 @@ export const ListAllGoalInitiativesQueryParams = zod.object({
 export const ListAllGoalInitiativesResponseItem = zod.object({
   id: zod.number(),
   goalId: zod.number(),
-  strategicInitiativeId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  strategicInitiativeId: zod.number().nullish(),
+  customName: zod.string().nullish(),
   initiativeName: zod.string().nullish(),
   dimensionName: zod.string().nullish(),
   keyProcessName: zod.string().nullish(),
@@ -722,7 +729,9 @@ export const GetGoalInitiativeParams = zod.object({
 export const GetGoalInitiativeResponse = zod.object({
   id: zod.number(),
   goalId: zod.number(),
-  strategicInitiativeId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  strategicInitiativeId: zod.number().nullish(),
+  customName: zod.string().nullish(),
   initiativeName: zod.string().nullish(),
   dimensionName: zod.string().nullish(),
   keyProcessName: zod.string().nullish(),
@@ -757,6 +766,7 @@ export const UpdateGoalInitiativeParams = zod.object({
 });
 
 export const UpdateGoalInitiativeBody = zod.object({
+  customName: zod.string().optional(),
   desiredResult: zod.string().optional(),
   actualResult: zod.string().optional(),
   ownerUserId: zod.number().optional(),
@@ -780,7 +790,9 @@ export const UpdateGoalInitiativeBody = zod.object({
 export const UpdateGoalInitiativeResponse = zod.object({
   id: zod.number(),
   goalId: zod.number(),
-  strategicInitiativeId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  strategicInitiativeId: zod.number().nullish(),
+  customName: zod.string().nullish(),
   initiativeName: zod.string().nullish(),
   dimensionName: zod.string().nullish(),
   keyProcessName: zod.string().nullish(),
@@ -1196,7 +1208,9 @@ export const GetTodayOverviewResponse = zod.object({
       zod.object({
         id: zod.number(),
         goalId: zod.number(),
-        strategicInitiativeId: zod.number(),
+        goalTitle: zod.string().nullish(),
+        strategicInitiativeId: zod.number().nullish(),
+        customName: zod.string().nullish(),
         initiativeName: zod.string().nullish(),
         dimensionName: zod.string().nullish(),
         keyProcessName: zod.string().nullish(),

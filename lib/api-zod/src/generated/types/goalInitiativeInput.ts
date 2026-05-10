@@ -8,7 +8,8 @@
 import type { GoalInitiativeInputFrequency } from "./goalInitiativeInputFrequency";
 
 export interface GoalInitiativeInput {
-  strategicInitiativeId: number;
+  strategicInitiativeId?: number;
+  customName?: string;
   desiredResult?: string;
   mainKpiId?: number;
   ownerUserId?: number;

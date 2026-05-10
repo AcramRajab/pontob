@@ -1436,14 +1436,18 @@ components:
 
     GoalInitiative:
       type: object
-      required: [id, goalId, strategicInitiativeId, status, progressPercentage, createdAt]
+      required: [id, goalId, status, progressPercentage, createdAt]
       properties:
         id:
           type: integer
         goalId:
           type: integer
+        goalTitle:
+          type: ["string", "null"]
         strategicInitiativeId:
-          type: integer
+          type: ["integer", "null"]
+        customName:
+          type: ["string", "null"]
         initiativeName:
           type: ["string", "null"]
         dimensionName:
@@ -1496,10 +1500,11 @@ components:
 
     GoalInitiativeInput:
       type: object
-      required: [strategicInitiativeId]
       properties:
         strategicInitiativeId:
           type: integer
+        customName:
+          type: string
         desiredResult:
           type: string
         mainKpiId:
@@ -1537,6 +1542,8 @@ components:
     GoalInitiativeUpdate:
       type: object
       properties:
+        customName:
+          type: string
         desiredResult:
           type: string
         actualResult:

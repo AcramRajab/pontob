@@ -8,6 +8,7 @@
 import type { GoalInitiativeUpdateStatus } from "./goalInitiativeUpdateStatus";
 
 export interface GoalInitiativeUpdate {
+  customName?: string;
   desiredResult?: string;
   actualResult?: string;
   ownerUserId?: number;

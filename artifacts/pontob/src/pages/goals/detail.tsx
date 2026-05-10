@@ -1,7 +1,7 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useGetGoal, getGetGoalQueryKey, useCreateKpi, useDeleteKpi, useUpdateGoalInitiative } from "@workspace/api-client-react";
-import { Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2, CheckCircle2, PauseCircle, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2, CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm, Controller } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,6 +60,8 @@ export default function GoalDetail() {
   const qc = useQueryClient();
   const [, navigate] = useLocation();
   const [kpiOpen, setKpiOpen] = useState(false);
+  const [actualResultEditId, setActualResultEditId] = useState<number | null>(null);
+  const [actualResultValue, setActualResultValue] = useState("");
 
   const canWrite = user?.role !== "responsavel_interno";
 
@@ -115,6 +118,18 @@ export default function GoalDetail() {
       toast({ title: "Status atualizado" });
     } catch {
       toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  };
+
+  const onSaveActualResult = async (initiativeId: number) => {
+    try {
+      await updateInitiative.mutateAsync({ id: initiativeId, data: { actualResult: actualResultValue } as any });
+      qc.invalidateQueries({ queryKey: qKey });
+      toast({ title: "Resultado realizado salvo" });
+      setActualResultEditId(null);
+      setActualResultValue("");
+    } catch {
+      toast({ title: "Erro ao salvar resultado", variant: "destructive" });
     }
   };
 
@@ -431,8 +446,84 @@ export default function GoalDetail() {
                     </div>
                     <Progress value={initiative.progressPercentage ?? 0} className="h-1.5" />
                   </div>
-                  {initiative.desiredResult && (
-                    <p className="text-xs text-muted-foreground italic border-t pt-2">{initiative.desiredResult}</p>
+
+                  {/* Resultado Esperado vs Realizado */}
+                  {(initiative.desiredResult || initiative.actualResult || canWrite) && (
+                    <div className="border-t pt-3 space-y-2">
+                      {initiative.desiredResult && (
+                        <div className="flex gap-2">
+                          <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Esperado</p>
+                              <p className="text-xs text-muted-foreground mt-0.5 italic">{initiative.desiredResult}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 items-start">
+                        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                          <CheckCheck className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${initiative.actualResult ? "text-green-600" : "text-muted-foreground/40"}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Realizado</p>
+                            {actualResultEditId === initiative.id ? (
+                              <div className="mt-1 space-y-2">
+                                <Textarea
+                                  rows={2}
+                                  className="text-xs"
+                                  value={actualResultValue}
+                                  onChange={e => setActualResultValue(e.target.value)}
+                                  placeholder="Descreva o resultado que foi de fato alcançado..."
+                                  autoFocus
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => onSaveActualResult(initiative.id)}
+                                    disabled={updateInitiative.isPending}
+                                  >
+                                    Salvar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-xs"
+                                    onClick={() => { setActualResultEditId(null); setActualResultValue(""); }}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : initiative.actualResult ? (
+                              <div className="flex items-start gap-2 mt-0.5">
+                                <p className="text-xs text-green-700 italic flex-1">{initiative.actualResult}</p>
+                                {canWrite && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 shrink-0"
+                                    onClick={() => { setActualResultEditId(initiative.id); setActualResultValue(initiative.actualResult || ""); }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : canWrite ? (
+                              <button
+                                className="text-xs text-muted-foreground/60 hover:text-primary mt-0.5 italic transition-colors"
+                                onClick={() => { setActualResultEditId(initiative.id); setActualResultValue(""); }}
+                              >
+                                + Registrar resultado realizado
+                              </button>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/50 mt-0.5 italic">Não registrado ainda</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}

@@ -271,7 +271,12 @@ export const GoalInitiativeStatus = {
 export interface GoalInitiative {
   id: number;
   goalId: number;
-  strategicInitiativeId: number;
+  /** @nullable */
+  goalTitle?: string | null;
+  /** @nullable */
+  strategicInitiativeId?: number | null;
+  /** @nullable */
+  customName?: string | null;
   /** @nullable */
   initiativeName?: string | null;
   /** @nullable */
@@ -481,7 +486,8 @@ export const GoalInitiativeInputFrequency = {
 } as const;
 
 export interface GoalInitiativeInput {
-  strategicInitiativeId: number;
+  strategicInitiativeId?: number;
+  customName?: string;
   desiredResult?: string;
   mainKpiId?: number;
   ownerUserId?: number;
@@ -511,6 +517,7 @@ export const GoalInitiativeUpdateStatus = {
 } as const;
 
 export interface GoalInitiativeUpdate {
+  customName?: string;
   desiredResult?: string;
   actualResult?: string;
   ownerUserId?: number;

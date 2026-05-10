@@ -10,7 +10,12 @@ import type { GoalInitiativeStatus } from "./goalInitiativeStatus";
 export interface GoalInitiative {
   id: number;
   goalId: number;
-  strategicInitiativeId: number;
+  /** @nullable */
+  goalTitle?: string | null;
+  /** @nullable */
+  strategicInitiativeId?: number | null;
+  /** @nullable */
+  customName?: string | null;
   /** @nullable */
   initiativeName?: string | null;
   /** @nullable */

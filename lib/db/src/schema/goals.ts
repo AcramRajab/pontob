@@ -54,7 +54,8 @@ export type Kpi = typeof kpisTable.$inferSelect;
 export const goalInitiativesTable = pgTable("goal_initiatives", {
   id: serial("id").primaryKey(),
   goalId: integer("goal_id").notNull().references(() => goalsTable.id),
-  strategicInitiativeId: integer("strategic_initiative_id").notNull().references(() => strategicInitiativesTable.id),
+  strategicInitiativeId: integer("strategic_initiative_id").references(() => strategicInitiativesTable.id),
+  customName: text("custom_name"),
   desiredResult: text("desired_result"),
   actualResult: text("actual_result"),
   mainKpiId: integer("main_kpi_id"),
