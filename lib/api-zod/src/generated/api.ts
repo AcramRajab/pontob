@@ -1255,6 +1255,77 @@ export const ListProgressHistoryResponse = zod.array(
 );
 
 /**
+ * @summary List franchise KRIs (CRECI, CREs, VGH) by period
+ */
+export const ListFranchiseKrisQueryParams = zod.object({
+  franchiseId: zod.coerce.number().optional(),
+  year: zod.coerce.number().optional(),
+  month: zod.coerce.number().optional(),
+});
+
+export const ListFranchiseKrisResponseItem = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  year: zod.number(),
+  month: zod.number(),
+  creci: zod
+    .number()
+    .nullish()
+    .describe("Número de corretores com CRECI ativo"),
+  cres: zod
+    .number()
+    .nullish()
+    .describe("Contratos de Representação Exclusiva assinados no mês"),
+  vgh: zod
+    .number()
+    .nullish()
+    .describe("Valor Geral de Honorários\/Comissões no mês (R$)"),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+});
+export const ListFranchiseKrisResponse = zod.array(
+  ListFranchiseKrisResponseItem,
+);
+
+/**
+ * @summary Create or update franchise KRIs for a given month
+ */
+export const UpsertFranchiseKriBody = zod.object({
+  franchiseId: zod.number(),
+  year: zod.number(),
+  month: zod.number(),
+  creci: zod.number().nullish(),
+  cres: zod.number().nullish(),
+  vgh: zod.number().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpsertFranchiseKriResponse = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  year: zod.number(),
+  month: zod.number(),
+  creci: zod
+    .number()
+    .nullish()
+    .describe("Número de corretores com CRECI ativo"),
+  cres: zod
+    .number()
+    .nullish()
+    .describe("Contratos de Representação Exclusiva assinados no mês"),
+  vgh: zod
+    .number()
+    .nullish()
+    .describe("Valor Geral de Honorários\/Comissões no mês (R$)"),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string().optional(),
+});
+
+/**
  * @summary Export goals as CSV
  */
 export const ExportGoalsCsvQueryParams = zod.object({

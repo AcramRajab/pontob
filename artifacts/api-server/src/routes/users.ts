@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, franchisesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { requireAuth, requireRole } from "../middlewares/auth";
+import { requireAuth, requireRole, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
 
@@ -14,18 +14,37 @@ function formatUser(u: typeof usersTable.$inferSelect, franchiseName?: string | 
   };
 }
 
-router.get("/users", requireRole("master_admin", "staff_regional"), async (req, res) => {
+router.get("/users", requireAuth, async (req, res) => {
   try {
+    const role = req.session.userRole!;
     const franchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
-    let query = db
-      .select({
-        id: usersTable.id, name: usersTable.name, email: usersTable.email,
-        role: usersTable.role, franchiseId: usersTable.franchiseId,
-        active: usersTable.active, createdAt: usersTable.createdAt,
-        franchiseName: franchisesTable.name,
-      })
-      .from(usersTable)
-      .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id));
+
+    // franqueado can only list users of their own franchise
+    if (role === "franqueado") {
+      const myFranchiseId = req.session.franchiseId;
+      if (!myFranchiseId) { res.json([]); return; }
+      const rows = await db
+        .select({
+          id: usersTable.id, name: usersTable.name, email: usersTable.email,
+          role: usersTable.role, franchiseId: usersTable.franchiseId,
+          active: usersTable.active, createdAt: usersTable.createdAt,
+          franchiseName: franchisesTable.name,
+        })
+        .from(usersTable)
+        .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id))
+        .where(eq(usersTable.franchiseId, myFranchiseId));
+      res.json(rows.map(u => ({
+        id: u.id, name: u.name, email: u.email, role: u.role,
+        franchiseId: u.franchiseId, franchiseName: u.franchiseName ?? null,
+        active: u.active, createdAt: u.createdAt.toISOString(),
+      })));
+      return;
+    }
+
+    // master_admin and staff_regional see all (or filtered by franchiseId)
+    if (role !== "master_admin" && role !== "staff_regional") {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
 
     const rows = franchiseId
       ? await db
@@ -38,7 +57,15 @@ router.get("/users", requireRole("master_admin", "staff_regional"), async (req, 
           .from(usersTable)
           .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id))
           .where(eq(usersTable.franchiseId, franchiseId))
-      : await query;
+      : await db
+          .select({
+            id: usersTable.id, name: usersTable.name, email: usersTable.email,
+            role: usersTable.role, franchiseId: usersTable.franchiseId,
+            active: usersTable.active, createdAt: usersTable.createdAt,
+            franchiseName: franchisesTable.name,
+          })
+          .from(usersTable)
+          .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id));
 
     res.json(rows.map(u => ({
       id: u.id, name: u.name, email: u.email, role: u.role,
@@ -51,17 +78,32 @@ router.get("/users", requireRole("master_admin", "staff_regional"), async (req, 
   }
 });
 
-router.post("/users", requireRole("master_admin"), async (req, res) => {
+router.post("/users", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const { name, email, password, role, franchiseId } = req.body;
-    if (!name || !email || !password || !role) {
+    const role = req.session.userRole!;
+    const { name, email, password, role: userRole, franchiseId } = req.body;
+    if (!name || !email || !password || !userRole) {
       res.status(400).json({ error: "name, email, password, role required" });
       return;
     }
+
+    // franqueado can only create responsavel_interno in their own franchise
+    if (role === "franqueado") {
+      const myFranchiseId = req.session.franchiseId;
+      if (userRole !== "responsavel_interno") {
+        res.status(403).json({ error: "Você só pode criar usuários do perfil Responsável Interno." });
+        return;
+      }
+      if (!franchiseId || franchiseId !== myFranchiseId) {
+        res.status(403).json({ error: "Você só pode criar usuários para sua própria franquia." });
+        return;
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 10);
     const [u] = await db
       .insert(usersTable)
-      .values({ name, email: email.toLowerCase(), passwordHash, role, franchiseId: franchiseId ?? null })
+      .values({ name, email: email.toLowerCase(), passwordHash, role: userRole, franchiseId: franchiseId ?? null })
       .returning();
 
     let franchiseName: string | null = null;
@@ -81,8 +123,10 @@ router.get("/users/:id", requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     const role = req.session.userRole!;
     if (role !== "master_admin" && role !== "staff_regional" && req.session.userId !== id) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
+      // franqueado can view users in their franchise
+      if (role !== "franqueado") {
+        res.status(403).json({ error: "Forbidden" }); return;
+      }
     }
     const rows = await db
       .select({
@@ -96,6 +140,10 @@ router.get("/users/:id", requireAuth, async (req, res) => {
       .where(eq(usersTable.id, id))
       .limit(1);
     if (!rows[0]) { res.status(404).json({ error: "Not found" }); return; }
+    // franqueado can only view users from their own franchise
+    if (role === "franqueado" && rows[0].franchiseId !== req.session.franchiseId && req.session.userId !== id) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
     const u = rows[0];
     res.json({
       id: u.id, name: u.name, email: u.email, role: u.role,
@@ -108,16 +156,33 @@ router.get("/users/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/users/:id", requireRole("master_admin"), async (req, res) => {
+router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, email, role, franchiseId, active } = req.body;
+    const role = req.session.userRole!;
+
+    // franqueado can only edit responsavel_interno users in their own franchise
+    if (role === "franqueado") {
+      const existing = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+      if (!existing[0]) { res.status(404).json({ error: "Not found" }); return; }
+      if (existing[0].franchiseId !== req.session.franchiseId) {
+        res.status(403).json({ error: "Você só pode editar usuários da sua franquia." }); return;
+      }
+      if (existing[0].role !== "responsavel_interno") {
+        res.status(403).json({ error: "Você só pode editar usuários do perfil Responsável Interno." }); return;
+      }
+    } else if (role !== "master_admin") {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+
+    const { name, email, role: userRole, franchiseId, active } = req.body;
     const update: Record<string, unknown> = {};
     if (name !== undefined) update.name = name;
     if (email !== undefined) update.email = email.toLowerCase();
-    if (role !== undefined) update.role = role;
-    if (franchiseId !== undefined) update.franchiseId = franchiseId;
+    if (userRole !== undefined && role === "master_admin") update.role = userRole;
+    if (franchiseId !== undefined && role === "master_admin") update.franchiseId = franchiseId;
     if (active !== undefined) update.active = active;
+
     const [u] = await db.update(usersTable).set(update).where(eq(usersTable.id, id)).returning();
     if (!u) { res.status(404).json({ error: "Not found" }); return; }
     let franchiseName: string | null = null;

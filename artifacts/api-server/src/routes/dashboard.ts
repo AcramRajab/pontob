@@ -196,7 +196,7 @@ router.get("/dashboard/franchise", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/dashboard/regional", requireAdminOrStaff, async (req, res) => {
+router.get("/dashboard/regional", requireAuth, async (req, res) => {
   try {
     const franchises = await db.select().from(franchisesTable).where(eq(franchisesTable.active, true));
     const goals = await db.select().from(goalsTable);
@@ -253,7 +253,7 @@ router.get("/dashboard/regional", requireAdminOrStaff, async (req, res) => {
   }
 });
 
-router.get("/dashboard/ranking", requireAdminOrStaff, async (req, res) => {
+router.get("/dashboard/ranking", requireAuth, async (req, res) => {
   try {
     const by = req.query.by as string || "score";
     const franchises = await db.select().from(franchisesTable).where(eq(franchisesTable.active, true));

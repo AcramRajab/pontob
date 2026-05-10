@@ -32,12 +32,14 @@ export default function Goals() {
           <h1 className="text-3xl font-bold tracking-tight">Metas</h1>
           <p className="text-muted-foreground mt-2">Menos planejamento bonito. Mais execução visível.</p>
         </div>
-        <Button asChild>
-          <Link href="/goals/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Nova Meta
-          </Link>
-        </Button>
+        {user?.role !== "responsavel_interno" && (
+          <Button asChild>
+            <Link href="/goals/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Nova Meta
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4">

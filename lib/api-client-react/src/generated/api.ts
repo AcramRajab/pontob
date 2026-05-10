@@ -27,6 +27,8 @@ import type {
   Franchise,
   FranchiseDashboard,
   FranchiseInput,
+  FranchiseKri,
+  FranchiseKriInput,
   FranchiseRankingItem,
   FranchiseUpdate,
   GetFranchiseDashboardParams,
@@ -49,6 +51,7 @@ import type {
   KpiUpdate,
   ListAlertsParams,
   ListDailyCheckinsParams,
+  ListFranchiseKrisParams,
   ListGoalsParams,
   ListHelpRequestsParams,
   ListKeyProcessesParams,
@@ -3848,6 +3851,189 @@ export function useListProgressHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List franchise KRIs (CRECI, CREs, VGH) by period
+ */
+export const getListFranchiseKrisUrl = (params?: ListFranchiseKrisParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/franchise-kris?${stringifiedParams}`
+    : `/api/franchise-kris`;
+};
+
+export const listFranchiseKris = async (
+  params?: ListFranchiseKrisParams,
+  options?: RequestInit,
+): Promise<FranchiseKri[]> => {
+  return customFetch<FranchiseKri[]>(getListFranchiseKrisUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFranchiseKrisQueryKey = (
+  params?: ListFranchiseKrisParams,
+) => {
+  return [`/api/franchise-kris`, ...(params ? [params] : [])] as const;
+};
+
+export const getListFranchiseKrisQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFranchiseKris>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListFranchiseKrisParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFranchiseKris>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListFranchiseKrisQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listFranchiseKris>>
+  > = ({ signal }) => listFranchiseKris(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFranchiseKris>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFranchiseKrisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFranchiseKris>>
+>;
+export type ListFranchiseKrisQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List franchise KRIs (CRECI, CREs, VGH) by period
+ */
+
+export function useListFranchiseKris<
+  TData = Awaited<ReturnType<typeof listFranchiseKris>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListFranchiseKrisParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFranchiseKris>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFranchiseKrisQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update franchise KRIs for a given month
+ */
+export const getUpsertFranchiseKriUrl = () => {
+  return `/api/franchise-kris`;
+};
+
+export const upsertFranchiseKri = async (
+  franchiseKriInput: FranchiseKriInput,
+  options?: RequestInit,
+): Promise<FranchiseKri> => {
+  return customFetch<FranchiseKri>(getUpsertFranchiseKriUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(franchiseKriInput),
+  });
+};
+
+export const getUpsertFranchiseKriMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertFranchiseKri>>,
+    TError,
+    { data: BodyType<FranchiseKriInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertFranchiseKri>>,
+  TError,
+  { data: BodyType<FranchiseKriInput> },
+  TContext
+> => {
+  const mutationKey = ["upsertFranchiseKri"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertFranchiseKri>>,
+    { data: BodyType<FranchiseKriInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return upsertFranchiseKri(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertFranchiseKriMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertFranchiseKri>>
+>;
+export type UpsertFranchiseKriMutationBody = BodyType<FranchiseKriInput>;
+export type UpsertFranchiseKriMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or update franchise KRIs for a given month
+ */
+export const useUpsertFranchiseKri = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertFranchiseKri>>,
+    TError,
+    { data: BodyType<FranchiseKriInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertFranchiseKri>>,
+  TError,
+  { data: BodyType<FranchiseKriInput> },
+  TContext
+> => {
+  return useMutation(getUpsertFranchiseKriMutationOptions(options));
+};
 
 /**
  * @summary Export goals as CSV

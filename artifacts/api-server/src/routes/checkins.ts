@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, dailyCheckinsTable, weeklyCheckinsTable, monthlyCheckinsTable, goalsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
 
@@ -57,7 +57,7 @@ router.get("/daily-checkins", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/daily-checkins", requireAuth, async (req, res) => {
+router.post("/daily-checkins", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const { goalId, goalInitiativeId, franchiseId, date, executedToday, progressToday, timeSpent, blocker, nextStep, needsHelp, notes } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -121,7 +121,7 @@ router.get("/weekly-checkins", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/weekly-checkins", requireAuth, async (req, res) => {
+router.post("/weekly-checkins", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const { goalId, franchiseId, weekStartDate, weekEndDate, planned, executed, progressSummary, blockers, adjustments, nextWeekPriority, needsRegionalSupport, initiativeDecision, executionPercentage, checkinDaysCount } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -185,7 +185,7 @@ router.get("/monthly-checkins", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/monthly-checkins", requireAuth, async (req, res) => {
+router.post("/monthly-checkins", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const { goalId, franchiseId, month, year, kriProgress, improvedKpis, worsenedKpis, initiativesThatWorked, initiativesThatDidNotWork, continueDoing, stopDoing, startDoing, nextMonthFocus } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }

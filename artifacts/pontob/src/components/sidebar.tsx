@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle } from "lucide-react";
+import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function AppSidebar() {
@@ -94,24 +94,40 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {(isMasterAdmin || isStaffRegional) && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Regional</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/ranking"}>
+                  <Link href="/ranking">
+                    <Trophy />
+                    <span>Ranking</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={location === "/regional"}>
+                  <Link href="/regional">
+                    <Map />
+                    <span>Regional Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {isFranqueado && (
           <SidebarGroup>
-            <SidebarGroupLabel>Regional</SidebarGroupLabel>
+            <SidebarGroupLabel>Minha Franquia</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/ranking"}>
-                    <Link href="/ranking">
-                      <Trophy />
-                      <span>Ranking</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/regional"}>
-                    <Link href="/regional">
-                      <Map />
-                      <span>Regional Dashboard</span>
+                  <SidebarMenuButton asChild isActive={location === "/my-team"}>
+                    <Link href="/my-team">
+                      <UserCog />
+                      <span>Minha Equipe</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

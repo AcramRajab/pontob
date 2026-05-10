@@ -870,6 +870,48 @@ export interface TodayOverview {
   weekScore?: number | null;
 }
 
+export interface FranchiseKri {
+  id: number;
+  franchiseId: number;
+  /** @nullable */
+  franchiseName?: string | null;
+  year: number;
+  month: number;
+  /**
+   * Número de corretores com CRECI ativo
+   * @nullable
+   */
+  creci?: number | null;
+  /**
+   * Contratos de Representação Exclusiva assinados no mês
+   * @nullable
+   */
+  cres?: number | null;
+  /**
+   * Valor Geral de Honorários/Comissões no mês (R$)
+   * @nullable
+   */
+  vgh?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface FranchiseKriInput {
+  franchiseId: number;
+  year: number;
+  month: number;
+  /** @nullable */
+  creci?: number | null;
+  /** @nullable */
+  cres?: number | null;
+  /** @nullable */
+  vgh?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export interface ProgressHistoryItem {
   id: number;
   entityType: string;
@@ -964,6 +1006,12 @@ export type ListProgressHistoryParams = {
   franchiseId?: number;
   entityType?: string;
   entityId?: number;
+};
+
+export type ListFranchiseKrisParams = {
+  franchiseId?: number;
+  year?: number;
+  month?: number;
 };
 
 export type ExportGoalsCsvParams = {

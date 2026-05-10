@@ -9,6 +9,7 @@ import checkinsRouter from "./checkins";
 import supportRouter from "./support";
 import dashboardRouter from "./dashboard";
 import exportsRouter from "./exports";
+import krisRouter from "./kris";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(checkinsRouter);
 router.use(supportRouter);
 router.use(dashboardRouter);
 router.use(exportsRouter);
+router.use(krisRouter);
 
 export default router;

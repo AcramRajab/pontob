@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, goalsTable, kpisTable, goalInitiativesTable, franchisesTable, usersTable, dimensionsTable, keyProcessesTable, strategicInitiativesTable, progressHistoryTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
 
@@ -124,7 +124,7 @@ router.get("/goals", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/goals", requireAuth, async (req, res) => {
+router.post("/goals", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const { franchiseId, dimensionId, keyProcessId, title, kriDescription, currentValue, targetValue, unit, startDate, endDate, ownerUserId, frequency } = req.body;
     if (!canAccessFranchise(req, franchiseId)) {
@@ -242,7 +242,7 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/goals/:id", requireAuth, async (req, res) => {
+router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const existing = await db.select({ franchiseId: goalsTable.franchiseId }).from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
@@ -274,7 +274,7 @@ router.get("/goals/:id/kpis", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/goals/:id/kpis", requireAuth, async (req, res) => {
+router.post("/goals/:id/kpis", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
     const existing = await db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(kpisTable).where(eq(kpisTable.goalId, goalId));
@@ -291,7 +291,7 @@ router.post("/goals/:id/kpis", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/kpis/:id", requireAuth, async (req, res) => {
+router.patch("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const fields = ["name", "currentValue", "targetValue", "unit", "frequency", "indicatorType", "desiredDirection", "notes"];
@@ -306,7 +306,7 @@ router.patch("/kpis/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/kpis/:id", requireAuth, async (req, res) => {
+router.delete("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     await db.delete(kpisTable).where(eq(kpisTable.id, id));
@@ -365,7 +365,7 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/goals/:id/initiatives", requireAuth, async (req, res) => {
+router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
     const activeCount = await db
@@ -443,7 +443,7 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/goal-initiatives/:id", requireAuth, async (req, res) => {
+router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const fields = ["desiredResult", "actualResult", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];

@@ -24,6 +24,7 @@ tags:
   - name: helpRequests
   - name: dashboard
   - name: exports
+  - name: franchiseKris
 paths:
   /healthz:
     get:
@@ -883,6 +884,57 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ProgressHistoryItem"
+
+  /franchise-kris:
+    get:
+      operationId: listFranchiseKris
+      tags: [franchiseKris]
+      summary: List franchise KRIs (CRECI, CREs, VGH) by period
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of franchise KRI records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FranchiseKri"
+    post:
+      operationId: upsertFranchiseKri
+      tags: [franchiseKris]
+      summary: Create or update franchise KRIs for a given month
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FranchiseKriInput"
+      responses:
+        "200":
+          description: KRI record updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FranchiseKri"
+        "201":
+          description: KRI record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FranchiseKri"
 
   /exports/goals:
     get:
@@ -1930,6 +1982,55 @@ components:
           type: integer
         weekScore:
           type: ["number", "null"]
+
+    FranchiseKri:
+      type: object
+      required: [id, franchiseId, year, month, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        year:
+          type: integer
+        month:
+          type: integer
+        creci:
+          type: ["integer", "null"]
+          description: Número de corretores com CRECI ativo
+        cres:
+          type: ["integer", "null"]
+          description: Contratos de Representação Exclusiva assinados no mês
+        vgh:
+          type: ["number", "null"]
+          description: Valor Geral de Honorários/Comissões no mês (R$)
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    FranchiseKriInput:
+      type: object
+      required: [franchiseId, year, month]
+      properties:
+        franchiseId:
+          type: integer
+        year:
+          type: integer
+        month:
+          type: integer
+        creci:
+          type: ["integer", "null"]
+        cres:
+          type: ["integer", "null"]
+        vgh:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
 
     ProgressHistoryItem:
       type: object

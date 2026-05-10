@@ -27,6 +27,7 @@ import Regional from "@/pages/regional";
 import AdminFranchises from "@/pages/admin/franchises";
 import AdminUsers from "@/pages/admin/users";
 import Settings from "@/pages/settings";
+import MyTeam from "@/pages/my-team";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,7 @@ function Router() {
         <Route path="/regional" component={Regional} />
         <Route path="/admin/franchises" component={AdminFranchises} />
         <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/my-team" component={MyTeam} />
         <Route path="/settings" component={Settings} />
         <Route path="/" component={() => {
           window.location.replace("/today");
