@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { BookOpen, Target } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 export default function Catalog() {
   const [dimensionId, setDimensionId] = useState<string>("");
@@ -38,24 +38,31 @@ export default function Catalog() {
       </div>
 
       <div className="flex gap-3 flex-wrap">
-        <Select value={dimensionId} onValueChange={v => { setDimensionId(v); setKeyProcessId(""); }}>
+        <Select
+          value={dimensionId || "all"}
+          onValueChange={v => { setDimensionId(v === "all" ? "" : v); setKeyProcessId(""); }}
+        >
           <SelectTrigger className="w-44" data-testid="select-dimension">
             <SelectValue placeholder="Dimensão" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todas as dimensões</SelectItem>
+            <SelectItem value="all">Todas as dimensões</SelectItem>
             {dimensions.map((d: any) => (
               <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <Select value={keyProcessId} onValueChange={setKeyProcessId} disabled={!dimensionId}>
+        <Select
+          value={keyProcessId || "all"}
+          onValueChange={v => setKeyProcessId(v === "all" ? "" : v)}
+          disabled={!dimensionId}
+        >
           <SelectTrigger className="w-56" data-testid="select-key-process">
             <SelectValue placeholder="Processo-chave" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Todos os processos</SelectItem>
+            <SelectItem value="all">Todos os processos</SelectItem>
             {keyProcesses.map((kp: any) => (
               <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
             ))}

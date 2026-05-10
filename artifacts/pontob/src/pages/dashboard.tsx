@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTH_NAMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -35,7 +36,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const franchiseId = user?.franchiseId;
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -96,14 +97,6 @@ export default function Dashboard() {
       CREs: k.cres ?? 0,
     }));
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   const canEdit = user?.role !== "responsavel_interno";
 
   return (
@@ -113,193 +106,208 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-2">Bata o olho e saiba onde avançar.</p>
       </div>
 
-      {/* Score cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pontuação</CardTitle>
-            <LayoutDashboard className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.score || 0}</div>
-            <p className="text-xs text-muted-foreground">{data?.scoreLabel || "Sem dados"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Metas Ativas</CardTitle>
-            <Target className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.activeGoals || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Execução da Semana</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data?.weekExecution || 0}%</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Metas Atrasadas</CardTitle>
-            <Clock className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{data?.delayedGoals || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
 
-      {/* KRIs principais */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>KRIs do Mês — {MONTH_NAMES_FULL[currentMonth - 1]} {currentYear}</CardTitle>
-            <CardDescription>CRECI · CREs · VGH — os 3 indicadores-chave da franquia</CardDescription>
+      {isAdmin && !franchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia acima para visualizar o dashboard." />
+      ) : isLoading ? (
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pontuação</CardTitle>
+                <LayoutDashboard className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data?.score || 0}</div>
+                <p className="text-xs text-muted-foreground">{data?.scoreLabel || "Sem dados"}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Metas Ativas</CardTitle>
+                <Target className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data?.activeGoals || 0}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Execução da Semana</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data?.weekExecution || 0}%</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Metas Atrasadas</CardTitle>
+                <Clock className="h-4 w-4 text-destructive" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-destructive">{data?.delayedGoals || 0}</div>
+              </CardContent>
+            </Card>
           </div>
-          {canEdit && (
-            <Dialog open={kriOpen} onOpenChange={v => { setKriOpen(v); if (!v) reset(); }}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Lançar KRIs
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>KRIs de {MONTH_NAMES_FULL[currentMonth - 1]} {currentYear}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit(onKriSubmit)} className="space-y-4 mt-2">
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" /> CRECI — Corretores com registro ativo
-                    </Label>
-                    <Input type="number" min={0} placeholder="Ex: 18" {...register("creci")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5">
-                      <FileSignature className="h-3.5 w-3.5" /> CREs — Contratos de Representação Exclusiva
-                    </Label>
-                    <Input type="number" min={0} placeholder="Ex: 24" {...register("cres")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5">
-                      <DollarSign className="h-3.5 w-3.5" /> VGH — Valor Geral de Honorários (R$)
-                    </Label>
-                    <Input type="number" min={0} step="0.01" placeholder="Ex: 85000" {...register("vgh")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Observações</Label>
-                    <Input placeholder="Opcional" {...register("notes")} />
-                  </div>
-                  <div className="flex gap-2 justify-end pt-2">
-                    <Button variant="outline" type="button" onClick={() => setKriOpen(false)}>Cancelar</Button>
-                    <Button type="submit" disabled={upsert.isPending}>
-                      {upsert.isPending ? "Salvando..." : "Salvar KRIs"}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>KRIs do Mês — {MONTH_NAMES_FULL[currentMonth - 1]} {currentYear}</CardTitle>
+                <CardDescription>CRECI · CREs · VGH — os 3 indicadores-chave da franquia</CardDescription>
+              </div>
+              {canEdit && (
+                <Dialog open={kriOpen} onOpenChange={v => { setKriOpen(v); if (!v) reset(); }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Lançar KRIs
                     </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>KRIs de {MONTH_NAMES_FULL[currentMonth - 1]} {currentYear}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit(onKriSubmit)} className="space-y-4 mt-2">
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5" /> CRECI — Corretores com registro ativo
+                        </Label>
+                        <Input type="number" min={0} placeholder="Ex: 18" {...register("creci")} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5">
+                          <FileSignature className="h-3.5 w-3.5" /> CREs — Contratos de Representação Exclusiva
+                        </Label>
+                        <Input type="number" min={0} placeholder="Ex: 24" {...register("cres")} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="flex items-center gap-1.5">
+                          <DollarSign className="h-3.5 w-3.5" /> VGH — Valor Geral de Honorários (R$)
+                        </Label>
+                        <Input type="number" min={0} step="0.01" placeholder="Ex: 85000" {...register("vgh")} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Observações</Label>
+                        <Input placeholder="Opcional" {...register("notes")} />
+                      </div>
+                      <div className="flex gap-2 justify-end pt-2">
+                        <Button variant="outline" type="button" onClick={() => setKriOpen(false)}>Cancelar</Button>
+                        <Button type="submit" disabled={upsert.isPending}>
+                          {upsert.isPending ? "Salvando..." : "Salvar KRIs"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
+                    <Users className="h-3.5 w-3.5" /> CRECI
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-6">
-            <div className="text-center space-y-1">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
-                <Users className="h-3.5 w-3.5" /> CRECI
+                  <div className="text-3xl font-bold">
+                    {currentKri?.creci != null ? currentKri.creci : "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">corretores ativos</div>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
+                    <FileSignature className="h-3.5 w-3.5" /> CREs
+                  </div>
+                  <div className="text-3xl font-bold">
+                    {currentKri?.cres != null ? currentKri.cres : "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">contratos exclusivos</div>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
+                    <DollarSign className="h-3.5 w-3.5" /> VGH
+                  </div>
+                  <div className="text-3xl font-bold text-green-600">
+                    {formatVgh(currentKri?.vgh)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">honorários do mês</div>
+                </div>
               </div>
-              <div className="text-3xl font-bold">
-                {currentKri?.creci != null ? currentKri.creci : "—"}
-              </div>
-              <div className="text-xs text-muted-foreground">corretores ativos</div>
-            </div>
-            <div className="text-center space-y-1">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
-                <FileSignature className="h-3.5 w-3.5" /> CREs
-              </div>
-              <div className="text-3xl font-bold">
-                {currentKri?.cres != null ? currentKri.cres : "—"}
-              </div>
-              <div className="text-xs text-muted-foreground">contratos exclusivos</div>
-            </div>
-            <div className="text-center space-y-1">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground text-xs uppercase tracking-wide">
-                <DollarSign className="h-3.5 w-3.5" /> VGH
-              </div>
-              <div className="text-3xl font-bold text-green-600">
-                {formatVgh(currentKri?.vgh)}
-              </div>
-              <div className="text-xs text-muted-foreground">honorários do mês</div>
-            </div>
+              {!currentKri && canEdit && (
+                <p className="text-center text-sm text-muted-foreground mt-4">
+                  Nenhum KRI lançado para este mês ainda. Clique em <strong>Lançar KRIs</strong> para registrar.
+                </p>
+              )}
+              {kriChartData.length > 1 && (
+                <div className="mt-6 h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={kriChartData} barGap={4}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                      <YAxis hide />
+                      <Tooltip />
+                      <Bar dataKey="CRECI" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="CREs" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Progresso por Dimensão</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[300px]">
+                {data?.progressByDimension?.length ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.progressByDimension} layout="vertical" margin={{ left: 40 }}>
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="dimensionName" type="category" axisLine={false} tickLine={false} />
+                      <Tooltip />
+                      <Bar dataKey="progressPercentage" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados de dimensão</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Bloqueios</CardTitle>
+                <CardDescription>O que não é registrado não pode ser resolvido.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data?.topBlockers?.length ? (
+                  <ul className="space-y-2">
+                    {data.topBlockers.map((blocker, i) => (
+                      <li key={i} className="flex items-center space-x-2 p-3 bg-muted rounded-md">
+                        <span className="text-sm">{blocker}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">Nenhum bloqueio registrado.</div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          {!currentKri && canEdit && (
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Nenhum KRI lançado para este mês ainda. Clique em <strong>Lançar KRIs</strong> para registrar.
-            </p>
-          )}
-          {kriChartData.length > 1 && (
-            <div className="mt-6 h-[160px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={kriChartData} barGap={4}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                  <YAxis hide />
-                  <Tooltip />
-                  <Bar dataKey="CRECI" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="CREs" fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Charts row */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Progresso por Dimensão</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            {data?.progressByDimension?.length ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.progressByDimension} layout="vertical" margin={{ left: 40 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="dimensionName" type="category" axisLine={false} tickLine={false} />
-                  <Tooltip />
-                  <Bar dataKey="progressPercentage" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados de dimensão</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Bloqueios</CardTitle>
-            <CardDescription>O que não é registrado não pode ser resolvido.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {data?.topBlockers?.length ? (
-              <ul className="space-y-2">
-                {data.topBlockers.map((blocker, i) => (
-                  <li key={i} className="flex items-center space-x-2 p-3 bg-muted rounded-md">
-                    <span className="text-sm">{blocker}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">Nenhum bloqueio registrado.</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        </>
+      )}
     </div>
   );
 }

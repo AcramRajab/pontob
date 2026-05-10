@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog } from "lucide-react";
+import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function AppSidebar() {
@@ -16,6 +16,9 @@ export function AppSidebar() {
   const isFranqueado = role === "franqueado";
   const isResponsavelInterno = role === "responsavel_interno";
 
+  const isActive = (path: string) => location === path;
+  const isActivePrefix = (prefix: string) => location.startsWith(prefix);
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-border/10 p-4">
@@ -29,7 +32,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/today"}>
+                <SidebarMenuButton asChild isActive={isActive("/today")}>
                   <Link href="/today">
                     <CheckSquare />
                     <span>Hoje</span>
@@ -38,7 +41,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
               {(isMasterAdmin || isStaffRegional || isFranqueado) && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.startsWith("/goals")}>
+                  <SidebarMenuButton asChild isActive={isActivePrefix("/goals")}>
                     <Link href="/goals">
                       <Target />
                       <span>Metas</span>
@@ -47,7 +50,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location.startsWith("/initiatives")}>
+                <SidebarMenuButton asChild isActive={isActivePrefix("/initiatives")}>
                   <Link href="/initiatives">
                     <ArrowRightCircle />
                     <span>Iniciativas</span>
@@ -56,7 +59,7 @@ export function AppSidebar() {
               </SidebarMenuItem>
               {(isMasterAdmin || isStaffRegional || isFranqueado) && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/dashboard"}>
+                  <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
                     <Link href="/dashboard">
                       <LayoutDashboard />
                       <span>Dashboard</span>
@@ -69,27 +72,65 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
+          <SidebarGroupLabel>Check-in</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/checkin/daily")}>
+                  <Link href="/checkin/daily">
+                    <CalendarCheck />
+                    <span>Diário</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/checkin/weekly")}>
+                  <Link href="/checkin/weekly">
+                    <CalendarDays />
+                    <span>Semanal</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/checkin/monthly")}>
+                  <Link href="/checkin/monthly">
+                    <CalendarRange />
+                    <span>Mensal</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
           <SidebarGroupLabel>Análise</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/history"}>
+                <SidebarMenuButton asChild isActive={isActive("/history")}>
                   <Link href="/history">
                     <History />
                     <span>Histórico</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/help"}>
-                    <Link href="/help">
-                      <HelpCircle />
-                      <span>Ajuda</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/help")}>
+                  <Link href="/help">
+                    <HelpCircle />
+                    <span>Ajuda</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/catalog")}>
+                  <Link href="/catalog">
+                    <BookOpen />
+                    <span>Catálogo</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -99,7 +140,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/ranking"}>
+                <SidebarMenuButton asChild isActive={isActive("/ranking")}>
                   <Link href="/ranking">
                     <Trophy />
                     <span>Ranking</span>
@@ -107,7 +148,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={location === "/regional"}>
+                <SidebarMenuButton asChild isActive={isActive("/regional")}>
                   <Link href="/regional">
                     <Map />
                     <span>Regional Dashboard</span>
@@ -124,7 +165,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/my-team"}>
+                  <SidebarMenuButton asChild isActive={isActive("/my-team")}>
                     <Link href="/my-team">
                       <UserCog />
                       <span>Minha Equipe</span>
@@ -142,7 +183,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/admin/franchises"}>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/franchises")}>
                     <Link href="/admin/franchises">
                       <Building />
                       <span>Franquias</span>
@@ -150,7 +191,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/admin/users"}>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/users")}>
                     <Link href="/admin/users">
                       <Users />
                       <span>Usuários</span>

@@ -1,4 +1,3 @@
-import { useAuth } from "@/lib/auth";
 import { useListGoals, useCreateWeeklyCheckin, getListWeeklyCheckinsQueryKey, getListGoalsQueryKey, WeeklyCheckinInputInitiativeDecision } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
 
 interface WeeklyForm {
   goalId: string;
@@ -38,16 +38,16 @@ function getWeekDates() {
 }
 
 export default function WeeklyCheckin() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
   const week = getWeekDates();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
-  const goalParams = { franchiseId: user?.franchiseId ?? undefined };
+  const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
     goalParams,
-    { query: { enabled: !!user?.franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
   const create = useCreateWeeklyCheckin();
@@ -59,12 +59,12 @@ export default function WeeklyCheckin() {
   });
 
   const onSubmit = async (data: WeeklyForm) => {
-    if (!user?.franchiseId) return;
+    if (!franchiseId) return;
     try {
       await create.mutateAsync({
         data: {
           goalId: parseInt(data.goalId),
-          franchiseId: user.franchiseId,
+          franchiseId,
           weekStartDate: week.start,
           weekEndDate: week.end,
           planned: data.planned || undefined,
@@ -112,70 +112,82 @@ export default function WeeklyCheckin() {
         <p className="text-muted-foreground mt-1">Semana {week.start} — {week.end}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <Card>
-          <CardContent className="pt-5">
-            <Controller
-              name="goalId"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger data-testid="select-goal">
-                    <SelectValue placeholder="Selecione a meta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {goals.map((g: any) => (
-                      <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.goalId && <p className="text-xs text-destructive mt-1">Selecione uma meta</p>}
-          </CardContent>
-        </Card>
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
 
-        {questions.map(q => (
-          <Card key={q.field}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{q.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder={q.placeholder}
-                data-testid={`textarea-${q.field}`}
-                {...register(q.field)}
-                rows={3}
-              />
-            </CardContent>
-          </Card>
-        ))}
-
-        <Card>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2">
+      {isAdmin && !franchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in semanal." />
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <Card>
+            <CardContent className="pt-5">
               <Controller
-                name="needsRegionalSupport"
+                name="goalId"
                 control={control}
+                rules={{ required: true }}
                 render={({ field }) => (
-                  <Checkbox
-                    id="needsRegionalSupport"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    data-testid="checkbox-regional-support"
-                  />
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger data-testid="select-goal">
+                      <SelectValue placeholder="Selecione a meta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {goals.map((g: any) => (
+                        <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               />
-              <Label htmlFor="needsRegionalSupport" className="cursor-pointer">Preciso de suporte da equipe regional</Label>
-            </div>
-          </CardContent>
-        </Card>
+              {errors.goalId && <p className="text-xs text-destructive mt-1">Selecione uma meta</p>}
+            </CardContent>
+          </Card>
 
-        <Button type="submit" className="w-full" disabled={create.isPending} data-testid="button-submit">
-          {create.isPending ? "Registrando..." : "Registrar Check-in Semanal"}
-        </Button>
-      </form>
+          {questions.map(q => (
+            <Card key={q.field}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">{q.label}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder={q.placeholder}
+                  data-testid={`textarea-${q.field}`}
+                  {...register(q.field)}
+                  rows={3}
+                />
+              </CardContent>
+            </Card>
+          ))}
+
+          <Card>
+            <CardContent className="pt-5">
+              <div className="flex items-center gap-2">
+                <Controller
+                  name="needsRegionalSupport"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="needsRegionalSupport"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      data-testid="checkbox-regional-support"
+                    />
+                  )}
+                />
+                <Label htmlFor="needsRegionalSupport" className="cursor-pointer">Preciso de suporte da equipe regional</Label>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button type="submit" className="w-full" disabled={create.isPending} data-testid="button-submit">
+            {create.isPending ? "Registrando..." : "Registrar Check-in Semanal"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

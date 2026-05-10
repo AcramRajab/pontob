@@ -1,4 +1,3 @@
-import { useAuth } from "@/lib/auth";
 import { useListGoals, useCreateMonthlyCheckin, getListMonthlyCheckinsQueryKey, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
 
 interface MonthlyForm {
   goalId: string;
@@ -26,28 +26,28 @@ interface MonthlyForm {
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 export default function MonthlyCheckin() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
   const now = new Date();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
-  const goalParams = { franchiseId: user?.franchiseId ?? undefined };
+  const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
     goalParams,
-    { query: { enabled: !!user?.franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
   const create = useCreateMonthlyCheckin();
   const { register, handleSubmit, control, formState: { errors } } = useForm<MonthlyForm>();
 
   const onSubmit = async (data: MonthlyForm) => {
-    if (!user?.franchiseId) return;
+    if (!franchiseId) return;
     try {
       await create.mutateAsync({
         data: {
           goalId: parseInt(data.goalId),
-          franchiseId: user.franchiseId,
+          franchiseId,
           month: now.getMonth() + 1,
           year: now.getFullYear(),
           kriProgress: data.kriProgress || undefined,
@@ -98,52 +98,64 @@ export default function MonthlyCheckin() {
         <p className="text-muted-foreground mt-1">{MONTHS[now.getMonth()]} {now.getFullYear()}</p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <Card>
-          <CardContent className="pt-5">
-            <Controller
-              name="goalId"
-              control={control}
-              rules={{ required: true }}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger data-testid="select-goal">
-                    <SelectValue placeholder="Selecione a meta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {goals.map((g: any) => (
-                      <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.goalId && <p className="text-xs text-destructive mt-1">Selecione uma meta</p>}
-          </CardContent>
-        </Card>
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
 
-        {questions.map((q, i) => (
-          <Card key={q.field}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                <span className="text-muted-foreground mr-2">{i + 1}.</span>{q.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder={q.placeholder}
-                data-testid={`textarea-${q.field}`}
-                {...register(q.field)}
-                rows={3}
+      {isAdmin && !franchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in mensal." />
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Card>
+            <CardContent className="pt-5">
+              <Controller
+                name="goalId"
+                control={control}
+                rules={{ required: true }}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger data-testid="select-goal">
+                      <SelectValue placeholder="Selecione a meta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {goals.map((g: any) => (
+                        <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
+              {errors.goalId && <p className="text-xs text-destructive mt-1">Selecione uma meta</p>}
             </CardContent>
           </Card>
-        ))}
 
-        <Button type="submit" className="w-full" disabled={create.isPending} data-testid="button-submit">
-          {create.isPending ? "Registrando..." : "Registrar Check-in Mensal"}
-        </Button>
-      </form>
+          {questions.map((q, i) => (
+            <Card key={q.field}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">
+                  <span className="text-muted-foreground mr-2">{i + 1}.</span>{q.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder={q.placeholder}
+                  data-testid={`textarea-${q.field}`}
+                  {...register(q.field)}
+                  rows={3}
+                />
+              </CardContent>
+            </Card>
+          ))}
+
+          <Button type="submit" className="w-full" disabled={create.isPending} data-testid="button-submit">
+            {create.isPending ? "Registrando..." : "Registrar Check-in Mensal"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

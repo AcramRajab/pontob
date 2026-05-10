@@ -34,6 +34,7 @@ export default function MyTeam() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<UserForm>();
 
   const myFranchiseId = user?.franchiseId;
+  const franchiseUsers = users.filter((u: any) => u.franchiseId === myFranchiseId);
 
   const onSubmit = async (data: UserForm) => {
     try {
@@ -132,7 +133,7 @@ export default function MyTeam() {
         <div className="space-y-3">
           {[1, 2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
         </div>
-      ) : users.length === 0 ? (
+      ) : franchiseUsers.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
@@ -144,7 +145,7 @@ export default function MyTeam() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {users.map((u: any) => (
+          {franchiseUsers.map((u: any) => (
             <Card key={u.id} className={!u.active ? "opacity-60" : ""}>
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-center justify-between gap-4">

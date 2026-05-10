@@ -1,5 +1,5 @@
 import { useAuth } from "@/lib/auth";
-import { useListHelpRequests, useCreateHelpRequest, useUpdateHelpRequest, getListHelpRequestsQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
+import { useListHelpRequests, useCreateHelpRequest, getListHelpRequestsQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,27 +40,30 @@ export default function Help() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  const helpParams = { franchiseId: user?.franchiseId ?? undefined };
+  const isAdmin = user?.role === "master_admin" || user?.role === "staff_regional";
+  const franchiseId = user?.franchiseId;
+
+  const helpParams = { franchiseId: franchiseId ?? undefined };
   const { data: requests = [], isLoading } = useListHelpRequests(
     helpParams,
     { query: { enabled: !!user, queryKey: getListHelpRequestsQueryKey(helpParams) } }
   );
 
-  const goalParams = { franchiseId: user?.franchiseId ?? undefined };
+  const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
     goalParams,
-    { query: { enabled: !!user?.franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
   const create = useCreateHelpRequest();
   const { register, handleSubmit, control, reset } = useForm<NewRequestForm>();
 
   const onSubmit = async (data: NewRequestForm) => {
-    if (!user?.franchiseId) return;
+    if (!franchiseId) return;
     try {
       await create.mutateAsync({
         data: {
-          franchiseId: user.franchiseId,
+          franchiseId,
           goalId: data.goalId ? parseInt(data.goalId) : undefined,
           description: data.description,
         },
@@ -74,20 +77,26 @@ export default function Help() {
     }
   };
 
+  const canCreate = !!franchiseId && !isAdmin;
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Ajuda</h1>
-          <p className="text-muted-foreground mt-1">Solicite suporte da equipe regional</p>
+          <p className="text-muted-foreground mt-1">
+            {isAdmin ? "Solicitações de apoio das franquias" : "Solicite suporte da equipe regional"}
+          </p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)} data-testid="button-new-help-request" size="sm">
-          {showForm ? <X className="h-4 w-4 mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
-          {showForm ? "Cancelar" : "Nova solicitação"}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowForm(!showForm)} data-testid="button-new-help-request" size="sm">
+            {showForm ? <X className="h-4 w-4 mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
+            {showForm ? "Cancelar" : "Nova solicitação"}
+          </Button>
+        )}
       </div>
 
-      {showForm && (
+      {showForm && canCreate && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Nova Solicitação de Ajuda</CardTitle>

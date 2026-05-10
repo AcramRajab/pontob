@@ -1,9 +1,9 @@
-import { useAuth } from "@/lib/auth";
 import { useListProgressHistory, getListProgressHistoryQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { History, TrendingUp, TrendingDown } from "lucide-react";
+import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -11,22 +11,13 @@ function formatDate(iso: string) {
 }
 
 export default function HistoryPage() {
-  const { user } = useAuth();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
-  const histParams = { franchiseId: user?.franchiseId ?? undefined };
+  const histParams = { franchiseId: franchiseId ?? undefined };
   const { data: history = [], isLoading } = useListProgressHistory(
     histParams,
-    { query: { enabled: !!user?.franchiseId, queryKey: getListProgressHistoryQueryKey(histParams) } }
+    { query: { enabled: !!franchiseId, queryKey: getListProgressHistoryQueryKey(histParams) } }
   );
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -35,7 +26,21 @@ export default function HistoryPage() {
         <p className="text-muted-foreground mt-1">Registro completo de atualizações e mudanças de status</p>
       </div>
 
-      {history.length === 0 ? (
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
+
+      {isAdmin && !franchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia acima para visualizar o histórico." />
+      ) : isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+        </div>
+      ) : history.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <History className="h-10 w-10 text-muted-foreground/40 mb-3" />

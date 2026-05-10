@@ -1,12 +1,11 @@
 import { useRoute, useLocation } from "wouter";
 import { useListDimensions, useListKeyProcesses, useListStrategicInitiatives, useCreateGoalInitiative, getListGoalInitiativesQueryKey, useListUsers, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey, getListUsersQueryKey, GoalInitiativeInputFrequency } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -106,23 +105,30 @@ export default function NewGoalInitiative() {
         </div>
 
         <div className="flex gap-3 flex-wrap">
-          <Select value={dimensionId} onValueChange={v => { setDimensionId(v); setKeyProcessId(""); }}>
+          <Select
+            value={dimensionId || "all"}
+            onValueChange={v => { setDimensionId(v === "all" ? "" : v); setKeyProcessId(""); }}
+          >
             <SelectTrigger className="w-44" data-testid="select-dimension">
               <SelectValue placeholder="Dimensão" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {dimensions.map((d: any) => (
                 <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={keyProcessId} onValueChange={setKeyProcessId} disabled={!dimensionId}>
+          <Select
+            value={keyProcessId || "all"}
+            onValueChange={v => setKeyProcessId(v === "all" ? "" : v)}
+            disabled={!dimensionId}
+          >
             <SelectTrigger className="w-56" data-testid="select-key-process">
               <SelectValue placeholder="Processo-chave" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {keyProcesses.map((kp: any) => (
                 <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
               ))}
