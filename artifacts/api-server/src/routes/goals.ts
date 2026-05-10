@@ -317,6 +317,67 @@ router.delete("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => 
   }
 });
 
+// List all goal initiatives for a franchise
+router.get("/goal-initiatives", requireAuth, async (req, res) => {
+  try {
+    const { franchiseId, status } = req.query;
+    const role = req.session.userRole!;
+    const effectiveFranchiseId = role === "master_admin" || role === "staff_regional"
+      ? franchiseId ? parseInt(franchiseId as string) : undefined
+      : req.session.franchiseId ?? undefined;
+
+    const conditions: any[] = [];
+    if (effectiveFranchiseId) conditions.push(eq(goalsTable.franchiseId, effectiveFranchiseId));
+    if (status) conditions.push(eq(goalInitiativesTable.status, status as string));
+
+    const rows = await db
+      .select({
+        id: goalInitiativesTable.id,
+        goalId: goalInitiativesTable.goalId,
+        goalTitle: goalsTable.title,
+        franchiseId: goalsTable.franchiseId,
+        strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+        initiativeName: strategicInitiativesTable.name,
+        dimensionName: dimensionsTable.name,
+        keyProcessName: keyProcessesTable.name,
+        desiredResult: goalInitiativesTable.desiredResult,
+        actualResult: goalInitiativesTable.actualResult,
+        mainKpiId: goalInitiativesTable.mainKpiId,
+        ownerUserId: goalInitiativesTable.ownerUserId,
+        ownerName: usersTable.name,
+        startDate: goalInitiativesTable.startDate,
+        endDate: goalInitiativesTable.endDate,
+        frequency: goalInitiativesTable.frequency,
+        executionDay: goalInitiativesTable.executionDay,
+        executionTime: goalInitiativesTable.executionTime,
+        estimatedTime: goalInitiativesTable.estimatedTime,
+        whatWillBeDone: goalInitiativesTable.whatWillBeDone,
+        whyItMatters: goalInitiativesTable.whyItMatters,
+        whoIsResponsible: goalInitiativesTable.whoIsResponsible,
+        whereItWillBeDone: goalInitiativesTable.whereItWillBeDone,
+        howItWillBeDone: goalInitiativesTable.howItWillBeDone,
+        investmentOrEffort: goalInitiativesTable.investmentOrEffort,
+        progressPercentage: goalInitiativesTable.progressPercentage,
+        status: goalInitiativesTable.status,
+        notes: goalInitiativesTable.notes,
+        createdAt: goalInitiativesTable.createdAt,
+      })
+      .from(goalInitiativesTable)
+      .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+      .leftJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+      .leftJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
+      .leftJoin(keyProcessesTable, eq(strategicInitiativesTable.keyProcessId, keyProcessesTable.id))
+      .leftJoin(usersTable, eq(goalInitiativesTable.ownerUserId, usersTable.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(goalInitiativesTable.createdAt);
+
+    res.json(rows.map(i => ({ ...i, createdAt: i.createdAt instanceof Date ? i.createdAt.toISOString() : i.createdAt })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Goal Initiatives
 router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
   try {

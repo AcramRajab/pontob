@@ -509,6 +509,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/GoalInitiative"
 
+  /goal-initiatives:
+    get:
+      operationId: listAllGoalInitiatives
+      tags: [goalInitiatives]
+      summary: List all goal initiatives for a franchise
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of goal initiatives
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GoalInitiative"
+
   /goal-initiatives/{id}:
     get:
       operationId: getGoalInitiative

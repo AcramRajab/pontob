@@ -1,12 +1,17 @@
-import { useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
+import { useListAllGoalInitiatives, getListAllGoalInitiativesQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
-import { TrendingUp, Clock, CheckCircle2, PauseCircle, XCircle } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle2, PauseCircle, XCircle, Plus } from "lucide-react";
 import { useFranchiseContext, FranchisePicker, AdminEmptyState } from "@/hooks/use-franchise-context";
+import { useAuth } from "@/lib/auth";
+import { Link, useLocation } from "wouter";
 
 const statusLabel: Record<string, string> = {
   ativa: "Ativa",
@@ -30,29 +35,33 @@ const StatusIcon = ({ status }: { status: string }) => {
 };
 
 export default function Initiatives() {
-  const [filter, setFilter] = useState("ativa");
+  const [filter, setFilter] = useState("all");
+  const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const [, navigate] = useLocation();
+  const { user } = useAuth();
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const canWrite = user?.role !== "responsavel_interno";
 
-  const goalParams = { franchiseId: franchiseId ?? undefined };
-  const { data: goals = [], isLoading: goalsLoading } = useListGoals(
-    goalParams,
-    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+  const initParams = { franchiseId: franchiseId ?? undefined };
+  const { data: initiatives = [], isLoading } = useListAllGoalInitiatives(
+    initParams,
+    { query: { enabled: !!franchiseId, queryKey: getListAllGoalInitiativesQueryKey(initParams) } }
   );
 
-  const isLoading = goalsLoading && !!franchiseId;
+  const goalParams = { franchiseId: franchiseId ?? undefined };
+  const { data: goals = [] } = useListGoals(
+    goalParams,
+    { query: { enabled: goalPickerOpen && !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+  );
 
-  const allInitiatives: any[] = [];
-  goals.forEach((g: any) => {
-    if (g.initiatives) {
-      g.initiatives.forEach((i: any) => {
-        allInitiatives.push({ ...i, goalTitle: g.title });
-      });
-    }
-  });
+  const filtered = filter === "all" ? initiatives : initiatives.filter((i: any) => i.status === filter);
 
-  const filtered = filter === "all" ? allInitiatives : allInitiatives.filter(i => i.status === filter);
+  const handleGoalSelect = (goalId: number) => {
+    setGoalPickerOpen(false);
+    navigate(`/goals/${goalId}/initiatives/new`);
+  };
 
-  if (isLoading) {
+  if (isLoading && !!franchiseId) {
     return (
       <div className="space-y-6">
         <div>
@@ -66,9 +75,17 @@ export default function Initiatives() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Iniciativas</h1>
-        <p className="text-muted-foreground mt-1">Escolha poucas. Execute bem. Conclua antes de começar mais.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Iniciativas</h1>
+          <p className="text-muted-foreground mt-1">Escolha poucas. Execute bem. Conclua antes de começar mais.</p>
+        </div>
+        {canWrite && !!franchiseId && (
+          <Button onClick={() => setGoalPickerOpen(true)} size="sm" className="shrink-0">
+            <Plus className="h-4 w-4 mr-1.5" />
+            Nova Iniciativa
+          </Button>
+        )}
       </div>
 
       {isAdmin && (
@@ -97,13 +114,28 @@ export default function Initiatives() {
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <TrendingUp className="h-10 w-10 text-muted-foreground/40 mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">Nenhuma iniciativa encontrada</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Acesse uma meta e adicione iniciativas estratégicas</p>
+                {canWrite ? (
+                  <>
+                    <p className="text-xs text-muted-foreground/70 mt-1 mb-4">Adicione iniciativas estratégicas às suas metas</p>
+                    <Button variant="outline" size="sm" onClick={() => setGoalPickerOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      Adicionar Iniciativa
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground/70 mt-1">Nenhuma iniciativa registrada ainda.</p>
+                )}
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
               {filtered.map((initiative: any) => (
-                <Card key={initiative.id} data-testid={`card-initiative-${initiative.id}`} className="hover:shadow-sm transition-shadow">
+                <Card
+                  key={initiative.id}
+                  data-testid={`card-initiative-${initiative.id}`}
+                  className="hover:shadow-sm transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/goals/${initiative.goalId}`)}
+                >
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-3 min-w-0">
@@ -111,7 +143,7 @@ export default function Initiatives() {
                         <div className="min-w-0">
                           <p className="font-semibold text-sm leading-tight truncate">{initiative.initiativeName || "—"}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {initiative.goalTitle && <span className="mr-2">{initiative.goalTitle}</span>}
+                            {initiative.goalTitle && <span className="mr-2 font-medium">{initiative.goalTitle}</span>}
                             {initiative.dimensionName && (
                               <span className="text-muted-foreground/70">{initiative.dimensionName}</span>
                             )}
@@ -146,6 +178,41 @@ export default function Initiatives() {
           )}
         </>
       )}
+
+      <Dialog open={goalPickerOpen} onOpenChange={setGoalPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escolha uma Meta</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-2">Selecione a meta onde deseja adicionar a iniciativa.</p>
+          <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
+            {goals.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">Nenhuma meta encontrada.</p>
+                <Button variant="outline" size="sm" className="mt-3" asChild>
+                  <Link href="/goals/new">Criar uma Meta primeiro</Link>
+                </Button>
+              </div>
+            ) : (
+              goals.map((goal: any) => (
+                <button
+                  key={goal.id}
+                  className="w-full text-left rounded-lg border px-4 py-3 hover:border-primary/40 hover:bg-primary/[0.02] transition-all"
+                  onClick={() => handleGoalSelect(goal.id)}
+                >
+                  <p className="font-medium text-sm">{goal.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {goal.dimensionName} — {goal.keyProcessName}
+                    <span className="ml-2 text-muted-foreground/60">
+                      {goal.activeInitiativesCount}/3 ativas
+                    </span>
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -50,6 +50,7 @@ import type {
   KpiInput,
   KpiUpdate,
   ListAlertsParams,
+  ListAllGoalInitiativesParams,
   ListDailyCheckinsParams,
   ListFranchiseKrisParams,
   ListGoalsParams,
@@ -2202,6 +2203,106 @@ export const useCreateGoalInitiative = <
 > => {
   return useMutation(getCreateGoalInitiativeMutationOptions(options));
 };
+
+/**
+ * @summary List all goal initiatives for a franchise
+ */
+export const getListAllGoalInitiativesUrl = (
+  params?: ListAllGoalInitiativesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/goal-initiatives?${stringifiedParams}`
+    : `/api/goal-initiatives`;
+};
+
+export const listAllGoalInitiatives = async (
+  params?: ListAllGoalInitiativesParams,
+  options?: RequestInit,
+): Promise<GoalInitiative[]> => {
+  return customFetch<GoalInitiative[]>(getListAllGoalInitiativesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllGoalInitiativesQueryKey = (
+  params?: ListAllGoalInitiativesParams,
+) => {
+  return [`/api/goal-initiatives`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAllGoalInitiativesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllGoalInitiatives>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllGoalInitiativesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllGoalInitiatives>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAllGoalInitiativesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAllGoalInitiatives>>
+  > = ({ signal }) =>
+    listAllGoalInitiatives(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllGoalInitiatives>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllGoalInitiativesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllGoalInitiatives>>
+>;
+export type ListAllGoalInitiativesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all goal initiatives for a franchise
+ */
+
+export function useListAllGoalInitiatives<
+  TData = Awaited<ReturnType<typeof listAllGoalInitiatives>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllGoalInitiativesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllGoalInitiatives>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllGoalInitiativesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get a goal initiative

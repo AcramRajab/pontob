@@ -954,6 +954,11 @@ export type ListGoalsParams = {
   status?: string;
 };
 
+export type ListAllGoalInitiativesParams = {
+  franchiseId?: number;
+  status?: string;
+};
+
 export type ListDailyCheckinsParams = {
   goalId?: number;
   franchiseId?: number;

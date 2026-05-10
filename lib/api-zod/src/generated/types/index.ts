@@ -61,6 +61,7 @@ export * from "./kpiInputFrequency";
 export * from "./kpiInputIndicatorType";
 export * from "./kpiUpdate";
 export * from "./listAlertsParams";
+export * from "./listAllGoalInitiativesParams";
 export * from "./listDailyCheckinsParams";
 export * from "./listFranchiseKrisParams";
 export * from "./listGoalsParams";

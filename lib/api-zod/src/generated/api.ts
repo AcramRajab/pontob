@@ -672,6 +672,47 @@ export const CreateGoalInitiativeBody = zod.object({
 });
 
 /**
+ * @summary List all goal initiatives for a franchise
+ */
+export const ListAllGoalInitiativesQueryParams = zod.object({
+  franchiseId: zod.coerce.number().optional(),
+  status: zod.coerce.string().optional(),
+});
+
+export const ListAllGoalInitiativesResponseItem = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  strategicInitiativeId: zod.number(),
+  initiativeName: zod.string().nullish(),
+  dimensionName: zod.string().nullish(),
+  keyProcessName: zod.string().nullish(),
+  desiredResult: zod.string().nullish(),
+  actualResult: zod.string().nullish(),
+  mainKpiId: zod.number().nullish(),
+  ownerUserId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  frequency: zod.string().nullish(),
+  executionDay: zod.string().nullish(),
+  executionTime: zod.string().nullish(),
+  estimatedTime: zod.string().nullish(),
+  whatWillBeDone: zod.string().nullish(),
+  whyItMatters: zod.string().nullish(),
+  whoIsResponsible: zod.string().nullish(),
+  whereItWillBeDone: zod.string().nullish(),
+  howItWillBeDone: zod.string().nullish(),
+  investmentOrEffort: zod.string().nullish(),
+  progressPercentage: zod.number(),
+  status: zod.enum(["ativa", "concluida", "pausada", "cancelada"]),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const ListAllGoalInitiativesResponse = zod.array(
+  ListAllGoalInitiativesResponseItem,
+);
+
+/**
  * @summary Get a goal initiative
  */
 export const GetGoalInitiativeParams = zod.object({
