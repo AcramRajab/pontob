@@ -22,8 +22,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-border/10 p-4">
-        <div className="flex items-center justify-between">
-          <div className="font-bold text-xl tracking-tight text-sidebar-primary">Ponto B</div>
+        <div className="flex flex-col gap-1.5">
+          <img
+            src="/remax-sc-logo.png"
+            alt="RE/MAX Santa Catarina"
+            className="h-7 w-auto object-contain"
+          />
+          <span className="text-xs font-semibold tracking-widest text-sidebar-primary/60 uppercase">Método Ponto B</span>
         </div>
       </SidebarHeader>
       <SidebarContent>

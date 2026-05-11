@@ -51,9 +51,16 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-primary">Ponto B</h1>
-          <p className="text-muted-foreground text-lg">Seu Ponto B só existe quando vira agenda.</p>
+        <div className="text-center space-y-4">
+          <img
+            src="/remax-sc-logo.png"
+            alt="RE/MAX Santa Catarina"
+            className="mx-auto h-14 w-auto"
+          />
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Método Ponto B</h1>
+            <p className="text-muted-foreground">Seu Ponto B só existe quando vira agenda.</p>
+          </div>
         </div>
 
         <Card className="border-border shadow-sm">
