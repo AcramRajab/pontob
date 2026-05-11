@@ -192,6 +192,66 @@ export async function sendAuditNotification(opts: {
   });
 }
 
+export async function sendUserInvitation(opts: {
+  toEmail: string;
+  toName: string;
+  password: string;
+  role: string;
+  franchiseName?: string | null;
+  appUrl?: string;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const roleLabel: Record<string, string> = {
+    franqueado: "Franqueado",
+    responsavel_interno: "Responsável Interno",
+    staff_regional: "Equipe Regional",
+  };
+
+  const url = opts.appUrl || `https://${process.env.REPLIT_DEV_DOMAIN || "app"}/login`;
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `🎉 Bem-vindo ao Método Ponto B — RE/MAX SC`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#1e40af;padding:32px 24px;border-radius:8px 8px 0 0;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:22px;">Método Ponto B</h1>
+          <p style="color:#bfdbfe;margin:6px 0 0;font-size:14px;">RE/MAX Santa Catarina</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
+          <h2 style="font-size:18px;margin-top:0;">Olá, ${opts.toName}! 👋</h2>
+          <p style="color:#374151;line-height:1.6;">
+            Sua conta no <strong>Método Ponto B</strong> foi criada.
+            ${opts.franchiseName ? `Você está vinculado(a) à <strong>${opts.franchiseName}</strong>.` : ""}
+            Use as credenciais abaixo para fazer seu primeiro acesso:
+          </p>
+
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:20px;margin:20px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:#0369a1;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Suas credenciais</p>
+            <p style="margin:0 0 6px;font-size:15px;"><strong>E-mail:</strong> ${opts.toEmail}</p>
+            <p style="margin:0 0 6px;font-size:15px;"><strong>Senha:</strong> <code style="background:#e0f2fe;padding:2px 8px;border-radius:4px;">${opts.password}</code></p>
+            <p style="margin:8px 0 0;font-size:12px;color:#0369a1;">Perfil: ${roleLabel[opts.role] || opts.role}</p>
+          </div>
+
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${url}" style="background:#1e40af;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;">
+              Acessar o Método Ponto B →
+            </a>
+          </div>
+
+          <p style="font-size:13px;color:#6b7280;line-height:1.6;">
+            Recomendamos que você altere sua senha após o primeiro acesso em <strong>Configurações → Alterar senha</strong>.
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendCheckinReminder(opts: {
   toEmail: string;
   toName: string;

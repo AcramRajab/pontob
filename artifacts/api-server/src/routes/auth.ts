@@ -46,6 +46,11 @@ router.post("/auth/login", async (req, res) => {
     req.session.userEmail = user.email;
     req.session.franchiseId = user.franchiseId;
 
+    db.update(usersTable)
+      .set({ lastLoginAt: new Date() })
+      .where(eq(usersTable.id, user.id))
+      .catch(err => req.log.error({ err }, "Failed to update lastLoginAt"));
+
     let franchiseName: string | null = null;
     if (user.franchiseId) {
       const franchise = await db

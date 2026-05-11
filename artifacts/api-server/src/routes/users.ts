@@ -4,6 +4,7 @@ import { db, usersTable, franchisesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, requireRole, requireWriteAccess } from "../middlewares/auth";
 import { logAudit, shouldAudit } from "../services/audit";
+import { sendUserInvitation } from "../services/email";
 
 const router = Router();
 
@@ -11,7 +12,10 @@ function formatUser(u: typeof usersTable.$inferSelect, franchiseName?: string | 
   return {
     id: u.id, name: u.name, email: u.email, role: u.role,
     franchiseId: u.franchiseId, franchiseName: franchiseName ?? null,
-    active: u.active, createdAt: u.createdAt.toISOString(),
+    active: u.active,
+    invitedAt: u.invitedAt?.toISOString() ?? null,
+    lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+    createdAt: u.createdAt.toISOString(),
   };
 }
 
@@ -29,6 +33,7 @@ router.get("/users", requireAuth, async (req, res) => {
           id: usersTable.id, name: usersTable.name, email: usersTable.email,
           role: usersTable.role, franchiseId: usersTable.franchiseId,
           active: usersTable.active, createdAt: usersTable.createdAt,
+          invitedAt: usersTable.invitedAt, lastLoginAt: usersTable.lastLoginAt,
           franchiseName: franchisesTable.name,
         })
         .from(usersTable)
@@ -37,7 +42,10 @@ router.get("/users", requireAuth, async (req, res) => {
       res.json(rows.map(u => ({
         id: u.id, name: u.name, email: u.email, role: u.role,
         franchiseId: u.franchiseId, franchiseName: u.franchiseName ?? null,
-        active: u.active, createdAt: u.createdAt.toISOString(),
+        active: u.active,
+        invitedAt: u.invitedAt?.toISOString() ?? null,
+        lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+        createdAt: u.createdAt.toISOString(),
       })));
       return;
     }
@@ -47,31 +55,27 @@ router.get("/users", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Forbidden" }); return;
     }
 
+    const selectFields = {
+      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      role: usersTable.role, franchiseId: usersTable.franchiseId,
+      active: usersTable.active, createdAt: usersTable.createdAt,
+      invitedAt: usersTable.invitedAt, lastLoginAt: usersTable.lastLoginAt,
+      franchiseName: franchisesTable.name,
+    };
     const rows = franchiseId
-      ? await db
-          .select({
-            id: usersTable.id, name: usersTable.name, email: usersTable.email,
-            role: usersTable.role, franchiseId: usersTable.franchiseId,
-            active: usersTable.active, createdAt: usersTable.createdAt,
-            franchiseName: franchisesTable.name,
-          })
-          .from(usersTable)
+      ? await db.select(selectFields).from(usersTable)
           .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id))
           .where(eq(usersTable.franchiseId, franchiseId))
-      : await db
-          .select({
-            id: usersTable.id, name: usersTable.name, email: usersTable.email,
-            role: usersTable.role, franchiseId: usersTable.franchiseId,
-            active: usersTable.active, createdAt: usersTable.createdAt,
-            franchiseName: franchisesTable.name,
-          })
-          .from(usersTable)
+      : await db.select(selectFields).from(usersTable)
           .leftJoin(franchisesTable, eq(usersTable.franchiseId, franchisesTable.id));
 
     res.json(rows.map(u => ({
       id: u.id, name: u.name, email: u.email, role: u.role,
       franchiseId: u.franchiseId, franchiseName: u.franchiseName ?? null,
-      active: u.active, createdAt: u.createdAt.toISOString(),
+      active: u.active,
+      invitedAt: u.invitedAt?.toISOString() ?? null,
+      lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+      createdAt: u.createdAt.toISOString(),
     })));
   } catch (err) {
     req.log.error(err);
@@ -102,9 +106,11 @@ router.post("/users", requireAuth, requireWriteAccess, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const inviteableRoles = ["franqueado", "responsavel_interno", "staff_regional"];
+    const invitedAt = inviteableRoles.includes(userRole) ? new Date() : null;
     const [u] = await db
       .insert(usersTable)
-      .values({ name, email: email.toLowerCase(), passwordHash, role: userRole, franchiseId: franchiseId ?? null })
+      .values({ name, email: email.toLowerCase(), passwordHash, role: userRole, franchiseId: franchiseId ?? null, invitedAt })
       .returning();
 
     let franchiseName: string | null = null;
@@ -120,6 +126,12 @@ router.post("/users", requireAuth, requireWriteAccess, async (req, res) => {
         newData: { name: u.name, email: u.email, role: u.role, franchiseId: u.franchiseId, franchiseName },
       });
     }
+
+    if (invitedAt) {
+      sendUserInvitation({ toEmail: u.email, toName: u.name, password, role: u.role, franchiseName })
+        .catch(err => req.log.error({ err }, "Failed to send invitation email"));
+    }
+
     res.status(201).json(formatUser(u, franchiseName));
   } catch (err) {
     req.log.error(err);
@@ -239,6 +251,46 @@ router.delete("/users/:id", requireAuth, requireRole("master_admin", "staff_regi
       });
     }
     res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/users/:id/resend-invite", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [user] = await db
+      .select({
+        id: usersTable.id, name: usersTable.name, email: usersTable.email,
+        role: usersTable.role, franchiseId: usersTable.franchiseId,
+        active: usersTable.active, lastLoginAt: usersTable.lastLoginAt,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+
+    if (!user) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
+
+    const inviteableRoles = ["franqueado", "responsavel_interno", "staff_regional"];
+    if (!inviteableRoles.includes(user.role)) {
+      res.status(400).json({ error: "Convites só podem ser reenviados para franqueados e responsáveis." }); return;
+    }
+
+    let franchiseName: string | null = null;
+    if (user.franchiseId) {
+      const fRows = await db.select({ name: franchisesTable.name }).from(franchisesTable).where(eq(franchisesTable.id, user.franchiseId)).limit(1);
+      franchiseName = fRows[0]?.name ?? null;
+    }
+
+    const newPassword = Math.random().toString(36).slice(-8) + "X1";
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const now = new Date();
+    await db.update(usersTable).set({ passwordHash, invitedAt: now }).where(eq(usersTable.id, id));
+
+    await sendUserInvitation({ toEmail: user.email, toName: user.name, password: newPassword, role: user.role, franchiseName });
+
+    res.json({ ok: true, message: "Convite reenviado com nova senha temporária." });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

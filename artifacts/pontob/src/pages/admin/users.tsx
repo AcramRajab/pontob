@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send } from "lucide-react";
 import { useState } from "react";
 
 const roleLabel: Record<string, string> = {
@@ -28,12 +28,32 @@ const roleBadgeColor: Record<string, string> = {
   responsavel_interno: "bg-slate-100 text-slate-600 border-slate-200",
 };
 
+const INVITATION_ROLES = ["franqueado", "responsavel_interno", "staff_regional"];
+
 interface UserForm {
   name: string;
   email: string;
   password: string;
   role: string;
   franchiseId: string;
+}
+
+function InviteStatusBadge({ user }: { user: any }) {
+  if (!INVITATION_ROLES.includes(user.role)) return null;
+  if (user.lastLoginAt) {
+    return (
+      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 gap-1">
+        <MailCheck className="h-3 w-3" />
+        Ativo
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 gap-1">
+      <Clock className="h-3 w-3" />
+      Aguardando
+    </Badge>
+  );
 }
 
 export default function AdminUsers() {
@@ -43,6 +63,7 @@ export default function AdminUsers() {
   const [editId, setEditId] = useState<number | null>(null);
   const [showPass, setShowPass] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [resendTarget, setResendTarget] = useState<{ id: number; name: string; email: string } | null>(null);
 
   const { data: users = [], isLoading } = useListUsers({}, { query: { enabled: true, queryKey: getListUsersQueryKey({}) } });
   const { data: franchises = [] } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
@@ -65,6 +86,26 @@ export default function AdminUsers() {
     onError: (err: Error) => {
       toast({ title: err.message, variant: "destructive" });
       setDeleteTarget(null);
+    },
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/users/${id}/resend-invite`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Erro ao reenviar convite");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+      toast({ title: "Convite reenviado", description: "Uma nova senha temporária foi enviada por e-mail." });
+      setResendTarget(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, variant: "destructive" });
+      setResendTarget(null);
     },
   });
 
@@ -102,7 +143,12 @@ export default function AdminUsers() {
             password: data.password,
           },
         });
-        toast({ title: "Usuário criado com sucesso" });
+        toast({
+          title: "Usuário criado com sucesso",
+          description: INVITATION_ROLES.includes(data.role)
+            ? "Um e-mail de boas-vindas com as credenciais foi enviado."
+            : undefined,
+        });
       }
       qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
       closeDialog();
@@ -142,7 +188,6 @@ export default function AdminUsers() {
               <DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
-              {/* Nome */}
               <div className="space-y-1.5">
                 <Label>Nome completo *</Label>
                 <Input
@@ -153,7 +198,6 @@ export default function AdminUsers() {
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
               </div>
 
-              {/* Email */}
               <div className="space-y-1.5">
                 <Label>E-mail *</Label>
                 <Input
@@ -165,7 +209,6 @@ export default function AdminUsers() {
                 {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
 
-              {/* Senha */}
               <div className="space-y-1.5">
                 <Label>{editId ? "Nova Senha" : "Senha *"}</Label>
                 <div className="relative">
@@ -189,12 +232,11 @@ export default function AdminUsers() {
                   </button>
                 </div>
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                {editId && (
+                {editId ? (
                   <p className="text-xs text-muted-foreground">Preencha somente se quiser redefinir a senha deste usuário.</p>
-                )}
+                ) : null}
               </div>
 
-              {/* Perfil */}
               <div className="space-y-1.5">
                 <Label>Perfil *</Label>
                 <Controller
@@ -217,7 +259,6 @@ export default function AdminUsers() {
                 {errors.role && <p className="text-xs text-destructive">Campo obrigatório</p>}
               </div>
 
-              {/* Franquia */}
               <div className="space-y-1.5">
                 <Label>Franquia</Label>
                 <Controller
@@ -280,11 +321,25 @@ export default function AdminUsers() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <Badge className={`text-xs border ${roleBadgeColor[u.role] || ""}`} variant="outline">
                       {roleLabel[u.role] || u.role}
                     </Badge>
+                    <InviteStatusBadge user={u} />
                     {!u.active && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
+                    {INVITATION_ROLES.includes(u.role) && !u.lastLoginAt && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                        onClick={() => setResendTarget({ id: u.id, name: u.name, email: u.email })}
+                        data-testid={`button-resend-${u.id}`}
+                        title="Reenviar convite"
+                      >
+                        <Send className="h-3.5 w-3.5 mr-1" />
+                        Reenviar convite
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(u)} data-testid={`button-edit-${u.id}`}>
                       <Pencil className="h-3.5 w-3.5 mr-1" />
                       Editar
@@ -322,6 +377,29 @@ export default function AdminUsers() {
               disabled={deleteUser.isPending}
             >
               {deleteUser.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!resendTarget} onOpenChange={v => { if (!v) setResendTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reenviar convite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai gerar uma <strong>nova senha temporária</strong> e enviá-la por e-mail para{" "}
+              <strong>{resendTarget?.name}</strong> ({resendTarget?.email}).
+              A senha atual deste usuário será substituída.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => resendTarget && resendInvite.mutate(resendTarget.id)}
+              disabled={resendInvite.isPending}
+            >
+              {resendInvite.isPending ? "Enviando..." : "Reenviar convite"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
