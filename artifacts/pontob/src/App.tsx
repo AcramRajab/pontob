@@ -32,6 +32,7 @@ import Recrutamento from "@/pages/recrutamento/index";
 import VagaNew from "@/pages/recrutamento/vagas-new";
 import VagaDetail from "@/pages/recrutamento/vaga-detail";
 import Secretaria from "@/pages/recrutamento/secretaria";
+import Planner from "@/pages/planner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ function Router() {
         <Route path="/recrutamento/vagas/new" component={VagaNew} />
         <Route path="/recrutamento/vagas/:id" component={VagaDetail} />
         <Route path="/recrutamento" component={Recrutamento} />
+        <Route path="/planner" component={Planner} />
         <Route path="/" component={() => {
           window.location.replace("/today");
           return null;

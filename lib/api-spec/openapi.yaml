@@ -28,6 +28,7 @@ tags:
   - name: vagas
   - name: candidatos
   - name: recruitingAI
+  - name: planner
     description: AI-powered recruiting assistant for candidate planning and search
 paths:
   /healthz:
@@ -2397,6 +2398,80 @@ components:
         stage:
           type: string
         recommendation:
+          type: ["string", "null"]
+
+    PlannerIndicator:
+      type: object
+      required: [key, label, category]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        category:
+          type: string
+
+    PlannerEntry:
+      type: object
+      required: [id, franchiseId, userId, weekStartDate, indicatorKey, dayOfWeek, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        userId:
+          type: integer
+        weekStartDate:
+          type: string
+        indicatorKey:
+          type: string
+        dayOfWeek:
+          type: integer
+        value:
+          type: ["number", "null"]
+        meta:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    PlannerWeek:
+      type: object
+      required: [franchiseId, weekStartDate, indicators, entries]
+      properties:
+        franchiseId:
+          type: integer
+        weekStartDate:
+          type: string
+        indicators:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlannerIndicator"
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlannerEntry"
+
+    PlannerEntryInput:
+      type: object
+      required: [franchiseId, weekStartDate, indicatorKey, dayOfWeek]
+      properties:
+        franchiseId:
+          type: integer
+        weekStartDate:
+          type: string
+        indicatorKey:
+          type: string
+        dayOfWeek:
+          type: integer
+        value:
+          type: ["number", "null"]
+        meta:
+          type: ["number", "null"]
+        notes:
           type: ["string", "null"]
 
     ProgressHistoryItem:

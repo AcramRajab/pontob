@@ -13,6 +13,7 @@ import krisRouter from "./kris";
 import recruitingRouter from "./recruiting";
 import recruitingAiRouter from "./recruiting-ai";
 import notificationsRouter from "./notifications";
+import plannerRouter from "./planner";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(krisRouter);
 router.use(recruitingRouter);
 router.use(recruitingAiRouter);
 router.use(notificationsRouter);
+router.use(plannerRouter);
 
 export default router;
