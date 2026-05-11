@@ -381,6 +381,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GoalDetail"
+    delete:
+      operationId: deleteGoal
+      tags: [goals]
+      summary: Delete a goal and its KPIs/initiatives
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
     patch:
       operationId: updateGoal
       tags: [goals]

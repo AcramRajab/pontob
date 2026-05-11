@@ -324,6 +324,23 @@ router.patch("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   }
 });
 
+router.delete("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const [existingGoal] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
+    if (!existingGoal) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existingGoal.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    // Delete child records first (no CASCADE in schema)
+    await db.delete(kpisTable).where(eq(kpisTable.goalId, id));
+    await db.delete(goalInitiativesTable).where(eq(goalInitiativesTable.goalId, id));
+    await db.delete(goalsTable).where(eq(goalsTable.id, id));
+    res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

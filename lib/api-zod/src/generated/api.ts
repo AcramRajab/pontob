@@ -456,6 +456,13 @@ export const GetGoalResponse = zod.object({
 });
 
 /**
+ * @summary Delete a goal and its KPIs/initiatives
+ */
+export const DeleteGoalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Update a goal
  */
 export const UpdateGoalParams = zod.object({
