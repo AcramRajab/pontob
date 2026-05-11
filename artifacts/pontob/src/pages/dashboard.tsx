@@ -336,11 +336,15 @@ export default function Dashboard() {
               <CardContent className="h-[300px]">
                 {data?.progressByDimension?.length ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.progressByDimension} layout="vertical" margin={{ left: 40 }}>
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="dimensionName" type="category" axisLine={false} tickLine={false} />
-                      <Tooltip />
-                      <Bar dataKey="progressPercentage" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                    <BarChart data={data.progressByDimension} layout="vertical" margin={{ left: 40, right: 40 }}>
+                      <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="dimensionName" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
+                      <Tooltip formatter={(v: number) => [`${v}%`, "Progresso"]} />
+                      <Bar dataKey="progressPercentage" radius={[0, 4, 4, 0]} minPointSize={4}>
+                        {data.progressByDimension.map((d: any, i: number) => (
+                          <Cell key={i} fill={getProgressColor(d.progressPercentage)} />
+                        ))}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (

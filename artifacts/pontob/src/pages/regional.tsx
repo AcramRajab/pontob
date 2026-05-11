@@ -14,6 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
 
+function getProgressColor(pct: number) {
+  if (pct >= 80) return "#22c55e";
+  if (pct >= 50) return "#f59e0b";
+  return "#ef4444";
+}
+
 function formatVgh(v: number | null | undefined) {
   if (v == null) return "—";
   return new Intl.NumberFormat("pt-BR", {
@@ -360,6 +366,105 @@ export default function Regional() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Per-Franchise Progress Breakdown ── */}
+      {(dash as any)?.franchiseProgress?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Progresso das Metas por Franquia
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Progresso calculado a partir de KPIs e iniciativas registradas. Total = média regional.
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left py-2 px-4 font-medium text-muted-foreground text-xs">FRANQUIA</th>
+                    {((dash as any).franchiseProgress[0]?.progressByDimension ?? []).map((d: any) => (
+                      <th key={d.dimensionId} className="text-center py-2 px-3 font-medium text-muted-foreground text-xs whitespace-nowrap">
+                        {d.dimensionName}
+                      </th>
+                    ))}
+                    <th className="text-center py-2 px-3 font-medium text-muted-foreground text-xs">MÉDIA</th>
+                    <th className="text-center py-2 px-3 font-medium text-muted-foreground text-xs">METAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {((dash as any).franchiseProgress as any[]).map((f: any) => (
+                    <tr key={f.franchiseId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="py-2.5 px-4">
+                        <span className="font-medium text-sm">{f.franchiseName}</span>
+                      </td>
+                      {f.progressByDimension.map((d: any) => (
+                        <td key={d.dimensionId} className="py-2.5 px-3 text-center">
+                          {d.progressPercentage == null ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-xs font-semibold" style={{ color: getProgressColor(d.progressPercentage) }}>
+                                {d.progressPercentage}%
+                              </span>
+                              <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${Math.max(d.progressPercentage, 4)}%`, backgroundColor: getProgressColor(d.progressPercentage) }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      ))}
+                      <td className="py-2.5 px-3 text-center">
+                        {f.avgProgress == null ? (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        ) : (
+                          <Badge variant="outline" className={`text-xs ${f.avgProgress >= 80 ? "bg-green-50 text-green-700 border-green-200" : f.avgProgress >= 50 ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                            {f.avgProgress}%
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-xs text-muted-foreground">
+                        {f.goalsCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-primary/5 border-t-2 border-primary/20">
+                    <td className="py-2.5 px-4 font-bold text-sm text-primary">TOTAL REGIONAL</td>
+                    {((dash as any)?.progressByDimension ?? []).map((d: any) => (
+                      <td key={d.dimensionId} className="py-2.5 px-3 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-xs font-bold text-primary">{d.progressPercentage}%</span>
+                          <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${Math.max(d.progressPercentage, 4)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    ))}
+                    <td className="py-2.5 px-3 text-center">
+                      <Badge className="text-xs bg-primary/10 text-primary border-primary/20" variant="outline">
+                        {(dash as any)?.avgScore ?? 0}%
+                      </Badge>
+                    </td>
+                    <td className="py-2.5 px-3 text-center text-xs font-bold text-primary">
+                      {((dash as any).franchiseProgress as any[]).reduce((s: number, f: any) => s + f.goalsCount, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Execution + Blockers ── */}
       <div className="grid gap-6 md:grid-cols-2">

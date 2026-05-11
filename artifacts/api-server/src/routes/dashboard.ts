@@ -1,9 +1,28 @@
 import { Router } from "express";
 import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable } from "@workspace/db";
-import { eq, and, sql, desc, gte, lte, ne } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lte, ne, inArray } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
 const router = Router();
+
+// Compute effective goal progress from KPIs → initiatives → stored value (in that priority order)
+function effectiveGoalProgress(
+  goal: { id: number; progressPercentage: number },
+  allKpis: { goalId: number; currentValue: number | null; targetValue: number | null }[],
+  allInits: { goalId: number; progressPercentage: number | null }[],
+): number {
+  const kpis = allKpis.filter(k => k.goalId === goal.id && k.targetValue != null && k.targetValue > 0);
+  if (kpis.length > 0) {
+    const avg = kpis.reduce((s, k) => s + Math.min(((k.currentValue ?? 0) / k.targetValue!) * 100, 100), 0) / kpis.length;
+    return Math.round(avg);
+  }
+  const inits = allInits.filter(i => i.goalId === goal.id);
+  if (inits.length > 0) {
+    const avg = inits.reduce((s, i) => s + (i.progressPercentage ?? 0), 0) / inits.length;
+    return Math.round(avg);
+  }
+  return goal.progressPercentage ?? 0;
+}
 
 function calcRisk(goal: any) {
   if (!goal.startDate || !goal.endDate) return "no_prazo";
@@ -159,10 +178,15 @@ router.get("/dashboard/franchise", requireAuth, async (req, res) => {
       .orderBy(desc(dailyCheckinsTable.createdAt)).limit(5);
 
     const dimensions = await db.select().from(dimensionsTable);
+    const goalIds = goals.map(g => g.id);
+    const [franchiseKpis, franchiseInits] = await Promise.all([
+      goalIds.length > 0 ? db.select({ goalId: kpisTable.goalId, currentValue: kpisTable.currentValue, targetValue: kpisTable.targetValue }).from(kpisTable).where(inArray(kpisTable.goalId, goalIds)) : Promise.resolve([]),
+      goalIds.length > 0 ? db.select({ goalId: goalInitiativesTable.goalId, progressPercentage: goalInitiativesTable.progressPercentage }).from(goalInitiativesTable).where(inArray(goalInitiativesTable.goalId, goalIds)) : Promise.resolve([]),
+    ]);
     const progressByDimension = dimensions.map(d => {
       const dimGoals = goals.filter(g => g.dimensionId === d.id);
       const avgProg = dimGoals.length > 0
-        ? Math.round(dimGoals.reduce((s, g) => s + g.progressPercentage, 0) / dimGoals.length)
+        ? Math.round(dimGoals.reduce((s, g) => s + effectiveGoalProgress(g, franchiseKpis, franchiseInits), 0) / dimGoals.length)
         : 0;
       return { dimensionId: d.id, dimensionName: d.name, progressPercentage: avgProg, goalsCount: dimGoals.length };
     });
@@ -245,17 +269,18 @@ router.get("/dashboard/goal-progress", requireAuth, async (req, res) => {
       return true;
     });
 
-    // Fetch KPIs for each goal
+    // Fetch KPIs and initiatives for each goal
     const goalIds = filtered.map(g => g.id);
-    const kpis = goalIds.length > 0
-      ? await db.select().from(kpisTable).where(
-          sql`${kpisTable.goalId} = ANY(${sql.raw(`ARRAY[${goalIds.join(",")}]::int[]`)})`)
-      : [];
+    const [kpis, inits] = await Promise.all([
+      goalIds.length > 0 ? db.select({ goalId: kpisTable.goalId, currentValue: kpisTable.currentValue, targetValue: kpisTable.targetValue, id: kpisTable.id, name: kpisTable.name, unit: kpisTable.unit }).from(kpisTable).where(inArray(kpisTable.goalId, goalIds)) : Promise.resolve([] as { goalId: number; currentValue: number | null; targetValue: number | null; id: number; name: string; unit: string | null }[]),
+      goalIds.length > 0 ? db.select({ goalId: goalInitiativesTable.goalId, progressPercentage: goalInitiativesTable.progressPercentage }).from(goalInitiativesTable).where(inArray(goalInitiativesTable.goalId, goalIds)) : Promise.resolve([] as { goalId: number; progressPercentage: number | null }[]),
+    ]);
 
     const result = filtered.map(g => {
       const goalKpis = kpis.filter(k => k.goalId === g.id);
       return {
         ...g,
+        progressPercentage: effectiveGoalProgress(g, goalKpis, inits),
         startDate: g.startDate ?? null,
         endDate: g.endDate ?? null,
         kpis: goalKpis.map(k => ({
@@ -417,12 +442,34 @@ router.get("/dashboard/regional", requireAuth, async (req, res) => {
     const topBlockers = [...new Set(blockers)].slice(0, 5);
 
     const dimensions = await db.select().from(dimensionsTable);
+    const allGoalIds = goals.map(g => g.id);
+    const [allKpis, allInits] = await Promise.all([
+      allGoalIds.length > 0 ? db.select({ goalId: kpisTable.goalId, currentValue: kpisTable.currentValue, targetValue: kpisTable.targetValue }).from(kpisTable).where(inArray(kpisTable.goalId, allGoalIds)) : Promise.resolve([]),
+      allGoalIds.length > 0 ? db.select({ goalId: goalInitiativesTable.goalId, progressPercentage: goalInitiativesTable.progressPercentage }).from(goalInitiativesTable).where(inArray(goalInitiativesTable.goalId, allGoalIds)) : Promise.resolve([]),
+    ]);
+
     const progressByDimension = dimensions.map(d => {
       const dimGoals = goals.filter(g => g.dimensionId === d.id);
       const avgProg = dimGoals.length > 0
-        ? Math.round(dimGoals.reduce((s, g) => s + g.progressPercentage, 0) / dimGoals.length)
+        ? Math.round(dimGoals.reduce((s, g) => s + effectiveGoalProgress(g, allKpis, allInits), 0) / dimGoals.length)
         : 0;
       return { dimensionId: d.id, dimensionName: d.name, progressPercentage: avgProg, goalsCount: dimGoals.length };
+    });
+
+    // Per-franchise progress breakdown for the regional admin view
+    const franchiseProgress = franchises.map(f => {
+      const fGoals = goals.filter(g => g.franchiseId === f.id);
+      const dimProgress = dimensions.map(d => {
+        const dimGoals = fGoals.filter(g => g.dimensionId === d.id);
+        const avg = dimGoals.length > 0
+          ? Math.round(dimGoals.reduce((s, g) => s + effectiveGoalProgress(g, allKpis, allInits), 0) / dimGoals.length)
+          : null;
+        return { dimensionId: d.id, dimensionName: d.name, progressPercentage: avg, goalsCount: dimGoals.length };
+      });
+      const avgProgress = fGoals.length > 0
+        ? Math.round(fGoals.reduce((s, g) => s + effectiveGoalProgress(g, allKpis, allInits), 0) / fGoals.length)
+        : null;
+      return { franchiseId: f.id, franchiseName: f.name, goalsCount: fGoals.length, avgProgress, progressByDimension: dimProgress };
     });
 
     res.json({
@@ -432,6 +479,7 @@ router.get("/dashboard/regional", requireAuth, async (req, res) => {
       franchisesWithoutCheckin7Days,
       avgScore,
       progressByDimension,
+      franchiseProgress,
       franchisesAtRisk: uniqueAtRisk,
       openHelpRequests: openHelp[0]?.count ?? 0,
       topBlockers,
