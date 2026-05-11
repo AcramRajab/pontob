@@ -197,4 +197,20 @@ router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => 
   }
 });
 
+router.delete("/users/:id", requireAuth, requireRole("master_admin"), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (id === req.session.userId) {
+      res.status(400).json({ error: "Você não pode excluir sua própria conta." });
+      return;
+    }
+    const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
+    if (!deleted) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
+    res.status(204).send();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

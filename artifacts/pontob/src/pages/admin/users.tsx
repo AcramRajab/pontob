@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Eye, EyeOff } from "lucide-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
 const roleLabel: Record<string, string> = {
@@ -41,11 +42,31 @@ export default function AdminUsers() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [showPass, setShowPass] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
   const { data: users = [], isLoading } = useListUsers({}, { query: { enabled: true, queryKey: getListUsersQueryKey({}) } });
   const { data: franchises = [] } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
   const create = useCreateUser();
   const update = useUpdateUser();
+
+  const deleteUser = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/users/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Erro ao excluir usuário");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+      toast({ title: "Usuário excluído com sucesso" });
+      setDeleteTarget(null);
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message, variant: "destructive" });
+      setDeleteTarget(null);
+    },
+  });
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<UserForm>({
     defaultValues: { role: "responsavel_interno", franchiseId: "none" },
@@ -268,6 +289,15 @@ export default function AdminUsers() {
                       <Pencil className="h-3.5 w-3.5 mr-1" />
                       Editar
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => setDeleteTarget({ id: u.id, name: u.name })}
+                      data-testid={`button-delete-${u.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -275,6 +305,27 @@ export default function AdminUsers() {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={v => { if (!v) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id)}
+              disabled={deleteUser.isPending}
+            >
+              {deleteUser.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

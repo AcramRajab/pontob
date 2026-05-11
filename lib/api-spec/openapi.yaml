@@ -241,6 +241,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (master_admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: Cannot delete own account
+        "404":
+          description: Not found
 
   /dimensions:
     get:

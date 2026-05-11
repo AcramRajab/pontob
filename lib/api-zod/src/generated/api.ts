@@ -236,6 +236,13 @@ export const UpdateUserResponse = zod.object({
 });
 
 /**
+ * @summary Delete a user (master_admin only)
+ */
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all dimensions
  */
 export const ListDimensionsResponseItem = zod.object({
