@@ -5,8 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Download, TableIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, TableIcon, CheckCircle2, Send } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -54,12 +58,6 @@ function addDays(date: Date, n: number): Date {
   return d;
 }
 
-type EntryKey = `${string}__${number}`;
-
-interface EntryMap {
-  [key: EntryKey]: { value: string; meta: string };
-}
-
 async function fetchPlanner(franchiseId: number, weekStartDate: string) {
   const res = await fetch(`/api/planner?franchiseId=${franchiseId}&weekStartDate=${weekStartDate}`, {
     credentials: "include",
@@ -79,6 +77,28 @@ async function saveEntry(body: object) {
   return res.json();
 }
 
+async function saveWeek(body: object) {
+  const res = await fetch("/api/planner/week", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to save week");
+  return res.json();
+}
+
+async function submitWeek(body: object) {
+  const res = await fetch("/api/planner/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to submit week");
+  return res.json();
+}
+
 export default function Planner() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -87,6 +107,10 @@ export default function Planner() {
   const weekStartStr = formatDate(weekStart);
   const weekEnd = addDays(weekStart, 6);
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const weekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [localGaps, setLocalGaps] = useState<Record<string, string>>({});
+  const [localActions, setLocalActions] = useState<Record<string, string>>({});
 
   const franchiseId = user?.franchiseId;
 
@@ -98,13 +122,28 @@ export default function Planner() {
 
   const mutation = useMutation({
     mutationFn: saveEntry,
-    onError: () => {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
-    },
+    onError: () => { toast({ title: "Erro ao salvar", variant: "destructive" }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] }); },
+  });
+
+  const weekMutation = useMutation({
+    mutationFn: saveWeek,
+    onError: () => { toast({ title: "Erro ao salvar texto", variant: "destructive" }); },
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: submitWeek,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] });
+      toast({ title: "Semana finalizada!", description: "Resumo enviado por e-mail para a equipe regional." });
     },
+    onError: () => { toast({ title: "Erro ao finalizar semana", variant: "destructive" }); },
   });
+
+  const weekKey = `${franchiseId}-${weekStartStr}`;
+  const gapsValue = localGaps[weekKey] ?? data?.week?.gapsText ?? "";
+  const actionsValue = localActions[weekKey] ?? data?.week?.actionsText ?? "";
+  const isSubmitted = !!data?.week?.submittedAt;
 
   const getEntry = useCallback((indicatorKey: string, dayOfWeek: number) => {
     if (!data?.entries) return { value: "", meta: "" };
@@ -136,6 +175,33 @@ export default function Planner() {
     }, 600);
   }, [franchiseId, weekStartStr, getEntry, mutation]);
 
+  const handleWeekTextChange = useCallback((field: "gaps" | "actions", value: string) => {
+    if (!franchiseId) return;
+    if (field === "gaps") setLocalGaps(p => ({ ...p, [weekKey]: value }));
+    else setLocalActions(p => ({ ...p, [weekKey]: value }));
+
+    if (weekDebounceRef.current) clearTimeout(weekDebounceRef.current);
+    weekDebounceRef.current = setTimeout(() => {
+      weekMutation.mutate({
+        franchiseId,
+        weekStartDate: weekStartStr,
+        gapsText: field === "gaps" ? value : undefined,
+        actionsText: field === "actions" ? value : undefined,
+      });
+    }, 800);
+  }, [franchiseId, weekStartStr, weekKey, weekMutation]);
+
+  const handleSubmit = () => {
+    if (!franchiseId) return;
+    submitMutation.mutate({
+      franchiseId,
+      weekStartDate: weekStartStr,
+      gapsText: gapsValue || null,
+      actionsText: actionsValue || null,
+    });
+    setConfirmSubmit(false);
+  };
+
   function weekTotal(indicatorKey: string): number {
     if (!data?.entries) return 0;
     return data.entries
@@ -154,6 +220,13 @@ export default function Planner() {
 
   const canWrite = user?.role !== "responsavel_interno";
 
+  const submittedAtLabel = data?.week?.submittedAt
+    ? new Date(data.week.submittedAt).toLocaleString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+      })
+    : null;
+
   return (
     <div className="p-6 max-w-full space-y-6">
       {/* Header */}
@@ -167,7 +240,7 @@ export default function Planner() {
             Acompanhamento diário e consolidação semanal — KRIs e KPIs
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="icon" onClick={() => setWeekStart(d => addDays(d, -7))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -180,10 +253,27 @@ export default function Planner() {
           <Button variant="outline" size="sm" onClick={() => setWeekStart(getMondayOfWeek(new Date()))}>
             Semana atual
           </Button>
+          {canWrite && franchiseId && !isLoading && (
+            isSubmitted ? (
+              <Badge variant="default" className="flex items-center gap-1 bg-green-600 hover:bg-green-600 px-3 py-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Enviado {submittedAtLabel}
+              </Badge>
+            ) : (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setConfirmSubmit(true)}
+                disabled={submitMutation.isPending}
+              >
+                <Send className="h-4 w-4 mr-1.5" />
+                Finalizar semana
+              </Button>
+            )
+          )}
         </div>
       </div>
 
-      {/* Info */}
       {!franchiseId && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
@@ -194,9 +284,7 @@ export default function Planner() {
 
       {franchiseId && isLoading && (
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Carregando...
-          </CardContent>
+          <CardContent className="py-8 text-center text-muted-foreground">Carregando...</CardContent>
         </Card>
       )}
 
@@ -213,23 +301,13 @@ export default function Planner() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/40 border-b">
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground min-w-[200px]">
-                      Indicador
-                    </th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground min-w-[200px]">Indicador</th>
                     {DAYS.map(d => (
-                      <th key={d} className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">
-                        {d}
-                      </th>
+                      <th key={d} className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">{d}</th>
                     ))}
-                    <th className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">
-                      Total
-                    </th>
-                    <th className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">
-                      Meta
-                    </th>
-                    <th className="text-left px-4 py-2 font-medium text-muted-foreground min-w-[120px]">
-                      Observações
-                    </th>
+                    <th className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">Total</th>
+                    <th className="text-center px-2 py-2 font-medium text-muted-foreground min-w-[80px]">Meta</th>
+                    <th className="text-left px-4 py-2 font-medium text-muted-foreground min-w-[120px]">Resultado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -240,9 +318,7 @@ export default function Planner() {
                     const isOverMeta = metaNum !== null && total >= metaNum && metaNum > 0;
                     return (
                       <tr key={ind.key} className={`border-b last:border-0 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
-                        <td className="px-4 py-2 font-medium text-foreground/80">
-                          {ind.label}
-                        </td>
+                        <td className="px-4 py-2 font-medium text-foreground/80">{ind.label}</td>
                         {DAYS.map((_, dayIdx) => {
                           const entry = getEntry(ind.key, dayIdx);
                           return (
@@ -253,7 +329,7 @@ export default function Planner() {
                                 step="any"
                                 defaultValue={entry.value}
                                 key={`${ind.key}-${dayIdx}-${weekStartStr}-val`}
-                                disabled={!canWrite}
+                                disabled={!canWrite || isSubmitted}
                                 className="w-16 h-7 text-center text-xs px-1"
                                 onChange={e => handleCellChange(ind.key, dayIdx, "value", e.target.value)}
                               />
@@ -275,7 +351,7 @@ export default function Planner() {
                             step="any"
                             defaultValue={meta}
                             key={`${ind.key}-meta-${weekStartStr}`}
-                            disabled={!canWrite}
+                            disabled={!canWrite || isSubmitted}
                             placeholder="Meta"
                             className="w-16 h-7 text-center text-xs px-1"
                             onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
@@ -311,9 +387,11 @@ export default function Planner() {
             </CardHeader>
             <CardContent>
               <textarea
-                className="w-full text-sm border rounded-md p-2 min-h-[80px] bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full text-sm border rounded-md p-2 min-h-[90px] bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
                 placeholder="Descreva os principais gaps desta semana..."
-                disabled={!canWrite}
+                disabled={!canWrite || isSubmitted}
+                value={gapsValue}
+                onChange={e => handleWeekTextChange("gaps", e.target.value)}
               />
             </CardContent>
           </Card>
@@ -325,20 +403,62 @@ export default function Planner() {
             </CardHeader>
             <CardContent>
               <textarea
-                className="w-full text-sm border rounded-md p-2 min-h-[80px] bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full text-sm border rounded-md p-2 min-h-[90px] bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
                 placeholder="Liste as ações corretivas planejadas..."
-                disabled={!canWrite}
+                disabled={!canWrite || isSubmitted}
+                value={actionsValue}
+                onChange={e => handleWeekTextChange("actions", e.target.value)}
               />
             </CardContent>
           </Card>
         </div>
       )}
 
-      {franchiseId && !isLoading && (
-        <p className="text-xs text-muted-foreground text-center italic">
-          "O que é medido, melhora." — Método Ponto B
-        </p>
+      {/* Submit row */}
+      {franchiseId && !isLoading && canWrite && (
+        <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
+          <p className="text-xs text-muted-foreground italic">
+            "O que é medido, melhora." — Método Ponto B
+          </p>
+          {isSubmitted ? (
+            <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+              <CheckCircle2 className="h-4 w-4" />
+              Semana finalizada e enviada ao time regional
+            </div>
+          ) : (
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => setConfirmSubmit(true)}
+              disabled={submitMutation.isPending}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {submitMutation.isPending ? "Enviando..." : "Finalizar semana"}
+            </Button>
+          )}
+        </div>
       )}
+
+      {/* Confirm submit dialog */}
+      <AlertDialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar semana?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso irá marcar a semana <strong>{formatDateBR(weekStartStr)} – {formatDateBR(formatDate(weekEnd))}</strong> como concluída
+              e enviar um resumo por e-mail para a equipe regional. Os campos ficarão bloqueados após a finalização.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 text-white hover:bg-green-700"
+              onClick={handleSubmit}
+            >
+              Sim, finalizar e enviar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

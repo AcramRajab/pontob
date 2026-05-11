@@ -41,3 +41,19 @@ export const weeklyPlannerEntriesTable = pgTable("weekly_planner_entries", {
 export const insertWeeklyPlannerEntrySchema = createInsertSchema(weeklyPlannerEntriesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertWeeklyPlannerEntry = z.infer<typeof insertWeeklyPlannerEntrySchema>;
 export type WeeklyPlannerEntry = typeof weeklyPlannerEntriesTable.$inferSelect;
+
+export const weeklyPlannerWeeksTable = pgTable("weekly_planner_weeks", {
+  id: serial("id").primaryKey(),
+  franchiseId: integer("franchise_id").notNull().references(() => franchisesTable.id),
+  weekStartDate: text("week_start_date").notNull(),
+  gapsText: text("gaps_text"),
+  actionsText: text("actions_text"),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  submittedByUserId: integer("submitted_by_user_id").references(() => usersTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  unique("planner_week_unique").on(t.franchiseId, t.weekStartDate),
+]);
+
+export type WeeklyPlannerWeek = typeof weeklyPlannerWeeksTable.$inferSelect;

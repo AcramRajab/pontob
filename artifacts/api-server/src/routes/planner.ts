@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, weeklyPlannerEntriesTable, franchisesTable, PLANNER_INDICATORS } from "@workspace/db";
+import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable, usersTable, PLANNER_INDICATORS } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
+import { sendPlannerWeekSummary } from "../services/email";
 
 const router = Router();
 
@@ -9,6 +10,15 @@ function canAccessFranchise(req: any, franchiseId: number) {
   const role = req.session.userRole;
   if (role === "master_admin" || role === "staff_regional") return true;
   return req.session.franchiseId === franchiseId;
+}
+
+function formatWeekLabel(weekStartDate: string): string {
+  const [y, m, d] = weekStartDate.split("-");
+  const start = new Date(Number(y), Number(m) - 1, Number(d));
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (dt: Date) => `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
+  return `${fmt(start)}–${fmt(end)}/${y}`;
 }
 
 // GET /planner?franchiseId=&weekStartDate=
@@ -22,24 +32,21 @@ router.get("/planner", requireAuth, async (req, res) => {
       ? paramFranchiseId
       : req.session.franchiseId ?? undefined;
 
-    if (!effectiveFranchiseId) {
-      res.status(400).json({ error: "franchiseId required" });
-      return;
-    }
-    if (!weekStartDate) {
-      res.status(400).json({ error: "weekStartDate required" });
-      return;
-    }
+    if (!effectiveFranchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+    if (!weekStartDate) { res.status(400).json({ error: "weekStartDate required" }); return; }
 
-    const conditions = [
-      eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
-      eq(weeklyPlannerEntriesTable.weekStartDate, weekStartDate as string),
-    ];
+    const [rows, weekRows] = await Promise.all([
+      db.select().from(weeklyPlannerEntriesTable).where(and(
+        eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+        eq(weeklyPlannerEntriesTable.weekStartDate, weekStartDate as string),
+      )),
+      db.select().from(weeklyPlannerWeeksTable).where(and(
+        eq(weeklyPlannerWeeksTable.franchiseId, effectiveFranchiseId),
+        eq(weeklyPlannerWeeksTable.weekStartDate, weekStartDate as string),
+      )).limit(1),
+    ]);
 
-    const rows = await db
-      .select()
-      .from(weeklyPlannerEntriesTable)
-      .where(and(...conditions));
+    const week = weekRows[0] ?? null;
 
     res.json({
       franchiseId: effectiveFranchiseId,
@@ -50,6 +57,11 @@ router.get("/planner", requireAuth, async (req, res) => {
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
         updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt,
       })),
+      week: week ? {
+        gapsText: week.gapsText,
+        actionsText: week.actionsText,
+        submittedAt: week.submittedAt instanceof Date ? week.submittedAt.toISOString() : week.submittedAt,
+      } : null,
     });
   } catch (err) {
     req.log.error(err);
@@ -66,16 +78,10 @@ router.post("/planner", requireAuth, requireWriteAccess, async (req, res) => {
       res.status(400).json({ error: "franchiseId, weekStartDate, indicatorKey, dayOfWeek required" });
       return;
     }
-    if (!canAccessFranchise(req, franchiseId)) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
 
     const validKeys = PLANNER_INDICATORS.map(i => i.key);
-    if (!validKeys.includes(indicatorKey)) {
-      res.status(400).json({ error: "Invalid indicatorKey" });
-      return;
-    }
+    if (!validKeys.includes(indicatorKey)) { res.status(400).json({ error: "Invalid indicatorKey" }); return; }
 
     const existing = await db
       .select()
@@ -98,16 +104,7 @@ router.post("/planner", requireAuth, requireWriteAccess, async (req, res) => {
     } else {
       [row] = await db
         .insert(weeklyPlannerEntriesTable)
-        .values({
-          franchiseId,
-          userId: req.session.userId!,
-          weekStartDate,
-          indicatorKey,
-          dayOfWeek,
-          value: value ?? null,
-          meta: meta ?? null,
-          notes: notes ?? null,
-        })
+        .values({ franchiseId, userId: req.session.userId!, weekStartDate, indicatorKey, dayOfWeek, value: value ?? null, meta: meta ?? null, notes: notes ?? null })
         .returning();
     }
 
@@ -115,6 +112,133 @@ router.post("/planner", requireAuth, requireWriteAccess, async (req, res) => {
       ...row,
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
       updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /planner/week — save gaps/actions text (auto-save)
+router.patch("/planner/week", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, weekStartDate, gapsText, actionsText } = req.body;
+    if (!franchiseId || !weekStartDate) {
+      res.status(400).json({ error: "franchiseId and weekStartDate required" });
+      return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const existing = await db.select().from(weeklyPlannerWeeksTable)
+      .where(and(eq(weeklyPlannerWeeksTable.franchiseId, franchiseId), eq(weeklyPlannerWeeksTable.weekStartDate, weekStartDate)))
+      .limit(1);
+
+    let row;
+    if (existing[0]) {
+      [row] = await db.update(weeklyPlannerWeeksTable)
+        .set({ gapsText: gapsText ?? existing[0].gapsText, actionsText: actionsText ?? existing[0].actionsText })
+        .where(eq(weeklyPlannerWeeksTable.id, existing[0].id))
+        .returning();
+    } else {
+      [row] = await db.insert(weeklyPlannerWeeksTable)
+        .values({ franchiseId, weekStartDate, gapsText: gapsText ?? null, actionsText: actionsText ?? null })
+        .returning();
+    }
+
+    res.json({ ok: true, gapsText: row.gapsText, actionsText: row.actionsText });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /planner/submit — finalize the week and send summary email
+router.post("/planner/submit", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, weekStartDate, gapsText, actionsText } = req.body;
+    if (!franchiseId || !weekStartDate) {
+      res.status(400).json({ error: "franchiseId and weekStartDate required" });
+      return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    // Upsert week record with submittedAt
+    const existing = await db.select().from(weeklyPlannerWeeksTable)
+      .where(and(eq(weeklyPlannerWeeksTable.franchiseId, franchiseId), eq(weeklyPlannerWeeksTable.weekStartDate, weekStartDate)))
+      .limit(1);
+
+    let row;
+    if (existing[0]) {
+      [row] = await db.update(weeklyPlannerWeeksTable)
+        .set({
+          gapsText: gapsText ?? existing[0].gapsText,
+          actionsText: actionsText ?? existing[0].actionsText,
+          submittedAt: new Date(),
+          submittedByUserId: req.session.userId!,
+        })
+        .where(eq(weeklyPlannerWeeksTable.id, existing[0].id))
+        .returning();
+    } else {
+      [row] = await db.insert(weeklyPlannerWeeksTable)
+        .values({ franchiseId, weekStartDate, gapsText: gapsText ?? null, actionsText: actionsText ?? null, submittedAt: new Date(), submittedByUserId: req.session.userId! })
+        .returning();
+    }
+
+    // Gather summary data for email
+    const [franchise, entries, submitter] = await Promise.all([
+      db.select().from(franchisesTable).where(eq(franchisesTable.id, franchiseId)).limit(1),
+      db.select().from(weeklyPlannerEntriesTable).where(and(
+        eq(weeklyPlannerEntriesTable.franchiseId, franchiseId),
+        eq(weeklyPlannerEntriesTable.weekStartDate, weekStartDate),
+      )),
+      db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1),
+    ]);
+
+    const totals = PLANNER_INDICATORS.map(ind => {
+      const dayEntries = entries.filter(e => e.indicatorKey === ind.key);
+      const total = dayEntries.reduce((s, e) => s + (e.value ?? 0), 0);
+      const metas = dayEntries.filter(e => e.meta != null).map(e => e.meta!);
+      const meta = metas.length ? metas[metas.length - 1] : null;
+      return { label: ind.label, total, meta };
+    });
+
+    const weekLabel = formatWeekLabel(weekStartDate);
+    const submitterUser = submitter[0];
+    const franchiseRecord = franchise[0];
+
+    // Send summary to the person who submitted
+    if (submitterUser?.email) {
+      sendPlannerWeekSummary({
+        toEmail: submitterUser.email,
+        toName: submitterUser.name,
+        franchiseName: franchiseRecord?.name ?? "Franquia",
+        weekLabel,
+        totals,
+        gapsText: row.gapsText ?? null,
+        actionsText: row.actionsText ?? null,
+      }).catch(() => {});
+    }
+
+    // Also notify regional team (staff with no franchiseId)
+    const regionalStaff = await db.select().from(usersTable)
+      .where(inArray(usersTable.role, ["master_admin", "staff_regional"]));
+    for (const staff of regionalStaff) {
+      if (staff.email && staff.active && staff.email !== submitterUser?.email) {
+        sendPlannerWeekSummary({
+          toEmail: staff.email,
+          toName: staff.name,
+          franchiseName: franchiseRecord?.name ?? "Franquia",
+          weekLabel,
+          totals,
+          gapsText: row.gapsText ?? null,
+          actionsText: row.actionsText ?? null,
+        }).catch(() => {});
+      }
+    }
+
+    res.json({
+      ok: true,
+      submittedAt: row.submittedAt instanceof Date ? row.submittedAt.toISOString() : row.submittedAt,
     });
   } catch (err) {
     req.log.error(err);

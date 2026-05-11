@@ -252,6 +252,143 @@ export async function sendUserInvitation(opts: {
   });
 }
 
+export async function sendPlannerReminder(opts: {
+  toEmail: string;
+  toName: string;
+  franchiseName: string;
+  weekLabel: string;
+  type: "end_of_week" | "start_of_week";
+  appUrl?: string;
+}) {
+  if (!isEmailConfigured()) return;
+  const url = (opts.appUrl || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "app"}`) + "/planner";
+  const isEnd = opts.type === "end_of_week";
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: isEnd
+      ? `📊 Lembrete: registre os indicadores desta semana — ${opts.franchiseName}`
+      : `📋 Semana nova: confira os indicadores da semana passada — ${opts.franchiseName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#1e40af;padding:28px 24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:20px;">Método Ponto B</h1>
+          <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">RE/MAX Santa Catarina</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:28px 24px;">
+          <h2 style="margin-top:0;font-size:17px;color:#111;">Olá, ${opts.toName}! 👋</h2>
+          ${isEnd ? `
+            <p style="color:#374151;line-height:1.6;">
+              A semana <strong>${opts.weekLabel}</strong> está chegando ao fim.<br/>
+              Não esqueça de preencher os indicadores e finalizar o planner para registrar o progresso da sua franquia.
+            </p>
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin:16px 0;">
+              <strong style="color:#92400e;">⏰ Prazo:</strong>
+              <span style="color:#78350f;"> Finalize até domingo para que o progresso seja contabilizado corretamente.</span>
+            </div>
+          ` : `
+            <p style="color:#374151;line-height:1.6;">
+              Uma nova semana começou!<br/>
+              Se você ainda não finalizou os indicadores da semana passada <strong>(${opts.weekLabel})</strong>, ainda dá tempo — abra o planner e registre o que foi realizado.
+            </p>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;margin:16px 0;">
+              <strong style="color:#166534;">💡 Dica:</strong>
+              <span style="color:#15803d;"> Registros consistentes representam parte da pontuação da sua franquia. Vale a pena manter em dia!</span>
+            </div>
+          `}
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${url}" style="background:#1e40af;color:white;padding:13px 30px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;">
+              Abrir Planner Semanal →
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendPlannerWeekSummary(opts: {
+  toEmail: string;
+  toName: string;
+  franchiseName: string;
+  weekLabel: string;
+  totals: { label: string; total: number; meta: number | null }[];
+  gapsText: string | null;
+  actionsText: string | null;
+  appUrl?: string;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const rows = opts.totals
+    .filter(t => t.total > 0 || t.meta)
+    .map(t => {
+      const pct = t.meta && t.meta > 0 ? Math.round((t.total / t.meta) * 100) : null;
+      const color = pct === null ? "#6b7280" : pct >= 100 ? "#16a34a" : pct >= 60 ? "#ca8a04" : "#dc2626";
+      return `
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:8px 6px;">${t.label}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;">${t.total.toLocaleString("pt-BR")}</td>
+          <td style="padding:8px 6px;text-align:center;color:#6b7280;">${t.meta?.toLocaleString("pt-BR") ?? "—"}</td>
+          <td style="padding:8px 6px;text-align:center;font-weight:600;color:${color};">${pct !== null ? pct + "%" : "—"}</td>
+        </tr>
+      `;
+    }).join("");
+
+  const url = (opts.appUrl || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "app"}`) + "/planner";
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `✅ Planner finalizado — ${opts.franchiseName} — ${opts.weekLabel}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#111;">
+        <div style="background:#1e40af;padding:28px 24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:20px;">Método Ponto B</h1>
+          <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">Resumo semanal — ${opts.franchiseName}</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:28px 24px;">
+          <h2 style="margin-top:0;font-size:17px;">Planner Semanal Finalizado ✅</h2>
+          <p style="color:#6b7280;">Semana: <strong style="color:#111;">${opts.weekLabel}</strong></p>
+          ${rows ? `
+            <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px;">
+              <thead>
+                <tr style="background:#f9fafb;text-align:left;">
+                  <th style="padding:8px 6px;color:#6b7280;font-size:11px;">INDICADOR</th>
+                  <th style="padding:8px 6px;color:#6b7280;font-size:11px;text-align:center;">REALIZADO</th>
+                  <th style="padding:8px 6px;color:#6b7280;font-size:11px;text-align:center;">META</th>
+                  <th style="padding:8px 6px;color:#6b7280;font-size:11px;text-align:center;">%</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          ` : '<p style="color:#9ca3af;">Nenhum indicador registrado nesta semana.</p>'}
+          ${opts.gapsText ? `
+            <div style="margin-top:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px;">
+              <strong style="color:#991b1b;font-size:13px;">⚠️ Gaps identificados</strong>
+              <p style="color:#374151;margin:8px 0 0;font-size:13px;white-space:pre-wrap;">${opts.gapsText}</p>
+            </div>
+          ` : ""}
+          ${opts.actionsText ? `
+            <div style="margin-top:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 16px;">
+              <strong style="color:#166534;font-size:13px;">✅ Ações da próxima semana</strong>
+              <p style="color:#374151;margin:8px 0 0;font-size:13px;white-space:pre-wrap;">${opts.actionsText}</p>
+            </div>
+          ` : ""}
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${url}" style="background:#1e40af;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block;">
+              Ver Planner →
+            </a>
+          </div>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendCheckinReminder(opts: {
   toEmail: string;
   toName: string;
