@@ -37,6 +37,7 @@ import type {
   GetFranchiseDashboardParams,
   GetFranchiseRankingParams,
   GetGoalProgressParams,
+  GetRegionalVisionParams,
   GetTodayOverviewParams,
   Goal,
   GoalDetail,
@@ -72,6 +73,7 @@ import type {
   MonthlyCheckinInput,
   ProgressHistoryItem,
   RegionalDashboard,
+  RegionalVision,
   StrategicInitiative,
   TodayOverview,
   User,
@@ -3674,6 +3676,106 @@ export function useGetGoalProgress<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetGoalProgressQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get aggregated vision (targets + actuals) across all franchises for the region
+ */
+export const getGetRegionalVisionUrl = (params?: GetRegionalVisionParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/dashboard/regional-vision?${stringifiedParams}`
+    : `/api/dashboard/regional-vision`;
+};
+
+export const getRegionalVision = async (
+  params?: GetRegionalVisionParams,
+  options?: RequestInit,
+): Promise<RegionalVision> => {
+  return customFetch<RegionalVision>(getGetRegionalVisionUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRegionalVisionQueryKey = (
+  params?: GetRegionalVisionParams,
+) => {
+  return [
+    `/api/dashboard/regional-vision`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetRegionalVisionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRegionalVision>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRegionalVisionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRegionalVision>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetRegionalVisionQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getRegionalVision>>
+  > = ({ signal }) => getRegionalVision(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRegionalVision>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRegionalVisionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRegionalVision>>
+>;
+export type GetRegionalVisionQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get aggregated vision (targets + actuals) across all franchises for the region
+ */
+
+export function useGetRegionalVision<
+  TData = Awaited<ReturnType<typeof getRegionalVision>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetRegionalVisionParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRegionalVision>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRegionalVisionQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

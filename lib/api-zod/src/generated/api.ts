@@ -1203,6 +1203,57 @@ export const GetGoalProgressResponseItem = zod.object({
 export const GetGoalProgressResponse = zod.array(GetGoalProgressResponseItem);
 
 /**
+ * @summary Get aggregated vision (targets + actuals) across all franchises for the region
+ */
+export const GetRegionalVisionQueryParams = zod.object({
+  year: zod.coerce.number().optional(),
+});
+
+export const GetRegionalVisionResponse = zod.object({
+  year: zod.number(),
+  totalFranchises: zod.number(),
+  franchisesWithVision: zod.number(),
+  regionalQuarters: zod.array(
+    zod.object({
+      quarterDate: zod.string(),
+      quarterLabel: zod.string(),
+      targetCreci: zod.number().nullish(),
+      targetCres: zod.number().nullish(),
+      targetVgh: zod.number().nullish(),
+      actualCreci: zod.number().nullish(),
+      actualCres: zod.number().nullish(),
+      actualVgh: zod.number().nullish(),
+      franchisesWithTarget: zod.number().optional(),
+      franchisesWithActual: zod.number().optional(),
+    }),
+  ),
+  franchises: zod.array(
+    zod.object({
+      franchiseId: zod.number(),
+      franchiseName: zod.string(),
+      statement: zod.string().nullish(),
+      hasVision: zod.boolean().optional(),
+      quarters: zod
+        .array(
+          zod.object({
+            quarterDate: zod.string(),
+            quarterLabel: zod.string(),
+            targetCreci: zod.number().nullish(),
+            targetCres: zod.number().nullish(),
+            targetVgh: zod.number().nullish(),
+            actualCreci: zod.number().nullish(),
+            actualCres: zod.number().nullish(),
+            actualVgh: zod.number().nullish(),
+            franchisesWithTarget: zod.number().optional(),
+            franchisesWithActual: zod.number().optional(),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+});
+
+/**
  * @summary Get regional dashboard summary (admin/staff)
  */
 export const GetRegionalDashboardResponse = zod.object({

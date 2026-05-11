@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable } from "@workspace/db";
+import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte, ne } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
@@ -272,6 +272,113 @@ router.get("/dashboard/goal-progress", requireAuth, async (req, res) => {
     });
 
     res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /dashboard/regional-vision?year=
+router.get("/dashboard/regional-vision", requireAuth, requireAdminOrStaff, async (req, res) => {
+  try {
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+
+    const franchises = await db.select().from(franchisesTable).where(eq(franchisesTable.active, true));
+
+    // All visao records for this year
+    const visaoRows = await db
+      .select()
+      .from(franchiseVisaoTable)
+      .where(eq(franchiseVisaoTable.year, year));
+
+    // All milestones for this year (via visao IDs)
+    const visaoIds = visaoRows.map(v => v.id);
+    const allMilestones = visaoIds.length > 0
+      ? await db
+          .select()
+          .from(franchiseVisaoMilestonesTable)
+          .where(sql`${franchiseVisaoMilestonesTable.visaoId} = ANY(${sql.raw(`ARRAY[${visaoIds.join(",")}]::int[]`)})`)
+      : [];
+
+    // All KRIs for this year (for actuals)
+    const allKris = await db
+      .select()
+      .from(franchiseKrisTable)
+      .where(eq(franchiseKrisTable.year, year));
+
+    const QUARTERS = [
+      { label: "1ºTRI", months: [1, 2, 3], date: `${year}-03-31` },
+      { label: "2ºTRI", months: [4, 5, 6], date: `${year}-06-30` },
+      { label: "3ºTRI", months: [7, 8, 9], date: `${year}-09-30` },
+      { label: "4ºTRI", months: [10, 11, 12], date: `${year}-12-31` },
+    ];
+
+    // Build per-franchise data
+    const franchiseData = franchises.map(f => {
+      const visao = visaoRows.find(v => v.franchiseId === f.id) ?? null;
+      const fKris = allKris.filter(k => k.franchiseId === f.id);
+
+      const quarters = QUARTERS.map(q => {
+        const milestone = visao
+          ? allMilestones.find(m => m.visaoId === visao.id && m.quarterDate === q.date) ?? null
+          : null;
+        const monthsData = fKris.filter(k => q.months.includes(k.month));
+        const lastKri = monthsData[monthsData.length - 1] ?? null;
+        return {
+          quarterDate: q.date,
+          quarterLabel: q.label,
+          targetCreci: milestone?.targetCreci ?? null,
+          targetCres: milestone?.targetCres ?? null,
+          targetVgh: milestone?.targetVgh ?? null,
+          actualCreci: lastKri?.creci ?? null,
+          actualCres: lastKri?.cres ?? null,
+          actualVgh: lastKri?.vgh ?? null,
+          franchisesWithTarget: milestone ? 1 : 0,
+          franchisesWithActual: lastKri ? 1 : 0,
+        };
+      });
+
+      return {
+        franchiseId: f.id,
+        franchiseName: f.name,
+        statement: visao?.statement ?? null,
+        hasVision: !!visao,
+        quarters,
+      };
+    });
+
+    // Aggregate regional totals per quarter
+    const regionalQuarters = QUARTERS.map((q, qi) => {
+      const fqs = franchiseData.map(f => f.quarters[qi]);
+      const totalTargetCreci = fqs.reduce((s, fq) => fq.targetCreci != null ? s + fq.targetCreci : s, 0);
+      const totalTargetCres = fqs.reduce((s, fq) => fq.targetCres != null ? s + fq.targetCres : s, 0);
+      const totalTargetVgh = fqs.reduce((s, fq) => fq.targetVgh != null ? s + fq.targetVgh : s, 0);
+      const totalActualCreci = fqs.reduce((s, fq) => fq.actualCreci != null ? s + fq.actualCreci : s, 0);
+      const totalActualCres = fqs.reduce((s, fq) => fq.actualCres != null ? s + fq.actualCres : s, 0);
+      const totalActualVgh = fqs.reduce((s, fq) => fq.actualVgh != null ? s + fq.actualVgh : s, 0);
+      const franchisesWithTarget = fqs.filter(fq => fq.franchisesWithTarget > 0).length;
+      const franchisesWithActual = fqs.filter(fq => fq.franchisesWithActual > 0).length;
+      return {
+        quarterDate: q.date,
+        quarterLabel: q.label,
+        targetCreci: franchisesWithTarget > 0 ? totalTargetCreci : null,
+        targetCres: franchisesWithTarget > 0 ? totalTargetCres : null,
+        targetVgh: franchisesWithTarget > 0 ? totalTargetVgh : null,
+        actualCreci: franchisesWithActual > 0 ? totalActualCreci : null,
+        actualCres: franchisesWithActual > 0 ? totalActualCres : null,
+        actualVgh: franchisesWithActual > 0 ? totalActualVgh : null,
+        franchisesWithTarget,
+        franchisesWithActual,
+      };
+    });
+
+    res.json({
+      year,
+      totalFranchises: franchises.length,
+      franchisesWithVision: visaoRows.length,
+      regionalQuarters,
+      franchises: franchiseData,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

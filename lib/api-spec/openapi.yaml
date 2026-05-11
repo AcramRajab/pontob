@@ -862,6 +862,24 @@ paths:
                 items:
                   $ref: "#/components/schemas/GoalProgressItem"
 
+  /dashboard/regional-vision:
+    get:
+      operationId: getRegionalVision
+      tags: [dashboard]
+      summary: Get aggregated vision (targets + actuals) across all franchises for the region
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Regional vision data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegionalVision"
+
   /dashboard/regional:
     get:
       operationId: getRegionalDashboard
@@ -2139,6 +2157,67 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DailyCheckin"
+
+    RegionalVisionQuarter:
+      type: object
+      required: [quarterDate, quarterLabel]
+      properties:
+        quarterDate:
+          type: string
+        quarterLabel:
+          type: string
+        targetCreci:
+          type: ["integer", "null"]
+        targetCres:
+          type: ["integer", "null"]
+        targetVgh:
+          type: ["number", "null"]
+        actualCreci:
+          type: ["integer", "null"]
+        actualCres:
+          type: ["integer", "null"]
+        actualVgh:
+          type: ["number", "null"]
+        franchisesWithTarget:
+          type: integer
+        franchisesWithActual:
+          type: integer
+
+    RegionalVisionFranchise:
+      type: object
+      required: [franchiseId, franchiseName]
+      properties:
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: string
+        statement:
+          type: ["string", "null"]
+        hasVision:
+          type: boolean
+        quarters:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegionalVisionQuarter"
+
+    RegionalVision:
+      type: object
+      required: [year, regionalQuarters, franchises, totalFranchises, franchisesWithVision]
+      properties:
+        year:
+          type: integer
+        totalFranchises:
+          type: integer
+        franchisesWithVision:
+          type: integer
+        regionalQuarters:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegionalVisionQuarter"
+        franchises:
+          type: array
+          items:
+            $ref: "#/components/schemas/RegionalVisionFranchise"
 
     RegionalDashboard:
       type: object

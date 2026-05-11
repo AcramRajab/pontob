@@ -852,6 +852,42 @@ export interface FranchiseDashboard {
   recentCheckins?: DailyCheckin[];
 }
 
+export interface RegionalVisionQuarter {
+  quarterDate: string;
+  quarterLabel: string;
+  /** @nullable */
+  targetCreci?: number | null;
+  /** @nullable */
+  targetCres?: number | null;
+  /** @nullable */
+  targetVgh?: number | null;
+  /** @nullable */
+  actualCreci?: number | null;
+  /** @nullable */
+  actualCres?: number | null;
+  /** @nullable */
+  actualVgh?: number | null;
+  franchisesWithTarget?: number;
+  franchisesWithActual?: number;
+}
+
+export interface RegionalVisionFranchise {
+  franchiseId: number;
+  franchiseName: string;
+  /** @nullable */
+  statement?: string | null;
+  hasVision?: boolean;
+  quarters?: RegionalVisionQuarter[];
+}
+
+export interface RegionalVision {
+  year: number;
+  totalFranchises: number;
+  franchisesWithVision: number;
+  regionalQuarters: RegionalVisionQuarter[];
+  franchises: RegionalVisionFranchise[];
+}
+
 export interface RegionalDashboard {
   totalFranchises: number;
   activeFranchises: number;
@@ -1263,6 +1299,10 @@ export type GetGoalProgressParams = {
   franchiseId?: number;
   startDate?: string;
   endDate?: string;
+};
+
+export type GetRegionalVisionParams = {
+  year?: number;
 };
 
 export type GetFranchiseRankingParams = {
