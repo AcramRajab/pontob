@@ -196,6 +196,88 @@ router.get("/dashboard/franchise", requireAuth, async (req, res) => {
   }
 });
 
+// GET /dashboard/goal-progress?franchiseId=&startDate=&endDate=
+router.get("/dashboard/goal-progress", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+    const franchiseId = (role === "master_admin" || role === "staff_regional")
+      ? (paramFranchiseId ?? req.session.franchiseId)
+      : req.session.franchiseId;
+
+    if (!franchiseId) {
+      res.status(400).json({ error: "franchiseId required" });
+      return;
+    }
+
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+
+    const goals = await db
+      .select({
+        id: goalsTable.id,
+        title: goalsTable.title,
+        dimensionId: goalsTable.dimensionId,
+        keyProcessId: goalsTable.keyProcessId,
+        progressPercentage: goalsTable.progressPercentage,
+        currentValue: goalsTable.currentValue,
+        targetValue: goalsTable.targetValue,
+        unit: goalsTable.unit,
+        status: goalsTable.status,
+        startDate: goalsTable.startDate,
+        endDate: goalsTable.endDate,
+        score: goalsTable.score,
+        riskStatus: goalsTable.riskStatus,
+        kriDescription: goalsTable.kriDescription,
+        dimensionName: dimensionsTable.name,
+      })
+      .from(goalsTable)
+      .leftJoin(dimensionsTable, eq(goalsTable.dimensionId, dimensionsTable.id))
+      .where(eq(goalsTable.franchiseId, franchiseId));
+
+    // Filter by period overlap if dates provided
+    const filtered = goals.filter(g => {
+      if (!startDate && !endDate) return true;
+      const gStart = g.startDate ?? null;
+      const gEnd = g.endDate ?? null;
+      if (startDate && gEnd && gEnd < startDate) return false;
+      if (endDate && gStart && gStart > endDate) return false;
+      return true;
+    });
+
+    // Fetch KPIs for each goal
+    const goalIds = filtered.map(g => g.id);
+    const kpis = goalIds.length > 0
+      ? await db.select().from(kpisTable).where(
+          sql`${kpisTable.goalId} = ANY(${sql.raw(`ARRAY[${goalIds.join(",")}]::int[]`)})`)
+      : [];
+
+    const result = filtered.map(g => {
+      const goalKpis = kpis.filter(k => k.goalId === g.id);
+      return {
+        ...g,
+        startDate: g.startDate ?? null,
+        endDate: g.endDate ?? null,
+        kpis: goalKpis.map(k => ({
+          id: k.id,
+          name: k.name,
+          currentValue: k.currentValue,
+          targetValue: k.targetValue,
+          unit: k.unit,
+          progressPct: k.targetValue && k.targetValue > 0
+            ? Math.min(Math.round(((k.currentValue ?? 0) / k.targetValue) * 100), 100)
+            : null,
+        })),
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/dashboard/regional", requireAuth, async (req, res) => {
   try {
     const franchises = await db.select().from(franchisesTable).where(eq(franchisesTable.active, true));

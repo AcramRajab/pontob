@@ -1149,6 +1149,45 @@ export const GetFranchiseDashboardResponse = zod.object({
 });
 
 /**
+ * @summary Get goal progress for a franchise filtered by period
+ */
+export const GetGoalProgressQueryParams = zod.object({
+  franchiseId: zod.coerce.number().optional(),
+  startDate: zod.coerce.string().optional(),
+  endDate: zod.coerce.string().optional(),
+});
+
+export const GetGoalProgressResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  dimensionId: zod.number().nullish(),
+  dimensionName: zod.string().nullish(),
+  progressPercentage: zod.number(),
+  currentValue: zod.number().nullish(),
+  targetValue: zod.number().nullish(),
+  unit: zod.string().nullish(),
+  status: zod.string(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  score: zod.number(),
+  riskStatus: zod.string().nullish(),
+  kriDescription: zod.string().nullish(),
+  kpis: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        currentValue: zod.number().nullish(),
+        targetValue: zod.number().nullish(),
+        unit: zod.string().nullish(),
+        progressPct: zod.number().nullish(),
+      }),
+    )
+    .optional(),
+});
+export const GetGoalProgressResponse = zod.array(GetGoalProgressResponseItem);
+
+/**
  * @summary Get regional dashboard summary (admin/staff)
  */
 export const GetRegionalDashboardResponse = zod.object({

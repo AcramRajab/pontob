@@ -36,6 +36,7 @@ import type {
   FranchiseUpdate,
   GetFranchiseDashboardParams,
   GetFranchiseRankingParams,
+  GetGoalProgressParams,
   GetTodayOverviewParams,
   Goal,
   GoalDetail,
@@ -43,6 +44,7 @@ import type {
   GoalInitiativeInput,
   GoalInitiativeUpdate,
   GoalInput,
+  GoalProgressItem,
   GoalUpdate,
   HealthStatus,
   HelpRequest,
@@ -3578,6 +3580,100 @@ export function useGetFranchiseDashboard<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetFranchiseDashboardQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get goal progress for a franchise filtered by period
+ */
+export const getGetGoalProgressUrl = (params?: GetGoalProgressParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/dashboard/goal-progress?${stringifiedParams}`
+    : `/api/dashboard/goal-progress`;
+};
+
+export const getGoalProgress = async (
+  params?: GetGoalProgressParams,
+  options?: RequestInit,
+): Promise<GoalProgressItem[]> => {
+  return customFetch<GoalProgressItem[]>(getGetGoalProgressUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGoalProgressQueryKey = (params?: GetGoalProgressParams) => {
+  return [`/api/dashboard/goal-progress`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetGoalProgressQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGoalProgress>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGoalProgressParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGoalProgress>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGoalProgressQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGoalProgress>>> = ({
+    signal,
+  }) => getGoalProgress(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGoalProgress>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGoalProgressQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGoalProgress>>
+>;
+export type GetGoalProgressQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get goal progress for a franchise filtered by period
+ */
+
+export function useGetGoalProgress<
+  TData = Awaited<ReturnType<typeof getGoalProgress>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetGoalProgressParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getGoalProgress>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGoalProgressQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

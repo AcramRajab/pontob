@@ -3,23 +3,53 @@ import {
   useGetFranchiseDashboard, getGetFranchiseDashboardQueryKey,
   useListFranchiseKris, getListFranchiseKrisQueryKey,
   useUpsertFranchiseKri,
+  useGetGoalProgress, getGetGoalProgressQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign, TrendingUp } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Cell } from "recharts";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTH_NAMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+const RISK_COLOR: Record<string, string> = {
+  atrasado: "text-destructive",
+  adiantado: "text-green-600",
+  no_prazo: "text-amber-600",
+};
+
+const RISK_LABEL: Record<string, string> = {
+  atrasado: "Atrasada",
+  adiantado: "Adiantada",
+  no_prazo: "No prazo",
+};
+
+const PERIOD_PRESETS = [
+  { label: "1º Tri", startDate: (y: number) => `${y}-01-01`, endDate: (y: number) => `${y}-03-31` },
+  { label: "2º Tri", startDate: (y: number) => `${y}-04-01`, endDate: (y: number) => `${y}-06-30` },
+  { label: "3º Tri", startDate: (y: number) => `${y}-07-01`, endDate: (y: number) => `${y}-09-30` },
+  { label: "4º Tri", startDate: (y: number) => `${y}-10-01`, endDate: (y: number) => `${y}-12-31` },
+  { label: "1º Sem", startDate: (y: number) => `${y}-01-01`, endDate: (y: number) => `${y}-06-30` },
+  { label: "2º Sem", startDate: (y: number) => `${y}-07-01`, endDate: (y: number) => `${y}-12-31` },
+  { label: "Ano todo", startDate: (y: number) => `${y}-01-01`, endDate: (y: number) => `${y}-12-31` },
+];
+
+function getProgressColor(pct: number) {
+  if (pct >= 80) return "#22c55e";
+  if (pct >= 50) return "#f59e0b";
+  return "#ef4444";
+}
 
 interface KriForm {
   creci: string;
@@ -42,6 +72,38 @@ export default function Dashboard() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const [kriOpen, setKriOpen] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState(6); // default: Ano todo
+
+  const periodYear = currentYear;
+  const periodStart = PERIOD_PRESETS[selectedPreset].startDate(periodYear);
+  const periodEnd = PERIOD_PRESETS[selectedPreset].endDate(periodYear);
+
+  const goalProgressParams = { franchiseId: franchiseId ?? undefined, startDate: periodStart, endDate: periodEnd };
+  const { data: goalProgressData = [], isLoading: goalProgressLoading } = useGetGoalProgress(
+    goalProgressParams,
+    { query: { enabled: !!franchiseId, queryKey: getGetGoalProgressQueryKey(goalProgressParams) } }
+  );
+
+  const goalChartData = useMemo(
+    () => goalProgressData.map(g => ({
+      name: g.title.length > 28 ? g.title.slice(0, 28) + "…" : g.title,
+      fullName: g.title,
+      progress: g.progressPercentage,
+      dimensionName: g.dimensionName ?? "—",
+      status: g.status,
+      riskStatus: g.riskStatus ?? "no_prazo",
+      score: g.score,
+      kpis: g.kpis ?? [],
+    })),
+    [goalProgressData]
+  );
+
+  const avgProgress = goalChartData.length > 0
+    ? Math.round(goalChartData.reduce((s, g) => s + g.progress, 0) / goalChartData.length)
+    : 0;
+
+  const onTrackCount = goalChartData.filter(g => g.riskStatus !== "atrasado").length;
+  const delayedCount = goalChartData.filter(g => g.riskStatus === "atrasado").length;
 
   const dashParams = { franchiseId: franchiseId! };
   const { data, isLoading } = useGetFranchiseDashboard(
@@ -307,6 +369,147 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── Goal Progress Section ── */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Progresso das Metas
+                  </CardTitle>
+                  <CardDescription>
+                    Acompanhe onde a franquia está em relação a cada meta no período selecionado.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {PERIOD_PRESETS.map((p, i) => (
+                    <Button
+                      key={i}
+                      size="sm"
+                      variant={selectedPreset === i ? "default" : "outline"}
+                      className="text-xs h-7 px-2.5"
+                      onClick={() => setSelectedPreset(i)}
+                    >
+                      {p.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {goalChartData.length > 0 && (
+                <div className="flex gap-6 pt-2">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold" style={{ color: getProgressColor(avgProgress) }}>{avgProgress}%</div>
+                    <div className="text-xs text-muted-foreground">progresso médio</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{onTrackCount}</div>
+                    <div className="text-xs text-muted-foreground">no prazo</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-destructive">{delayedCount}</div>
+                    <div className="text-xs text-muted-foreground">atrasadas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold">{goalChartData.length}</div>
+                    <div className="text-xs text-muted-foreground">metas no período</div>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              {goalProgressLoading ? (
+                <div className="flex h-40 items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : goalChartData.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  Nenhuma meta encontrada para o período selecionado.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Horizontal bar chart */}
+                  <div className="h-[max(240px,calc(theme(spacing.10)*var(--goal-count)))]" style={{"--goal-count": goalChartData.length} as React.CSSProperties}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={goalChartData} layout="vertical" margin={{ left: 4, right: 32, top: 4, bottom: 4 }}>
+                        <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          formatter={(value: number) => [`${value}%`, "Progresso"]}
+                          labelFormatter={(label: string) => {
+                            const g = goalChartData.find(x => x.name === label);
+                            return g?.fullName ?? label;
+                          }}
+                        />
+                        <Bar dataKey="progress" radius={[0, 4, 4, 0]} minPointSize={2}>
+                          {goalChartData.map((entry, index) => (
+                            <Cell key={index} fill={getProgressColor(entry.progress)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Goal cards */}
+                  <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                    {goalChartData.map((g, i) => (
+                      <div key={i} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-medium leading-tight">{g.fullName}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{g.dimensionName}</div>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs shrink-0 ${RISK_COLOR[g.riskStatus] ?? ""}`}
+                          >
+                            {RISK_LABEL[g.riskStatus] ?? g.riskStatus}
+                          </Badge>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Progresso</span>
+                            <span className="font-semibold" style={{ color: getProgressColor(g.progress) }}>
+                              {g.progress}%
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(g.progress, 100)}%`, backgroundColor: getProgressColor(g.progress) }}
+                            />
+                          </div>
+                        </div>
+                        {/* KPIs */}
+                        {g.kpis.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {g.kpis.map((kpi) => (
+                              <div key={kpi.id} className="text-xs bg-muted px-2 py-1 rounded flex items-center gap-1">
+                                <span className="text-muted-foreground">{kpi.name}:</span>
+                                <span className="font-medium">
+                                  {kpi.currentValue ?? 0}
+                                  {kpi.targetValue != null ? ` / ${kpi.targetValue}` : ""}
+                                  {kpi.unit ? ` ${kpi.unit}` : ""}
+                                </span>
+                                {kpi.progressPct != null && (
+                                  <span style={{ color: getProgressColor(kpi.progressPct) }}>
+                                    ({kpi.progressPct}%)
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

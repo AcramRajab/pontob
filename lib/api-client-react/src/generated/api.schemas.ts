@@ -1087,6 +1087,89 @@ export interface CandidatoUpdate {
   recommendation?: string | null;
 }
 
+export interface GoalKpiProgress {
+  id: number;
+  name: string;
+  /** @nullable */
+  currentValue?: number | null;
+  /** @nullable */
+  targetValue?: number | null;
+  /** @nullable */
+  unit?: string | null;
+  /** @nullable */
+  progressPct?: number | null;
+}
+
+export interface GoalProgressItem {
+  id: number;
+  title: string;
+  /** @nullable */
+  dimensionId?: number | null;
+  /** @nullable */
+  dimensionName?: string | null;
+  progressPercentage: number;
+  /** @nullable */
+  currentValue?: number | null;
+  /** @nullable */
+  targetValue?: number | null;
+  /** @nullable */
+  unit?: string | null;
+  status: string;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  score: number;
+  /** @nullable */
+  riskStatus?: string | null;
+  /** @nullable */
+  kriDescription?: string | null;
+  kpis?: GoalKpiProgress[];
+}
+
+export interface PlannerIndicator {
+  key: string;
+  label: string;
+  category: string;
+}
+
+export interface PlannerEntry {
+  id: number;
+  franchiseId: number;
+  userId: number;
+  weekStartDate: string;
+  indicatorKey: string;
+  dayOfWeek: number;
+  /** @nullable */
+  value?: number | null;
+  /** @nullable */
+  meta?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlannerWeek {
+  franchiseId: number;
+  weekStartDate: string;
+  indicators: PlannerIndicator[];
+  entries: PlannerEntry[];
+}
+
+export interface PlannerEntryInput {
+  franchiseId: number;
+  weekStartDate: string;
+  indicatorKey: string;
+  dayOfWeek: number;
+  /** @nullable */
+  value?: number | null;
+  /** @nullable */
+  meta?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
 export interface ProgressHistoryItem {
   id: number;
   entityType: string;
@@ -1162,6 +1245,12 @@ export type ListHelpRequestsParams = {
 
 export type GetFranchiseDashboardParams = {
   franchiseId?: number;
+};
+
+export type GetGoalProgressParams = {
+  franchiseId?: number;
+  startDate?: string;
+  endDate?: string;
 };
 
 export type GetFranchiseRankingParams = {

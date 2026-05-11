@@ -834,6 +834,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/FranchiseDashboard"
 
+  /dashboard/goal-progress:
+    get:
+      operationId: getGoalProgress
+      tags: [dashboard]
+      summary: Get goal progress for a franchise filtered by period
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          schema:
+            type: string
+        - name: endDate
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Goal progress data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GoalProgressItem"
+
   /dashboard/regional:
     get:
       operationId: getRegionalDashboard
@@ -2399,6 +2427,60 @@ components:
           type: string
         recommendation:
           type: ["string", "null"]
+
+    GoalKpiProgress:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+        progressPct:
+          type: ["integer", "null"]
+
+    GoalProgressItem:
+      type: object
+      required: [id, title, progressPercentage, status, score]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        dimensionId:
+          type: ["integer", "null"]
+        dimensionName:
+          type: ["string", "null"]
+        progressPercentage:
+          type: number
+        currentValue:
+          type: ["number", "null"]
+        targetValue:
+          type: ["number", "null"]
+        unit:
+          type: ["string", "null"]
+        status:
+          type: string
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        score:
+          type: number
+        riskStatus:
+          type: ["string", "null"]
+        kriDescription:
+          type: ["string", "null"]
+        kpis:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoalKpiProgress"
 
     PlannerIndicator:
       type: object
