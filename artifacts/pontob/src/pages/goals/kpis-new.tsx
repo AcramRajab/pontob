@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
+import { PLANNER_KPI_TEMPLATES, PLANNER_SECTIONS, templatesBySection, type KpiTemplate } from "@/lib/kpi-templates";
 
 interface KpiForm {
   name: string;
@@ -31,13 +33,23 @@ export default function NewKpi() {
   const qc = useQueryClient();
   const create = useCreateKpi();
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<KpiForm>({
+  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<KpiForm>({
     defaultValues: {
-      frequency: "mensal",
+      frequency: "semanal",
       indicatorType: "numero_absoluto",
       desiredDirection: "aumentar",
     },
   });
+
+  const currentName = watch("name");
+
+  function applyTemplate(t: KpiTemplate) {
+    setValue("name", t.name);
+    setValue("unit", t.unit);
+    setValue("frequency", t.frequency);
+    setValue("indicatorType", t.indicatorType);
+    setValue("desiredDirection", t.desiredDirection);
+  }
 
   const onSubmit = async (data: KpiForm) => {
     try {
@@ -74,6 +86,46 @@ export default function NewKpi() {
           <p className="text-muted-foreground text-sm mt-0.5">Indicador de performance chave</p>
         </div>
       </div>
+
+      {/* Planner Suggestions */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-sm flex items-center gap-2 text-primary">
+            <Zap className="h-4 w-4" />
+            Sugestões do Planner Semanal
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Clique em um KPI para pré-preencher o formulário</p>
+        </CardHeader>
+        <CardContent className="pb-4 space-y-3">
+          {PLANNER_SECTIONS.map(sec => (
+            <div key={sec.key}>
+              <p className={`text-xs font-semibold uppercase tracking-wide mb-1.5 ${sec.color}`}>{sec.key}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {templatesBySection(sec.key).map(t => {
+                  const isActive = currentName === t.name;
+                  return (
+                    <button
+                      key={t.name}
+                      type="button"
+                      onClick={() => applyTemplate(t)}
+                      className={`text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                        isActive
+                          ? `${sec.bg} ${sec.color} ${sec.border} font-semibold ring-1 ring-offset-1 ${sec.border}`
+                          : `bg-background hover:${sec.bg} ${sec.border} border-muted-foreground/20 hover:${sec.color} text-muted-foreground`
+                      }`}
+                    >
+                      {t.name}
+                      {t.desiredDirection === "diminuir" && (
+                        <span className="ml-1 opacity-60">↓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Card>

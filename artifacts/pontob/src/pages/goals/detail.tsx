@@ -1,7 +1,8 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useGetGoal, getGetGoalQueryKey, useCreateKpi, useDeleteKpi, useUpdateGoalInitiative } from "@workspace/api-client-react";
-import { Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2, CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2, CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap } from "lucide-react";
+import { PLANNER_SECTIONS, templatesBySection } from "@/lib/kpi-templates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -75,7 +76,7 @@ export default function GoalDetail() {
   const deleteKpi = useDeleteKpi();
   const updateInitiative = useUpdateGoalInitiative();
 
-  const { register, handleSubmit, reset, control } = useForm<KpiForm>({
+  const { register, handleSubmit, reset, control, setValue: setKpiValue } = useForm<KpiForm>({
     defaultValues: { indicatorType: "resultado", desiredDirection: "higher" },
   });
 
@@ -238,10 +239,39 @@ export default function GoalDetail() {
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar KPI
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Novo KPI</DialogTitle>
                 </DialogHeader>
+
+                {/* Planner Suggestions */}
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2.5">
+                  <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5" /> Sugestões do Planner Semanal
+                  </p>
+                  {PLANNER_SECTIONS.map(sec => (
+                    <div key={sec.key}>
+                      <p className={`text-xs font-semibold mb-1 ${sec.color}`}>{sec.key}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {templatesBySection(sec.key).map(t => (
+                          <button
+                            key={t.name}
+                            type="button"
+                            onClick={() => {
+                              setKpiValue("name", t.name);
+                              setKpiValue("unit", t.unit);
+                              setKpiValue("desiredDirection", t.desiredDirection === "diminuir" ? "lower" : "higher");
+                            }}
+                            className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${sec.bg} ${sec.color} ${sec.border} hover:opacity-80`}
+                          >
+                            {t.name}{t.desiredDirection === "diminuir" ? " ↓" : ""}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <form onSubmit={handleSubmit(onCreateKpi)} className="space-y-4 mt-2">
                   <div className="space-y-1.5">
                     <Label>Nome do KPI *</Label>
