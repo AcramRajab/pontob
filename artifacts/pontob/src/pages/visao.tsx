@@ -2,6 +2,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight, Pencil, Check, X, Target, Users, Building2, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Milestone {
   id: number;
@@ -25,22 +29,26 @@ interface VisaoData {
   milestones: Milestone[];
   quarterActuals: QuarterActual[];
 }
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Eye, Pencil, Check, TrendingUp } from "lucide-react";
 
 const QUARTERS = [
-  { label: "1ºTRI", date: (y: number) => `${y}-03-31`, display: (y: number) => `31 MAR ${y}` },
-  { label: "2ºTRI", date: (y: number) => `${y}-06-30`, display: (y: number) => `30 JUN ${y}` },
-  { label: "3ºTRI", date: (y: number) => `${y}-09-30`, display: (y: number) => `30 SET ${y}` },
-  { label: "4ºTRI / FINAL", date: (y: number) => `${y}-12-31`, display: (y: number) => `31 DEZ ${y}` },
+  { label: "1º Trimestre", short: "Q1", date: (y: number) => `${y}-03-31`, display: (y: number) => `Mar ${y}` },
+  { label: "2º Trimestre", short: "Q2", date: (y: number) => `${y}-06-30`, display: (y: number) => `Jun ${y}` },
+  { label: "3º Trimestre", short: "Q3", date: (y: number) => `${y}-09-30`, display: (y: number) => `Set ${y}` },
+  { label: "4º Trimestre", short: "Q4", date: (y: number) => `${y}-12-31`, display: (y: number) => `Dez ${y}` },
+];
+
+const Q_COLORS = [
+  { bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-600", text: "text-blue-700", bar: "bg-blue-500" },
+  { bg: "bg-violet-50", border: "border-violet-200", badge: "bg-violet-600", text: "text-violet-700", bar: "bg-violet-500" },
+  { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-500", text: "text-amber-700", bar: "bg-amber-400" },
+  { bg: "bg-emerald-50", border: "border-emerald-200", badge: "bg-emerald-600", text: "text-emerald-700", bar: "bg-emerald-500" },
 ];
 
 function formatVgh(v: number | null | undefined) {
   if (v == null) return "—";
-  return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}k`;
+  return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0 });
 }
 
 function pct(actual: number | null | undefined, target: number | null | undefined): number | null {
@@ -54,6 +62,73 @@ async function apiFetch(url: string, opts?: RequestInit) {
   return res.json();
 }
 
+function KriRow({
+  icon: Icon,
+  label,
+  target,
+  actual,
+  targetRaw,
+  isVgh,
+  canWrite,
+  onChange,
+  colorBar,
+}: {
+  icon: any;
+  label: string;
+  target: number | null;
+  actual: number | null;
+  targetRaw: string | number;
+  isVgh?: boolean;
+  canWrite: boolean;
+  onChange: (v: string) => void;
+  colorBar: string;
+}) {
+  const p = pct(actual, target);
+  const capped = p != null ? Math.min(p, 100) : 0;
+  const isGood = p != null && p >= 100;
+  const hasActual = actual != null;
+
+  return (
+    <div className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
+      <div className="w-7 h-7 rounded-lg bg-background border border-border flex items-center justify-center shrink-0">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium text-muted-foreground mb-1">{label}</div>
+        {hasActual && target && (
+          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn("h-full rounded-full transition-all", isGood ? "bg-green-500" : p! >= 60 ? "bg-amber-400" : colorBar)}
+              style={{ width: `${capped}%` }}
+            />
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {hasActual && (
+          <div className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", isGood ? "text-green-600 bg-green-50" : "text-orange-500 bg-orange-50")}>
+            {isVgh ? formatVgh(actual) : actual}
+            {p != null && <span className="ml-1 opacity-70">{p}%</span>}
+          </div>
+        )}
+        {canWrite ? (
+          <Input
+            type="number"
+            min={0}
+            step={isVgh ? 1000 : 1}
+            defaultValue={targetRaw === null ? "" : targetRaw}
+            placeholder={isVgh ? "R$ meta" : "Meta"}
+            className={cn("text-center text-sm font-semibold h-8 border-dashed focus:border-solid", isVgh ? "w-28" : "w-20")}
+            onChange={e => onChange(e.target.value)}
+          />
+        ) : (
+          <div className="text-sm font-semibold w-20 text-center">{isVgh ? formatVgh(target) : (target ?? "—")}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Visao() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -64,6 +139,7 @@ export default function Visao() {
   const [statementDraft, setStatementDraft] = useState("");
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const canWrite = user?.role !== "responsavel_interno";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const queryKey = ["visao", franchiseId, year];
 
@@ -74,10 +150,12 @@ export default function Visao() {
   });
 
   useEffect(() => {
-    if (!editingStatement && data) {
-      setStatementDraft(data.visao?.statement ?? "");
-    }
+    if (!editingStatement && data) setStatementDraft(data.visao?.statement ?? "");
   }, [data, editingStatement]);
+
+  useEffect(() => {
+    if (editingStatement && textareaRef.current) textareaRef.current.focus();
+  }, [editingStatement]);
 
   const saveStatement = useMutation({
     mutationFn: (statement: string) =>
@@ -122,10 +200,7 @@ export default function Visao() {
         const existing = getMilestone(quarterDate);
         const val = raw === "" ? null : parseFloat(raw);
         saveMilestone.mutate({
-          franchiseId,
-          year,
-          quarterDate,
-          quarterLabel,
+          franchiseId, year, quarterDate, quarterLabel,
           targetCreci: field === "targetCreci" ? val : (existing?.targetCreci ?? null),
           targetCres: field === "targetCres" ? val : (existing?.targetCres ?? null),
           targetVgh: field === "targetVgh" ? val : (existing?.targetVgh ?? null),
@@ -136,221 +211,203 @@ export default function Visao() {
   );
 
   const franchiseName = user?.franchiseName ?? "Franquia";
+  const hasStatement = !!data?.visao?.statement;
+  const currentYear = new Date().getFullYear();
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-primary tracking-tight">
-            Visão {franchiseName} — {year}
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Target className="h-6 w-6 text-primary" />
+            Visão Anual — {franchiseName}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Declaração anual de visão com marcos trimestrais de KRIs
+            Declare onde quer chegar e defina marcos trimestrais para medir o caminho
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setYear(y => y - 1)}>
+        <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear(y => y - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="font-semibold text-lg px-2">{year}</span>
-          <Button variant="outline" size="icon" onClick={() => setYear(y => y + 1)}>
+          <span className={cn("font-bold text-lg px-4 min-w-[72px] text-center", year === currentYear ? "text-primary" : "text-foreground")}>
+            {year}
+          </span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear(y => y + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Vision Statement */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
-        <CardContent className="p-6">
+      <div className={cn(
+        "relative rounded-xl border-2 transition-all overflow-hidden",
+        editingStatement ? "border-primary/50 shadow-md" : hasStatement ? "border-border bg-gradient-to-br from-primary/5 via-background to-background" : "border-dashed border-border bg-muted/20"
+      )}>
+        <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl" />
+        <div className="px-6 py-5 pl-8">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               {editingStatement ? (
                 <textarea
-                  autoFocus
+                  ref={textareaRef}
                   value={statementDraft}
                   onChange={e => setStatementDraft(e.target.value)}
-                  className="w-full text-lg leading-relaxed font-medium italic bg-transparent border-b-2 border-primary/40 focus:outline-none focus:border-primary resize-none min-h-[80px]"
-                  placeholder={`"Em dezembro de ${year} teremos X corretores ativos, com uma média de Y representações por corretor e alcançando o clube Z..."`}
+                  rows={3}
+                  className="w-full text-base leading-relaxed italic bg-transparent border-0 focus:outline-none resize-none placeholder:text-muted-foreground/60 placeholder:not-italic"
+                  placeholder={`Em dezembro de ${year}, a ${franchiseName} terá X corretores com CRECI, Y representações ativas e alcançará R$ Z em honorários...`}
                 />
               ) : (
-                <p className="text-lg leading-relaxed font-medium italic text-foreground/90">
-                  {data?.visao?.statement
-                    ? `"${data.visao.statement}"`
-                    : <span className="text-muted-foreground not-italic font-normal">
-                        Clique no lápis para escrever a declaração de visão da franquia para {year}...
-                      </span>
-                  }
-                </p>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Declaração de Visão {year}</p>
+                  {hasStatement ? (
+                    <p className="text-base leading-relaxed italic text-foreground/90">
+                      "{data?.visao?.statement}"
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {canWrite
+                        ? `Clique em Editar para escrever a declaração de visão da sua franquia para ${year}.`
+                        : `Nenhuma declaração de visão registrada para ${year}.`}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
             {canWrite && (
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 pt-1">
                 {editingStatement ? (
-                  <Button size="sm" onClick={() => saveStatement.mutate(statementDraft)} disabled={saveStatement.isPending}>
-                    <Check className="h-4 w-4 mr-1" />
-                    Salvar
-                  </Button>
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingStatement(false); setStatementDraft(data?.visao?.statement ?? ""); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" onClick={() => saveStatement.mutate(statementDraft)} disabled={saveStatement.isPending}>
+                      <Check className="h-4 w-4 mr-1.5" />
+                      Salvar
+                    </Button>
+                  </>
                 ) : (
-                  <Button variant="ghost" size="icon" onClick={() => { setStatementDraft(data?.visao?.statement ?? ""); setEditingStatement(true); }}>
-                    <Pencil className="h-4 w-4" />
+                  <Button variant="outline" size="sm" onClick={() => { setStatementDraft(data?.visao?.statement ?? ""); setEditingStatement(true); }}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    {hasStatement ? "Editar" : "Escrever visão"}
                   </Button>
                 )}
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Milestone Table */}
+      {/* Quarter Cards */}
       {isLoading ? (
-        <Card><CardContent className="py-8 text-center text-muted-foreground">Carregando...</CardContent></Card>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="h-64 rounded-xl bg-muted/30 animate-pulse" />
+          ))}
+        </div>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="px-4 py-3 bg-muted/40 border-b flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span className="font-semibold text-sm">Marcos Trimestrais de KRIs</span>
-            <span className="text-xs text-muted-foreground ml-2">— metas de topo de linha por trimestre</span>
+        <>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <TrendingUp className="h-4 w-4" />
+            <span className="font-medium text-foreground">Marcos Trimestrais de KRIs</span>
+            <span className="hidden sm:inline">— defina as metas de topo de linha por trimestre</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/20">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground min-w-[160px]">DATA / KPI</th>
-                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[160px]">
-                    <div>Corretores Empresários</div>
-                    <div className="text-xs font-normal">(com CRECI)</div>
-                  </th>
-                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[160px]">
-                    <div>Representações</div>
-                    <div className="text-xs font-normal">(CREs)</div>
-                  </th>
-                  <th className="text-center px-3 py-3 font-semibold text-muted-foreground min-w-[180px]">
-                    <div>VGH</div>
-                    <div className="text-xs font-normal">(Valor Geral de Honorários)</div>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {QUARTERS.map((q, idx) => {
-                  const qDate = q.date(year);
-                  const milestone = getMilestone(qDate);
-                  const actual = getActual(qDate);
-                  const isFinal = idx === 3;
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {QUARTERS.map((q, idx) => {
+              const qDate = q.date(year);
+              const milestone = getMilestone(qDate);
+              const actual = getActual(qDate);
+              const color = Q_COLORS[idx];
+              const isFinal = idx === 3;
 
-                  const pCreci = pct(actual?.actualCreci, milestone?.targetCreci);
-                  const pCres = pct(actual?.actualCres, milestone?.targetCres);
-                  const pVgh = pct(actual?.actualVgh, milestone?.targetVgh);
+              const anyTarget = milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh;
 
-                  return (
-                    <tr key={qDate} className={`border-b last:border-0 ${isFinal ? "bg-primary/5" : idx % 2 === 0 ? "" : "bg-muted/10"}`}>
-                      <td className="px-4 py-3">
-                        <div className={`font-bold text-sm ${isFinal ? "text-primary" : "text-foreground"}`}>
-                          {q.display(year)}
+              return (
+                <div
+                  key={qDate}
+                  className={cn(
+                    "rounded-xl border-2 overflow-hidden transition-shadow hover:shadow-md",
+                    color.border,
+                    isFinal ? color.bg : "bg-card"
+                  )}
+                >
+                  {/* Card header */}
+                  <div className={cn("px-4 py-3 flex items-center justify-between", color.bg)}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md text-white", color.badge)}>
+                          {q.short}
+                        </span>
+                        {isFinal && (
+                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                            Final
+                          </span>
+                        )}
+                      </div>
+                      <div className={cn("text-xs font-medium mt-1", color.text)}>{q.display(year)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">{q.label}</div>
+                      {anyTarget && (
+                        <div className="text-xs font-medium text-muted-foreground mt-0.5">
+                          {actual?.actualCreci != null ? "com dados reais" : "sem dados reais"}
                         </div>
-                        <Badge variant={isFinal ? "default" : "secondary"} className="mt-1 text-xs">
-                          {q.label}
-                        </Badge>
-                      </td>
+                      )}
+                    </div>
+                  </div>
 
-                      {/* CRECI */}
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {canWrite ? (
-                            <Input
-                              type="number"
-                              min={0}
-                              defaultValue={milestone?.targetCreci ?? ""}
-                              key={`${qDate}-creci-${year}`}
-                              placeholder="Meta"
-                              className="w-20 h-8 text-center text-sm font-semibold"
-                              onChange={e => handleMilestoneChange(qDate, q.label, "targetCreci", e.target.value)}
-                            />
-                          ) : (
-                            <span className="font-semibold">{milestone?.targetCreci ?? "—"}</span>
-                          )}
-                          {actual?.actualCreci != null && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Eye className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">Atual: </span>
-                              <span className={`font-medium ${pCreci != null && pCreci >= 100 ? "text-green-600" : "text-orange-500"}`}>
-                                {actual.actualCreci}
-                                {pCreci != null && <span className="ml-1 text-xs">({pCreci}%)</span>}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
+                  {/* KRI rows */}
+                  <div className="px-4 pb-2 pt-1">
+                    <KriRow
+                      icon={Users}
+                      label="Corretores CRECI"
+                      target={milestone?.targetCreci ?? null}
+                      actual={actual?.actualCreci ?? null}
+                      targetRaw={milestone?.targetCreci ?? ""}
+                      canWrite={canWrite}
+                      colorBar={color.bar}
+                      onChange={v => handleMilestoneChange(qDate, q.label, "targetCreci", v)}
+                    />
+                    <KriRow
+                      icon={Building2}
+                      label="Representações (CREs)"
+                      target={milestone?.targetCres ?? null}
+                      actual={actual?.actualCres ?? null}
+                      targetRaw={milestone?.targetCres ?? ""}
+                      canWrite={canWrite}
+                      colorBar={color.bar}
+                      onChange={v => handleMilestoneChange(qDate, q.label, "targetCres", v)}
+                    />
+                    <KriRow
+                      icon={TrendingUp}
+                      label="VGH (Honorários)"
+                      target={milestone?.targetVgh ?? null}
+                      actual={actual?.actualVgh ?? null}
+                      targetRaw={milestone?.targetVgh ?? ""}
+                      isVgh
+                      canWrite={canWrite}
+                      colorBar={color.bar}
+                      onChange={v => handleMilestoneChange(qDate, q.label, "targetVgh", v)}
+                    />
+                  </div>
 
-                      {/* CREs */}
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {canWrite ? (
-                            <Input
-                              type="number"
-                              min={0}
-                              defaultValue={milestone?.targetCres ?? ""}
-                              key={`${qDate}-cres-${year}`}
-                              placeholder="Meta"
-                              className="w-20 h-8 text-center text-sm font-semibold"
-                              onChange={e => handleMilestoneChange(qDate, q.label, "targetCres", e.target.value)}
-                            />
-                          ) : (
-                            <span className="font-semibold">{milestone?.targetCres ?? "—"}</span>
-                          )}
-                          {actual?.actualCres != null && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Eye className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">Atual: </span>
-                              <span className={`font-medium ${pCres != null && pCres >= 100 ? "text-green-600" : "text-orange-500"}`}>
-                                {actual.actualCres}
-                                {pCres != null && <span className="ml-1 text-xs">({pCres}%)</span>}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* VGH */}
-                      <td className="px-3 py-3 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          {canWrite ? (
-                            <Input
-                              type="number"
-                              min={0}
-                              step={1000}
-                              defaultValue={milestone?.targetVgh ?? ""}
-                              key={`${qDate}-vgh-${year}`}
-                              placeholder="Meta R$"
-                              className="w-36 h-8 text-center text-sm font-semibold"
-                              onChange={e => handleMilestoneChange(qDate, q.label, "targetVgh", e.target.value)}
-                            />
-                          ) : (
-                            <span className="font-semibold">{formatVgh(milestone?.targetVgh)}</span>
-                          )}
-                          {actual?.actualVgh != null && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Eye className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-muted-foreground">Atual: </span>
-                              <span className={`font-medium ${pVgh != null && pVgh >= 100 ? "text-green-600" : "text-orange-500"}`}>
-                                {formatVgh(actual.actualVgh)}
-                                {pVgh != null && <span className="ml-1 text-xs">({pVgh}%)</span>}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  {!anyTarget && canWrite && (
+                    <div className="px-4 pb-3">
+                      <p className="text-xs text-muted-foreground/60 italic text-center">
+                        Preencha as metas acima
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </Card>
+        </>
       )}
 
-      <p className="text-xs text-muted-foreground text-center italic">
-        Metas e visão ficam salvas automaticamente. Valores reais são preenchidos a partir dos KRIs mensais registrados.
+      <p className="text-xs text-muted-foreground text-center italic pt-2">
+        Metas salvas automaticamente · Valores reais calculados a partir dos KRIs mensais registrados
       </p>
     </div>
   );
