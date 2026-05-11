@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable } from "@workspace/db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
@@ -160,50 +160,44 @@ router.post("/visao/milestones", requireAuth, requireWriteAccess, async (req, re
       return;
     }
 
-    // Ensure visao record exists
-    let visaoRows = await db
-      .select()
-      .from(franchiseVisaoTable)
-      .where(and(
-        eq(franchiseVisaoTable.franchiseId, franchiseId),
-        eq(franchiseVisaoTable.year, year),
-      ))
-      .limit(1);
+    // Ensure visao parent record exists — atomic upsert to avoid race condition
+    const [visaoRow] = await db
+      .insert(franchiseVisaoTable)
+      .values({ franchiseId, year, statement: null })
+      .onConflictDoUpdate({
+        target: [franchiseVisaoTable.franchiseId, franchiseVisaoTable.year],
+        set: { updatedAt: sql`now()` },
+      })
+      .returning();
 
-    if (!visaoRows[0]) {
-      const [newVisao] = await db
-        .insert(franchiseVisaoTable)
-        .values({ franchiseId, year, statement: null })
-        .returning();
-      visaoRows = [newVisao];
-    }
+    const visaoId = visaoRow.id;
 
-    const visaoId = visaoRows[0].id;
+    // Atomic upsert — avoids race condition when two fields are saved in rapid succession
+    const [row] = await db
+      .insert(franchiseVisaoMilestonesTable)
+      .values({
+        visaoId,
+        franchiseId,
+        year,
+        quarterDate,
+        quarterLabel,
+        targetCreci: targetCreci ?? null,
+        targetCres: targetCres ?? null,
+        targetVgh: targetVgh ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [franchiseVisaoMilestonesTable.visaoId, franchiseVisaoMilestonesTable.quarterDate],
+        set: {
+          targetCreci: targetCreci ?? null,
+          targetCres: targetCres ?? null,
+          targetVgh: targetVgh ?? null,
+          quarterLabel,
+          updatedAt: sql`now()`,
+        },
+      })
+      .returning();
 
-    const existing = await db
-      .select()
-      .from(franchiseVisaoMilestonesTable)
-      .where(and(
-        eq(franchiseVisaoMilestonesTable.visaoId, visaoId),
-        eq(franchiseVisaoMilestonesTable.quarterDate, quarterDate),
-      ))
-      .limit(1);
-
-    let row;
-    if (existing[0]) {
-      [row] = await db
-        .update(franchiseVisaoMilestonesTable)
-        .set({ targetCreci: targetCreci ?? null, targetCres: targetCres ?? null, targetVgh: targetVgh ?? null, quarterLabel })
-        .where(eq(franchiseVisaoMilestonesTable.id, existing[0].id))
-        .returning();
-    } else {
-      [row] = await db
-        .insert(franchiseVisaoMilestonesTable)
-        .values({ visaoId, franchiseId, year, quarterDate, quarterLabel, targetCreci: targetCreci ?? null, targetCres: targetCres ?? null, targetVgh: targetVgh ?? null })
-        .returning();
-    }
-
-    res.status(existing[0] ? 200 : 201).json({
+    res.status(200).json({
       ...row,
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
       updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
