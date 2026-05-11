@@ -8,3 +8,4 @@ export * from "./recruiting";
 export * from "./conversations";
 export * from "./messages";
 export * from "./planner";
+export * from "./visao";
