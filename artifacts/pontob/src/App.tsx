@@ -34,6 +34,7 @@ import VagaDetail from "@/pages/recrutamento/vaga-detail";
 import Secretaria from "@/pages/recrutamento/secretaria";
 import Planner from "@/pages/planner";
 import Visao from "@/pages/visao";
+import AdminHistory from "@/pages/admin/history";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,7 @@ function Router() {
         <Route path="/regional" component={Regional} />
         <Route path="/admin/franchises" component={AdminFranchises} />
         <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/history" component={AdminHistory} />
         <Route path="/my-team" component={MyTeam} />
         <Route path="/settings" component={Settings} />
         <Route path="/recrutamento/secretaria" component={Secretaria} />

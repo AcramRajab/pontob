@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot, TableIcon, Eye } from "lucide-react";
+import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot, TableIcon, Eye, ClipboardList } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function AppSidebar() {
@@ -250,6 +250,14 @@ export function AppSidebar() {
                     <Link href="/admin/users">
                       <Users />
                       <span>Usuários</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/history")}>
+                    <Link href="/admin/history">
+                      <ClipboardList />
+                      <span>Histórico de Alterações</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

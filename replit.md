@@ -50,10 +50,12 @@ Strategic execution SaaS platform for RE/MAX SC franchises. Franchises set goals
 
 ## Test Credentials (after seed)
 
-- admin@remaxsc.com.br / admin123 (master_admin)
-- regional@remaxsc.com.br / regional123 (staff_regional)
+- acramrajab@remax.com.br / admin123 (master_admin)
+- claudiaroncolatto@remax.com.br / remax2026 (staff_regional)
+- marinasandri@remax.com.br / remax2026 (staff_regional)
 - franqueado@remaxsc.com.br / franqueado123 (franqueado)
 - responsavel@remaxsc.com.br / responsavel123 (responsavel_interno)
+- regional@remaxsc.com.br — deactivated (old test account)
 
 ## User preferences
 

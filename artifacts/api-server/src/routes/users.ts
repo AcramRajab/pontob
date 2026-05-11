@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db, usersTable, franchisesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, requireRole, requireWriteAccess } from "../middlewares/auth";
+import { logAudit, shouldAudit } from "../services/audit";
 
 const router = Router();
 
@@ -111,6 +112,14 @@ router.post("/users", requireAuth, requireWriteAccess, async (req, res) => {
       const fRows = await db.select({ name: franchisesTable.name }).from(franchisesTable).where(eq(franchisesTable.id, u.franchiseId)).limit(1);
       franchiseName = fRows[0]?.name ?? null;
     }
+
+    if (shouldAudit(req.session.userRole!)) {
+      await logAudit({
+        userId: req.session.userId!, userName: req.session.userName!, userEmail: req.session.userEmail!,
+        action: "create", entityType: "user", entityId: u.id, entityName: u.name,
+        newData: { name: u.name, email: u.email, role: u.role, franchiseId: u.franchiseId, franchiseName },
+      });
+    }
     res.status(201).json(formatUser(u, franchiseName));
   } catch (err) {
     req.log.error(err);
@@ -171,16 +180,20 @@ router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => 
       if (existing[0].role !== "responsavel_interno") {
         res.status(403).json({ error: "Você só pode editar usuários do perfil Responsável Interno." }); return;
       }
-    } else if (role !== "master_admin") {
+    } else if (role !== "master_admin" && role !== "staff_regional") {
       res.status(403).json({ error: "Forbidden" }); return;
     }
+
+    // Fetch existing record before update for audit log
+    const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    if (!existingUser && role !== "franqueado") { res.status(404).json({ error: "Not found" }); return; }
 
     const { name, email, role: userRole, franchiseId, active } = req.body;
     const update: Record<string, unknown> = {};
     if (name !== undefined) update.name = name;
     if (email !== undefined) update.email = email.toLowerCase();
-    if (userRole !== undefined && role === "master_admin") update.role = userRole;
-    if (franchiseId !== undefined && role === "master_admin") update.franchiseId = franchiseId;
+    if (userRole !== undefined && (role === "master_admin" || role === "staff_regional")) update.role = userRole;
+    if (franchiseId !== undefined && (role === "master_admin" || role === "staff_regional")) update.franchiseId = franchiseId;
     if (active !== undefined) update.active = active;
 
     const [u] = await db.update(usersTable).set(update).where(eq(usersTable.id, id)).returning();
@@ -190,6 +203,15 @@ router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => 
       const fRows = await db.select({ name: franchisesTable.name }).from(franchisesTable).where(eq(franchisesTable.id, u.franchiseId)).limit(1);
       franchiseName = fRows[0]?.name ?? null;
     }
+
+    if (shouldAudit(req.session.userRole!) && existingUser) {
+      await logAudit({
+        userId: req.session.userId!, userName: req.session.userName!, userEmail: req.session.userEmail!,
+        action: "update", entityType: "user", entityId: id, entityName: existingUser.name,
+        oldData: { name: existingUser.name, email: existingUser.email, role: existingUser.role, franchiseId: existingUser.franchiseId, active: existingUser.active },
+        newData: { name: u.name, email: u.email, role: u.role, franchiseId: u.franchiseId, active: u.active },
+      });
+    }
     res.json(formatUser(u, franchiseName));
   } catch (err) {
     req.log.error(err);
@@ -197,15 +219,25 @@ router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => 
   }
 });
 
-router.delete("/users/:id", requireAuth, requireRole("master_admin"), async (req, res) => {
+router.delete("/users/:id", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (id === req.session.userId) {
       res.status(400).json({ error: "Você não pode excluir sua própria conta." });
       return;
     }
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
     const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
     if (!deleted) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
+
+    if (shouldAudit(req.session.userRole!)) {
+      await logAudit({
+        userId: req.session.userId!, userName: req.session.userName!, userEmail: req.session.userEmail!,
+        action: "delete", entityType: "user", entityId: id, entityName: existing.name,
+        oldData: { name: existing.name, email: existing.email, role: existing.role, franchiseId: existing.franchiseId, active: existing.active },
+      });
+    }
     res.status(204).send();
   } catch (err) {
     req.log.error(err);

@@ -15,6 +15,7 @@ import recruitingAiRouter from "./recruiting-ai";
 import notificationsRouter from "./notifications";
 import plannerRouter from "./planner";
 import visaoRouter from "./visao";
+import auditRouter from "./audit";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(recruitingAiRouter);
 router.use(notificationsRouter);
 router.use(plannerRouter);
 router.use(visaoRouter);
+router.use(auditRouter);
 
 export default router;

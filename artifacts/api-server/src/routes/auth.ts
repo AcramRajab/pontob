@@ -42,6 +42,8 @@ router.post("/auth/login", async (req, res) => {
 
     req.session.userId = user.id;
     req.session.userRole = user.role;
+    req.session.userName = user.name;
+    req.session.userEmail = user.email;
     req.session.franchiseId = user.franchiseId;
 
     let franchiseName: string | null = null;

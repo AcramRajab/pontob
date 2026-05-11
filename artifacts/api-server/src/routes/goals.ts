@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, goalsTable, kpisTable, goalInitiativesTable, franchisesTable, usersTable, dimensionsTable, keyProcessesTable, strategicInitiativesTable, progressHistoryTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
+import { logAudit, shouldAudit } from "../services/audit";
 
 const router = Router();
 
@@ -245,15 +246,32 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
 router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const existing = await db.select({ franchiseId: goalsTable.franchiseId }).from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
-    if (!existing[0]) { res.status(404).json({ error: "Not found" }); return; }
-    if (!canAccessFranchise(req, existing[0].franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const [existingGoal] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
+    if (!existingGoal) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existingGoal.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
 
     const fields = ["title", "kriDescription", "currentValue", "targetValue", "unit", "startDate", "endDate", "ownerUserId", "frequency", "status"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
 
     const [g] = await db.update(goalsTable).set(update).where(eq(goalsTable.id, id)).returning();
+
+    if (shouldAudit(req.session.userRole!)) {
+      const oldSnap: Record<string, unknown> = {};
+      const newSnap: Record<string, unknown> = {};
+      fields.forEach(f => {
+        if (update[f] !== undefined) {
+          oldSnap[f] = (existingGoal as any)[f];
+          newSnap[f] = update[f];
+        }
+      });
+      await logAudit({
+        userId: req.session.userId!, userName: req.session.userName!, userEmail: req.session.userEmail!,
+        action: "update", entityType: "goal", entityId: id, entityName: existingGoal.title,
+        oldData: oldSnap, newData: newSnap,
+      });
+    }
+
     const enriched = await enrichGoal({ ...g, franchiseName: null, dimensionName: null, keyProcessName: null, ownerName: null });
     res.json(enriched);
   } catch (err) {
