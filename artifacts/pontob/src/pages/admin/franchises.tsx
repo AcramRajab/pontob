@@ -37,7 +37,7 @@ export default function AdminFranchises() {
 
   const deleteFranchise = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/franchises/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/franchises/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Erro ao excluir franquia");
