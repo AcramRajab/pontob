@@ -11,4 +11,7 @@ export interface FranchiseInput {
   city: string;
   state: string;
   brokerOwnerName?: string;
+  contactEmail?: string;
+  phone?: string;
+  cnpj?: string;
 }

@@ -62,6 +62,9 @@ export const ListFranchisesResponseItem = zod.object({
   city: zod.string(),
   state: zod.string(),
   brokerOwnerName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  cnpj: zod.string().nullish(),
   active: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -75,6 +78,9 @@ export const CreateFranchiseBody = zod.object({
   city: zod.string(),
   state: zod.string(),
   brokerOwnerName: zod.string().optional(),
+  contactEmail: zod.string().optional(),
+  phone: zod.string().optional(),
+  cnpj: zod.string().optional(),
 });
 
 /**
@@ -90,6 +96,9 @@ export const GetFranchiseResponse = zod.object({
   city: zod.string(),
   state: zod.string(),
   brokerOwnerName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  cnpj: zod.string().nullish(),
   active: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -106,6 +115,9 @@ export const UpdateFranchiseBody = zod.object({
   city: zod.string().optional(),
   state: zod.string().optional(),
   brokerOwnerName: zod.string().optional(),
+  contactEmail: zod.string().optional(),
+  phone: zod.string().optional(),
+  cnpj: zod.string().optional(),
   active: zod.boolean().optional(),
 });
 
@@ -115,6 +127,9 @@ export const UpdateFranchiseResponse = zod.object({
   city: zod.string(),
   state: zod.string(),
   brokerOwnerName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  cnpj: zod.string().nullish(),
   active: zod.boolean(),
   createdAt: zod.string(),
 });

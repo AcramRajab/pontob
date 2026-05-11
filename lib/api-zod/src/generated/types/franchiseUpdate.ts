@@ -11,5 +11,8 @@ export interface FranchiseUpdate {
   city?: string;
   state?: string;
   brokerOwnerName?: string;
+  contactEmail?: string;
+  phone?: string;
+  cnpj?: string;
   active?: boolean;
 }

@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import { Building2, Plus, Trash2, Phone, Mail, Hash } from "lucide-react";
 import { useState } from "react";
 
 interface FranchiseForm {
@@ -18,6 +18,9 @@ interface FranchiseForm {
   city: string;
   state: string;
   brokerOwnerName: string;
+  contactEmail: string;
+  phone: string;
+  cnpj: string;
 }
 
 export default function AdminFranchises() {
@@ -26,6 +29,7 @@ export default function AdminFranchises() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [search, setSearch] = useState("");
 
   const { data: franchises = [], isLoading } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
   const create = useCreateFranchise();
@@ -72,16 +76,38 @@ export default function AdminFranchises() {
 
   const handleEdit = (f: any) => {
     setEditId(f.id);
-    reset({ name: f.name, city: f.city, state: f.state, brokerOwnerName: f.brokerOwnerName || "" });
+    reset({
+      name: f.name,
+      city: f.city,
+      state: f.state,
+      brokerOwnerName: f.brokerOwnerName || "",
+      contactEmail: f.contactEmail || "",
+      phone: f.phone || "",
+      cnpj: f.cnpj || "",
+    });
     setOpen(true);
   };
+
+  const filtered = franchises.filter((f: any) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      f.name?.toLowerCase().includes(q) ||
+      f.city?.toLowerCase().includes(q) ||
+      f.brokerOwnerName?.toLowerCase().includes(q) ||
+      f.contactEmail?.toLowerCase().includes(q) ||
+      f.phone?.includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Franquias</h1>
-          <p className="text-muted-foreground mt-1">Gestão de franquias RE/MAX SC</p>
+          <p className="text-muted-foreground mt-1">
+            {franchises.length} franquia{franchises.length !== 1 ? "s" : ""} RE/MAX SC cadastradas
+          </p>
         </div>
         <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) { setEditId(null); reset(); } }}>
           <DialogTrigger asChild>
@@ -89,7 +115,7 @@ export default function AdminFranchises() {
               <Plus className="h-4 w-4 mr-1.5" /> Nova Franquia
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>{editId ? "Editar Franquia" : "Nova Franquia"}</DialogTitle>
             </DialogHeader>
@@ -110,8 +136,22 @@ export default function AdminFranchises() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Broker Owner</Label>
+                <Label>Broker Owner (Franqueado)</Label>
                 <Input {...register("brokerOwnerName")} data-testid="input-broker-owner" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>E-mail de contato</Label>
+                  <Input type="email" {...register("contactEmail")} placeholder="nome@remax.com.br" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Telefone / WhatsApp</Label>
+                  <Input {...register("phone")} placeholder="47 99999-0000" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>CNPJ</Label>
+                <Input {...register("cnpj")} placeholder="00.000.000/0001-00" />
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
@@ -124,34 +164,65 @@ export default function AdminFranchises() {
         </Dialog>
       </div>
 
+      <Input
+        placeholder="Buscar por nome, cidade, franqueado ou e-mail…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="max-w-sm"
+      />
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
         </div>
-      ) : franchises.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="h-10 w-10 text-muted-foreground/40 mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhuma franquia cadastrada</p>
+            <p className="text-sm text-muted-foreground">
+              {search ? "Nenhuma franquia encontrada para essa busca." : "Nenhuma franquia cadastrada."}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {franchises.map((f: any) => (
+          {filtered.map((f: any) => (
             <Card key={f.id} data-testid={`card-franchise-${f.id}`}>
               <CardContent className="pt-3 pb-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-semibold text-sm">{f.name}</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm">{f.name}</p>
+                      <Badge variant="outline" className={f.active ? "bg-green-50 text-green-700 border-green-200 text-xs" : "bg-red-50 text-red-600 border-red-200 text-xs"}>
+                        {f.active ? "Ativa" : "Inativa"}
+                      </Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {f.city}, {f.state}
-                      {f.brokerOwnerName && <span className="ml-2">— {f.brokerOwnerName}</span>}
+                      {f.brokerOwnerName && <span className="ml-2 font-medium text-foreground/70">— {f.brokerOwnerName}</span>}
                     </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {f.phone && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {f.phone}
+                        </span>
+                      )}
+                      {f.contactEmail && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          {f.contactEmail}
+                        </span>
+                      )}
+                      {f.cnpj && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Hash className="h-3 w-3" />
+                          {f.cnpj}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className={f.active ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}>
-                      {f.active ? "Ativa" : "Inativa"}
-                    </Badge>
                     <Button size="sm" variant="ghost" onClick={() => handleEdit(f)} data-testid={`button-edit-${f.id}`}>
                       Editar
                     </Button>

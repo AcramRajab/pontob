@@ -41,6 +41,12 @@ export interface Franchise {
   state: string;
   /** @nullable */
   brokerOwnerName?: string | null;
+  /** @nullable */
+  contactEmail?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  cnpj?: string | null;
   active: boolean;
   createdAt: string;
 }
@@ -50,6 +56,9 @@ export interface FranchiseInput {
   city: string;
   state: string;
   brokerOwnerName?: string;
+  contactEmail?: string;
+  phone?: string;
+  cnpj?: string;
 }
 
 export interface FranchiseUpdate {
@@ -57,6 +66,9 @@ export interface FranchiseUpdate {
   city?: string;
   state?: string;
   brokerOwnerName?: string;
+  contactEmail?: string;
+  phone?: string;
+  cnpj?: string;
   active?: boolean;
 }
 

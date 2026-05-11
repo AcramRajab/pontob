@@ -13,6 +13,12 @@ export interface Franchise {
   state: string;
   /** @nullable */
   brokerOwnerName?: string | null;
+  /** @nullable */
+  contactEmail?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  cnpj?: string | null;
   active: boolean;
   createdAt: string;
 }

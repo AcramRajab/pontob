@@ -12,7 +12,8 @@ router.get("/franchises", requireAuth, async (req, res) => {
       const rows = await db.select().from(franchisesTable).orderBy(franchisesTable.name);
       res.json(rows.map(f => ({
         id: f.id, name: f.name, city: f.city, state: f.state,
-        brokerOwnerName: f.brokerOwnerName, active: f.active,
+        brokerOwnerName: f.brokerOwnerName, contactEmail: f.contactEmail,
+        phone: f.phone, cnpj: f.cnpj, active: f.active,
         createdAt: f.createdAt.toISOString(),
       })));
     } else {
@@ -21,7 +22,8 @@ router.get("/franchises", requireAuth, async (req, res) => {
       const rows = await db.select().from(franchisesTable).where(eq(franchisesTable.id, fid));
       res.json(rows.map(f => ({
         id: f.id, name: f.name, city: f.city, state: f.state,
-        brokerOwnerName: f.brokerOwnerName, active: f.active,
+        brokerOwnerName: f.brokerOwnerName, contactEmail: f.contactEmail,
+        phone: f.phone, cnpj: f.cnpj, active: f.active,
         createdAt: f.createdAt.toISOString(),
       })));
     }
@@ -33,15 +35,16 @@ router.get("/franchises", requireAuth, async (req, res) => {
 
 router.post("/franchises", requireRole("master_admin"), async (req, res) => {
   try {
-    const { name, city, state, brokerOwnerName } = req.body;
+    const { name, city, state, brokerOwnerName, contactEmail, phone, cnpj } = req.body;
     if (!name || !city || !state) {
       res.status(400).json({ error: "name, city, state required" });
       return;
     }
-    const [f] = await db.insert(franchisesTable).values({ name, city, state, brokerOwnerName }).returning();
+    const [f] = await db.insert(franchisesTable).values({ name, city, state, brokerOwnerName, contactEmail, phone, cnpj }).returning();
     res.status(201).json({
       id: f.id, name: f.name, city: f.city, state: f.state,
-      brokerOwnerName: f.brokerOwnerName, active: f.active,
+      brokerOwnerName: f.brokerOwnerName, contactEmail: f.contactEmail,
+      phone: f.phone, cnpj: f.cnpj, active: f.active,
       createdAt: f.createdAt.toISOString(),
     });
   } catch (err) {
@@ -63,7 +66,8 @@ router.get("/franchises/:id", requireAuth, async (req, res) => {
     const f = rows[0];
     res.json({
       id: f.id, name: f.name, city: f.city, state: f.state,
-      brokerOwnerName: f.brokerOwnerName, active: f.active,
+      brokerOwnerName: f.brokerOwnerName, contactEmail: f.contactEmail,
+      phone: f.phone, cnpj: f.cnpj, active: f.active,
       createdAt: f.createdAt.toISOString(),
     });
   } catch (err) {
@@ -75,18 +79,22 @@ router.get("/franchises/:id", requireAuth, async (req, res) => {
 router.patch("/franchises/:id", requireRole("master_admin"), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, city, state, brokerOwnerName, active } = req.body;
+    const { name, city, state, brokerOwnerName, contactEmail, phone, cnpj, active } = req.body;
     const update: Record<string, unknown> = {};
     if (name !== undefined) update.name = name;
     if (city !== undefined) update.city = city;
     if (state !== undefined) update.state = state;
     if (brokerOwnerName !== undefined) update.brokerOwnerName = brokerOwnerName;
+    if (contactEmail !== undefined) update.contactEmail = contactEmail;
+    if (phone !== undefined) update.phone = phone;
+    if (cnpj !== undefined) update.cnpj = cnpj;
     if (active !== undefined) update.active = active;
     const [f] = await db.update(franchisesTable).set(update).where(eq(franchisesTable.id, id)).returning();
     if (!f) { res.status(404).json({ error: "Not found" }); return; }
     res.json({
       id: f.id, name: f.name, city: f.city, state: f.state,
-      brokerOwnerName: f.brokerOwnerName, active: f.active,
+      brokerOwnerName: f.brokerOwnerName, contactEmail: f.contactEmail,
+      phone: f.phone, cnpj: f.cnpj, active: f.active,
       createdAt: f.createdAt.toISOString(),
     });
   } catch (err) {
