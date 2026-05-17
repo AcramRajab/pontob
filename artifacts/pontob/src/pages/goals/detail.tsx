@@ -1,7 +1,14 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { useGetGoal, getGetGoalQueryKey, useCreateKpi, useDeleteKpi, useUpdateGoalInitiative } from "@workspace/api-client-react";
-import { Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2, CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap } from "lucide-react";
+import {
+  useGetGoal, getGetGoalQueryKey,
+  useCreateKpi, useDeleteKpi, useUpdateKpi,
+  useUpdateGoalInitiative,
+} from "@workspace/api-client-react";
+import {
+  Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2,
+  CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap,
+} from "lucide-react";
 import { PLANNER_SECTIONS, templatesBySection } from "@/lib/kpi-templates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,23 +25,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
 const statusLabel: Record<string, string> = {
-  ativa: "Ativa",
-  concluida: "Concluída",
-  pausada: "Pausada",
-  cancelada: "Cancelada",
+  ativa: "Ativa", concluida: "Concluída", pausada: "Pausada", cancelada: "Cancelada",
 };
-
 const statusColor: Record<string, string> = {
   ativa: "bg-primary/10 text-primary border-primary/30",
   concluida: "bg-green-50 text-green-700 border-green-200",
   pausada: "bg-yellow-50 text-yellow-700 border-yellow-200",
   cancelada: "bg-red-50 text-red-600 border-red-200",
 };
-
 const riskLabel: Record<string, string> = {
-  no_prazo: "No prazo",
-  atrasado: "Atrasado",
-  adiantado: "Adiantado",
+  no_prazo: "No prazo", atrasado: "Atrasado", adiantado: "Adiantado",
 };
 
 interface KpiForm {
@@ -60,25 +60,36 @@ export default function GoalDetail() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [, navigate] = useLocation();
+
+  // KPI create dialog
   const [kpiOpen, setKpiOpen] = useState(false);
+  // KPI edit dialog — stores the kpi being edited
+  const [editKpi, setEditKpi] = useState<any | null>(null);
+  // Initiative inline state
   const [actualResultEditId, setActualResultEditId] = useState<number | null>(null);
   const [actualResultValue, setActualResultValue] = useState("");
+  const [progressEditId, setProgressEditId] = useState<number | null>(null);
+  const [progressEditValue, setProgressEditValue] = useState("");
 
   const canWrite = user?.role !== "responsavel_interno";
 
   const qKey = getGetGoalQueryKey(id);
-  const { data: goal, isLoading } = useGetGoal(
-    id,
-    { query: { enabled: !!id, queryKey: qKey } }
-  );
+  const { data: goal, isLoading } = useGetGoal(id, { query: { enabled: !!id, queryKey: qKey } });
 
   const createKpi = useCreateKpi();
   const deleteKpi = useDeleteKpi();
+  const updateKpi = useUpdateKpi();
   const updateInitiative = useUpdateGoalInitiative();
 
+  // ── CREATE KPI form ──
   const { register, handleSubmit, reset, control, setValue: setKpiValue } = useForm<KpiForm>({
     defaultValues: { indicatorType: "resultado", desiredDirection: "higher" },
   });
+
+  // ── EDIT KPI form ──
+  const {
+    register: regEdit, handleSubmit: handleEditSubmit, reset: resetEdit, control: controlEdit,
+  } = useForm<KpiForm>({ defaultValues: { indicatorType: "resultado", desiredDirection: "higher" } });
 
   const onCreateKpi = async (data: KpiForm) => {
     try {
@@ -99,6 +110,40 @@ export default function GoalDetail() {
       setKpiOpen(false);
     } catch (err: any) {
       toast({ title: err?.message || "Erro ao adicionar KPI", variant: "destructive" });
+    }
+  };
+
+  const openEditKpi = (kpi: any) => {
+    setEditKpi(kpi);
+    resetEdit({
+      name: kpi.name ?? "",
+      currentValue: kpi.currentValue != null ? String(kpi.currentValue) : "",
+      targetValue: kpi.targetValue != null ? String(kpi.targetValue) : "",
+      unit: kpi.unit ?? "",
+      indicatorType: kpi.indicatorType ?? "resultado",
+      desiredDirection: kpi.desiredDirection ?? "higher",
+    });
+  };
+
+  const onSaveKpi = async (data: KpiForm) => {
+    if (!editKpi) return;
+    try {
+      await updateKpi.mutateAsync({
+        id: editKpi.id,
+        data: {
+          name: data.name,
+          currentValue: data.currentValue !== "" ? parseFloat(data.currentValue) : undefined,
+          targetValue: data.targetValue !== "" ? parseFloat(data.targetValue) : undefined,
+          unit: data.unit || undefined,
+          indicatorType: data.indicatorType as any,
+          desiredDirection: data.desiredDirection as any,
+        },
+      });
+      qc.invalidateQueries({ queryKey: qKey });
+      toast({ title: "KPI atualizado" });
+      setEditKpi(null);
+    } catch {
+      toast({ title: "Erro ao salvar KPI", variant: "destructive" });
     }
   };
 
@@ -134,6 +179,23 @@ export default function GoalDetail() {
     }
   };
 
+  const onSaveProgress = async (initiativeId: number) => {
+    const val = parseInt(progressEditValue);
+    if (isNaN(val) || val < 0 || val > 100) {
+      toast({ title: "Informe um valor entre 0 e 100", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateInitiative.mutateAsync({ id: initiativeId, data: { progressPercentage: val } as any });
+      qc.invalidateQueries({ queryKey: qKey });
+      toast({ title: "Progresso atualizado" });
+      setProgressEditId(null);
+      setProgressEditValue("");
+    } catch {
+      toast({ title: "Erro ao salvar progresso", variant: "destructive" });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -151,11 +213,10 @@ export default function GoalDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/goals">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+          <Link href="/goals"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-3xl font-bold tracking-tight truncate">{goal.title}</h1>
@@ -198,13 +259,11 @@ export default function GoalDetail() {
         </Card>
       </div>
 
-      {/* Progress card */}
+      {/* KRI progress */}
       <Card>
         <CardHeader>
           <CardTitle>Progresso do KRI</CardTitle>
-          {goal.kriDescription && (
-            <CardDescription>{goal.kriDescription}</CardDescription>
-          )}
+          {goal.kriDescription && <CardDescription>{goal.kriDescription}</CardDescription>}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between text-sm">
@@ -222,13 +281,12 @@ export default function GoalDetail() {
         </CardContent>
       </Card>
 
-      {/* KPIs section */}
+      {/* ── KPIs ── */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-primary" />
-              KPIs
+              <BarChart2 className="h-5 w-5 text-primary" />KPIs
             </CardTitle>
             <CardDescription>Indicadores de performance — máx. 3 por meta</CardDescription>
           </div>
@@ -240,11 +298,7 @@ export default function GoalDetail() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Novo KPI</DialogTitle>
-                </DialogHeader>
-
-                {/* Planner Suggestions */}
+                <DialogHeader><DialogTitle>Novo KPI</DialogTitle></DialogHeader>
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2.5">
                   <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5" /> Sugestões do Planner Semanal
@@ -254,16 +308,9 @@ export default function GoalDetail() {
                       <p className={`text-xs font-semibold mb-1 ${sec.color}`}>{sec.key}</p>
                       <div className="flex flex-wrap gap-1">
                         {templatesBySection(sec.key).map(t => (
-                          <button
-                            key={t.name}
-                            type="button"
-                            onClick={() => {
-                              setKpiValue("name", t.name);
-                              setKpiValue("unit", t.unit);
-                              setKpiValue("desiredDirection", t.desiredDirection === "diminuir" ? "lower" : "higher");
-                            }}
-                            className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${sec.bg} ${sec.color} ${sec.border} hover:opacity-80`}
-                          >
+                          <button key={t.name} type="button"
+                            onClick={() => { setKpiValue("name", t.name); setKpiValue("unit", t.unit); setKpiValue("desiredDirection", t.desiredDirection === "diminuir" ? "lower" : "higher"); }}
+                            className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${sec.bg} ${sec.color} ${sec.border} hover:opacity-80`}>
                             {t.name}{t.desiredDirection === "diminuir" ? " ↓" : ""}
                           </button>
                         ))}
@@ -271,64 +318,8 @@ export default function GoalDetail() {
                     </div>
                   ))}
                 </div>
-
                 <form onSubmit={handleSubmit(onCreateKpi)} className="space-y-4 mt-2">
-                  <div className="space-y-1.5">
-                    <Label>Nome do KPI *</Label>
-                    <Input {...register("name", { required: true })} placeholder="Ex: Taxa de conversão de leads" />
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Valor Atual</Label>
-                      <Input type="number" step="any" {...register("currentValue")} placeholder="0" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Meta</Label>
-                      <Input type="number" step="any" {...register("targetValue")} placeholder="100" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Unidade</Label>
-                      <Input {...register("unit")} placeholder="%, R$, un" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Tipo</Label>
-                      <Controller
-                        name="indicatorType"
-                        control={control}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="resultado">Resultado</SelectItem>
-                              <SelectItem value="processo">Processo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Direção Desejada</Label>
-                      <Controller
-                        name="desiredDirection"
-                        control={control}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="higher">Maior é melhor</SelectItem>
-                              <SelectItem value="lower">Menor é melhor</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                  </div>
+                  <KpiFormFields register={register} control={control} />
                   <div className="flex gap-2 justify-end pt-2">
                     <Button variant="outline" type="button" onClick={() => setKpiOpen(false)}>Cancelar</Button>
                     <Button type="submit" disabled={createKpi.isPending}>
@@ -354,27 +345,40 @@ export default function GoalDetail() {
                   ? Math.min(100, Math.round((kpi.currentValue / kpi.targetValue) * 100))
                   : 0;
                 return (
-                  <div key={kpi.id} className="p-4 border rounded-lg space-y-2">
+                  <div
+                    key={kpi.id}
+                    className="p-4 border rounded-lg space-y-2 cursor-pointer hover:border-primary/40 hover:bg-accent/30 transition-colors group"
+                    onClick={() => canWrite && openEditKpi(kpi)}
+                    title={canWrite ? "Clique para editar" : undefined}
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm truncate">{kpi.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {kpi.currentValue} / {kpi.targetValue} {kpi.unit}
                           {kpi.indicatorType && <span className="ml-2 capitalize">({kpi.indicatorType})</span>}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <span className="text-sm font-mono font-semibold">{progress}%</span>
                         {canWrite && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => onDeleteKpi(kpi.id)}
-                            disabled={deleteKpi.isPending}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost" size="icon"
+                              className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary transition-opacity"
+                              onClick={e => { e.stopPropagation(); openEditKpi(kpi); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost" size="icon"
+                              className="h-7 w-7 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                              onClick={e => { e.stopPropagation(); onDeleteKpi(kpi.id); }}
+                              disabled={deleteKpi.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -387,17 +391,32 @@ export default function GoalDetail() {
         </CardContent>
       </Card>
 
-      {/* Initiatives section */}
+      {/* KPI edit dialog */}
+      <Dialog open={!!editKpi} onOpenChange={v => { if (!v) setEditKpi(null); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar KPI</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit(onSaveKpi)} className="space-y-4 mt-2">
+            <KpiFormFields register={regEdit} control={controlEdit} />
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" type="button" onClick={() => setEditKpi(null)}>Cancelar</Button>
+              <Button type="submit" disabled={updateKpi.isPending}>
+                {updateKpi.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Initiatives ── */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              Iniciativas
+              <Target className="h-5 w-5 text-primary" />Iniciativas
             </CardTitle>
-            <CardDescription>
-              {activeInitiatives}/3 iniciativas ativas — conclua uma antes de adicionar mais
-            </CardDescription>
+            <CardDescription>{activeInitiatives}/3 iniciativas ativas — conclua uma antes de adicionar mais</CardDescription>
           </div>
           {canAddInitiative && (
             <Button size="sm" variant="outline" asChild>
@@ -452,13 +471,8 @@ export default function GoalDetail() {
                         {statusLabel[initiative.status] || initiative.status}
                       </Badge>
                       {canWrite && (
-                        <Select
-                          value={initiative.status}
-                          onValueChange={v => onUpdateInitiativeStatus(initiative.id, v)}
-                        >
-                          <SelectTrigger className="h-7 text-xs w-32">
-                            <SelectValue />
-                          </SelectTrigger>
+                        <Select value={initiative.status} onValueChange={v => onUpdateInitiativeStatus(initiative.id, v)}>
+                          <SelectTrigger className="h-7 text-xs w-32"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="ativa">Ativa</SelectItem>
                             <SelectItem value="concluida">Concluída</SelectItem>
@@ -469,88 +483,92 @@ export default function GoalDetail() {
                       )}
                     </div>
                   </div>
+
+                  {/* Progress — click to edit */}
                   <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
+                    <div className="flex justify-between text-xs text-muted-foreground items-center">
                       <span>Progresso</span>
-                      <span className="font-mono">{initiative.progressPercentage ?? 0}%</span>
+                      {canWrite && progressEditId === initiative.id ? (
+                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                          <Input
+                            type="number" min={0} max={100}
+                            className="h-6 w-16 text-xs text-center px-1"
+                            value={progressEditValue}
+                            onChange={e => setProgressEditValue(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") onSaveProgress(initiative.id);
+                              if (e.key === "Escape") { setProgressEditId(null); setProgressEditValue(""); }
+                            }}
+                            autoFocus
+                          />
+                          <span className="text-xs">%</span>
+                          <Button size="sm" className="h-6 text-xs px-2" onClick={() => onSaveProgress(initiative.id)}>OK</Button>
+                          <Button size="sm" variant="ghost" className="h-6 text-xs px-1" onClick={() => { setProgressEditId(null); setProgressEditValue(""); }}>✕</Button>
+                        </div>
+                      ) : (
+                        <span
+                          className={`font-mono ${canWrite ? "cursor-pointer hover:text-primary hover:underline" : ""} flex items-center gap-1`}
+                          title={canWrite ? "Clique para editar o progresso" : undefined}
+                          onClick={() => {
+                            if (!canWrite) return;
+                            setProgressEditId(initiative.id);
+                            setProgressEditValue(String(initiative.progressPercentage ?? 0));
+                          }}
+                        >
+                          {initiative.progressPercentage ?? 0}%
+                          {canWrite && <Pencil className="h-2.5 w-2.5 opacity-50" />}
+                        </span>
+                      )}
                     </div>
                     <Progress value={initiative.progressPercentage ?? 0} className="h-1.5" />
                   </div>
 
-                  {/* Resultado Esperado vs Realizado */}
+                  {/* Resultado Esperado / Realizado */}
                   {(initiative.desiredResult || initiative.actualResult || canWrite) && (
                     <div className="border-t pt-3 space-y-2">
                       {initiative.desiredResult && (
-                        <div className="flex gap-2">
-                          <div className="flex items-start gap-1.5 min-w-0 flex-1">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Esperado</p>
-                              <p className="text-xs text-muted-foreground mt-0.5 italic">{initiative.desiredResult}</p>
-                            </div>
+                        <div className="flex items-start gap-1.5 min-w-0">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground/60 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Esperado</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 italic">{initiative.desiredResult}</p>
                           </div>
                         </div>
                       )}
 
-                      <div className="flex gap-2 items-start">
-                        <div className="flex items-start gap-1.5 min-w-0 flex-1">
-                          <CheckCheck className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${initiative.actualResult ? "text-green-600" : "text-muted-foreground/40"}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Realizado</p>
-                            {actualResultEditId === initiative.id ? (
-                              <div className="mt-1 space-y-2">
-                                <Textarea
-                                  rows={2}
-                                  className="text-xs"
-                                  value={actualResultValue}
-                                  onChange={e => setActualResultValue(e.target.value)}
-                                  placeholder="Descreva o resultado que foi de fato alcançado..."
-                                  autoFocus
-                                />
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => onSaveActualResult(initiative.id)}
-                                    disabled={updateInitiative.isPending}
-                                  >
-                                    Salvar
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 text-xs"
-                                    onClick={() => { setActualResultEditId(null); setActualResultValue(""); }}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
+                      <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                        <CheckCheck className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${initiative.actualResult ? "text-green-600" : "text-muted-foreground/40"}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resultado Realizado</p>
+                          {actualResultEditId === initiative.id ? (
+                            <div className="mt-1 space-y-2">
+                              <Textarea
+                                rows={2} className="text-xs"
+                                value={actualResultValue}
+                                onChange={e => setActualResultValue(e.target.value)}
+                                placeholder="Descreva o resultado que foi de fato alcançado..."
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" className="h-7 text-xs" onClick={() => onSaveActualResult(initiative.id)}>
+                                  {updateInitiative.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setActualResultEditId(null); setActualResultValue(""); }}>Cancelar</Button>
                               </div>
-                            ) : initiative.actualResult ? (
-                              <div className="flex items-start gap-2 mt-0.5">
-                                <p className="text-xs text-green-700 italic flex-1">{initiative.actualResult}</p>
-                                {canWrite && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 shrink-0"
-                                    onClick={() => { setActualResultEditId(initiative.id); setActualResultValue(initiative.actualResult || ""); }}
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            ) : canWrite ? (
-                              <button
-                                className="text-xs text-muted-foreground/60 hover:text-primary mt-0.5 italic transition-colors"
-                                onClick={() => { setActualResultEditId(initiative.id); setActualResultValue(""); }}
-                              >
-                                + Registrar resultado realizado
-                              </button>
-                            ) : (
-                              <p className="text-xs text-muted-foreground/50 mt-0.5 italic">Não registrado ainda</p>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <div
+                              className={`mt-0.5 text-xs min-h-[1.5rem] ${canWrite ? "cursor-pointer hover:text-primary rounded px-1 -mx-1 hover:bg-primary/5" : ""} ${initiative.actualResult ? "text-foreground" : "text-muted-foreground/60 italic"}`}
+                              onClick={() => {
+                                if (!canWrite) return;
+                                setActualResultEditId(initiative.id);
+                                setActualResultValue(initiative.actualResult ?? "");
+                              }}
+                              title={canWrite ? "Clique para registrar o resultado" : undefined}
+                            >
+                              {initiative.actualResult || (canWrite ? "» Clique para registrar resultado realizado" : "Sem resultado registrado")}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -562,5 +580,57 @@ export default function GoalDetail() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ── Reusable KPI form fields ──
+function KpiFormFields({ register, control }: { register: any; control: any }) {
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Nome do KPI *</Label>
+        <Input {...register("name", { required: true })} placeholder="Ex: Taxa de conversão de leads" />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Valor Atual</Label>
+          <Input type="number" step="any" {...register("currentValue")} placeholder="0" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Meta</Label>
+          <Input type="number" step="any" {...register("targetValue")} placeholder="100" />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Unidade</Label>
+          <Input {...register("unit")} placeholder="%, R$, un" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Tipo</Label>
+          <Controller name="indicatorType" control={control} render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="resultado">Resultado</SelectItem>
+                <SelectItem value="processo">Processo</SelectItem>
+              </SelectContent>
+            </Select>
+          )} />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Direção Desejada</Label>
+          <Controller name="desiredDirection" control={control} render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="higher">Maior é melhor</SelectItem>
+                <SelectItem value="lower">Menor é melhor</SelectItem>
+              </SelectContent>
+            </Select>
+          )} />
+        </div>
+      </div>
+    </>
   );
 }
