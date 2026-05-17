@@ -12,8 +12,13 @@ function canAccessFranchise(req: any, franchiseId: number) {
   return req.session.franchiseId === franchiseId;
 }
 
+function calcProgress(currentValue: number | null | undefined, targetValue: number | null | undefined): number {
+  if (currentValue == null || targetValue == null || targetValue <= 0) return 0;
+  return Math.min(100, Math.round((currentValue / targetValue) * 100));
+}
+
 function calcScore(goal: any) {
-  const progress = goal.progressPercentage || 0;
+  const progress = calcProgress(goal.currentValue, goal.targetValue);
   const initiatives = goal.initiationScore || 50;
   const consistency = goal.consistencyScore || 50;
   const kpiUpdate = goal.kpiUpdateScore || 50;
@@ -28,7 +33,7 @@ function calcRisk(goal: any) {
   const totalTime = end - start;
   if (totalTime <= 0) return "no_prazo";
   const timeElapsed = ((now - start) / totalTime) * 100;
-  const progress = goal.progressPercentage || 0;
+  const progress = calcProgress(goal.currentValue, goal.targetValue);
   const diff = progress - timeElapsed;
   if (diff < -15) return "atrasado";
   if (diff > 15) return "adiantado";
@@ -60,8 +65,8 @@ async function enrichGoal(g: any) {
     ownerName: g.ownerName,
     frequency: g.frequency,
     status: g.status,
-    progressPercentage: g.progressPercentage,
-    riskStatus: g.riskStatus || calcRisk(g),
+    progressPercentage: calcProgress(g.currentValue, g.targetValue),
+    riskStatus: calcRisk(g),
     score: g.score,
     activeInitiativesCount: activeInitiatives[0]?.count ?? 0,
     createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
@@ -253,6 +258,11 @@ router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => 
     const fields = ["title", "kriDescription", "currentValue", "targetValue", "unit", "startDate", "endDate", "ownerUserId", "frequency", "status"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+
+    // Recalculate progressPercentage whenever current or target value changes
+    const newCurrentValue = update.currentValue !== undefined ? update.currentValue : existingGoal.currentValue;
+    const newTargetValue = update.targetValue !== undefined ? update.targetValue : existingGoal.targetValue;
+    update.progressPercentage = calcProgress(newCurrentValue as number, newTargetValue as number);
 
     const [g] = await db.update(goalsTable).set(update).where(eq(goalsTable.id, id)).returning();
 
