@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import Goals from "@/pages/goals/index";
 import GoalDetail from "@/pages/goals/detail";
 import GoalNew from "@/pages/goals/new";
+import GoalEdit from "@/pages/goals/edit";
 import KpisNew from "@/pages/goals/kpis-new";
 import InitiativesNew from "@/pages/goals/initiatives-new";
 import Initiatives from "@/pages/initiatives";
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/today" component={Today} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/goals/new" component={GoalNew} />
+        <Route path="/goals/:id/edit" component={GoalEdit} />
         <Route path="/goals/:id/kpis/new" component={KpisNew} />
         <Route path="/goals/:id/initiatives/new" component={InitiativesNew} />
         <Route path="/goals/:id" component={GoalDetail} />
