@@ -367,8 +367,9 @@ export default function GoalDetail() {
           ) : (
             <div className="space-y-4">
               {kpis.map((kpi: any) => {
-                const { pct, barPct, projected, isPeriodic, freqLabel } = kpiPeriodProgress(kpi);
+                const { pct, barPct, rhythmPct, rhythmBarPct, expectedByNow, isPeriodic, freqLabel } = kpiPeriodProgress(kpi);
                 const pctColor = progressColorClass(pct);
+                const rhythmColor = progressColorClass(rhythmPct);
                 return (
                   <div
                     key={kpi.id}
@@ -385,8 +386,21 @@ export default function GoalDetail() {
                           {kpi.indicatorType && <span className="ml-1.5 capitalize">({kpi.indicatorType})</span>}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className={`text-sm font-mono font-semibold ${pctColor}`}>{pct}%</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* % da meta total do período */}
+                        <div className="text-right">
+                          <span className={`text-sm font-mono font-semibold ${pctColor}`}>{pct}%</span>
+                          <p className="text-[10px] text-muted-foreground leading-none mt-0.5">da meta</p>
+                        </div>
+                        {/* ritmo: atual vs esperado até hoje */}
+                        {isPeriodic && (
+                          <div className="text-right border-l pl-2">
+                            <span className={`text-sm font-mono font-semibold ${rhythmColor}`}>{rhythmPct}%</span>
+                            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
+                              ritmo · esp. {expectedByNow} {kpi.unit}
+                            </p>
+                          </div>
+                        )}
                         {canWrite && (
                           <>
                             <Button
@@ -408,7 +422,19 @@ export default function GoalDetail() {
                         )}
                       </div>
                     </div>
-                    <Progress value={barPct} className="h-1.5" />
+                    {/* Barra dupla: meta total + ritmo até hoje */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Meta total</span>
+                        <Progress value={barPct} className="h-1.5 flex-1" />
+                      </div>
+                      {isPeriodic && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Ritmo hoje</span>
+                          <Progress value={rhythmBarPct} className="h-1.5 flex-1" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -669,11 +695,13 @@ const FREQ_LABEL: Record<string, string> = {
 };
 
 interface KpiProgress {
-  pct: number;        // raw % (may exceed 100)
-  barPct: number;     // capped 0-100 for the Progress bar
-  projected: number;  // cumulative projected target by today
+  pct: number;          // atual ÷ meta total (pode passar de 100)
+  barPct: number;       // capped 0-100 para a barra
+  rhythmPct: number;    // atual ÷ esperado até hoje no período (pode passar de 100)
+  rhythmBarPct: number; // capped 0-100
+  expectedByNow: number;// quanto deveria ter sido feito até hoje
   isPeriodic: boolean;
-  freqLabel: string;  // short label for the period
+  freqLabel: string;
 }
 
 function kpiPeriodProgress(kpi: any): KpiProgress {
@@ -682,18 +710,71 @@ function kpiPeriodProgress(kpi: any): KpiProgress {
   const freq: string | undefined = kpi.frequency;
   const dir: string = kpi.desiredDirection ?? "higher";
 
+  // ── pct: progresso total (atual ÷ meta) ──────────────────────────────────
   let pct = 0;
   if (dir === "lower") {
-    // Lower is better: full marks when cur ≤ tgt, scales down as cur rises above tgt
     pct = tgt > 0 && cur > 0 ? Math.round((tgt / cur) * 100) : (cur === 0 ? 100 : 0);
   } else {
     pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
   }
 
+  // ── rhythmPct: atual vs esperado até hoje dentro do período ───────────────
+  let expectedByNow = tgt; // sem período = meta cheia
+  if (freq && tgt > 0) {
+    const now = new Date();
+    let elapsed = 1, total = 1;
+
+    if (freq === "diario") {
+      // dia útil: 1 dia útil de 1 dia útil → sempre 100% do esperado
+      elapsed = 1; total = 1;
+    } else if (freq === "semanal") {
+      // semana Seg–Dom: dia da semana 1(seg)–7(dom), hoje = elapsed
+      const dow = now.getDay(); // 0=dom, 1=seg...
+      elapsed = dow === 0 ? 7 : dow;
+      total = 7;
+    } else if (freq === "mensal") {
+      elapsed = now.getDate();
+      total = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    } else if (freq === "trimestral") {
+      const mo = now.getMonth(); // 0-11
+      const qStart = Math.floor(mo / 3) * 3;
+      const qEnd = qStart + 2;
+      const startOfQ = new Date(now.getFullYear(), qStart, 1);
+      const endOfQ = new Date(now.getFullYear(), qEnd + 1, 0);
+      elapsed = Math.round((now.getTime() - startOfQ.getTime()) / 86400000) + 1;
+      total = Math.round((endOfQ.getTime() - startOfQ.getTime()) / 86400000) + 1;
+    } else if (freq === "semestral") {
+      const mo = now.getMonth();
+      const hStart = mo < 6 ? 0 : 6;
+      const startOfH = new Date(now.getFullYear(), hStart, 1);
+      const endOfH = new Date(now.getFullYear(), hStart + 6, 0);
+      elapsed = Math.round((now.getTime() - startOfH.getTime()) / 86400000) + 1;
+      total = Math.round((endOfH.getTime() - startOfH.getTime()) / 86400000) + 1;
+    } else if (freq === "anual") {
+      const startOfY = new Date(now.getFullYear(), 0, 1);
+      const endOfY = new Date(now.getFullYear(), 11, 31);
+      elapsed = Math.round((now.getTime() - startOfY.getTime()) / 86400000) + 1;
+      total = Math.round((endOfY.getTime() - startOfY.getTime()) / 86400000) + 1;
+    }
+
+    expectedByNow = Math.round((tgt * Math.min(elapsed, total)) / total * 10) / 10;
+  }
+
+  let rhythmPct = 0;
+  if (dir === "lower") {
+    rhythmPct = expectedByNow > 0 && cur >= 0
+      ? Math.round((expectedByNow / Math.max(cur, 0.001)) * 100)
+      : 100;
+  } else {
+    rhythmPct = expectedByNow > 0 ? Math.round((cur / expectedByNow) * 100) : (cur > 0 ? 100 : 0);
+  }
+
   return {
     pct,
     barPct: Math.min(100, pct),
-    projected: tgt,          // always the target itself
+    rhythmPct,
+    rhythmBarPct: Math.min(100, rhythmPct),
+    expectedByNow,
     isPeriodic: !!freq,
     freqLabel: freq ? (FREQ_LABEL[freq] ?? freq) : "",
   };
