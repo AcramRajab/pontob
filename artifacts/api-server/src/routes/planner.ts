@@ -3,7 +3,7 @@ import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable
 import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
-import { sendPlannerWeekSummary } from "../services/email";
+import { sendPlannerWeekSummary, sendPlannerWeekReopened } from "../services/email";
 
 const router = Router();
 
@@ -306,6 +306,58 @@ router.post("/planner/submit", requireAuth, requireWriteAccess, async (req, res)
       ok: true,
       submittedAt: row.submittedAt instanceof Date ? row.submittedAt.toISOString() : row.submittedAt,
     });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /planner/reopen — reopen a submitted week for editing
+router.post("/planner/reopen", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, weekStartDate } = req.body;
+    if (!franchiseId || !weekStartDate) {
+      res.status(400).json({ error: "franchiseId and weekStartDate required" }); return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const existing = await db.select().from(weeklyPlannerWeeksTable)
+      .where(and(eq(weeklyPlannerWeeksTable.franchiseId, franchiseId), eq(weeklyPlannerWeeksTable.weekStartDate, weekStartDate)))
+      .limit(1);
+
+    if (!existing[0]?.submittedAt) {
+      res.status(400).json({ error: "Week is not submitted" }); return;
+    }
+
+    const [row] = await db.update(weeklyPlannerWeeksTable)
+      .set({ submittedAt: null, submittedByUserId: null })
+      .where(eq(weeklyPlannerWeeksTable.id, existing[0].id))
+      .returning();
+
+    // Notify regional team
+    const [franchise, reopener, regionalStaff] = await Promise.all([
+      db.select().from(franchisesTable).where(eq(franchisesTable.id, franchiseId)).limit(1),
+      db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1),
+      db.select().from(usersTable).where(inArray(usersTable.role, ["master_admin", "staff_regional"])),
+    ]);
+
+    const weekLabel = formatWeekLabel(weekStartDate);
+    const franchiseName = franchise[0]?.name ?? "Franquia";
+    const reopenerName = reopener[0]?.name ?? "Usuário";
+
+    for (const staff of regionalStaff) {
+      if (staff.email && staff.active) {
+        sendPlannerWeekReopened({
+          toEmail: staff.email,
+          toName: staff.name,
+          franchiseName,
+          weekLabel,
+          reopenedByName: reopenerName,
+        }).catch(() => {});
+      }
+    }
+
+    res.json({ ok: true, submittedAt: null });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

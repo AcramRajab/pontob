@@ -389,6 +389,32 @@ export async function sendPlannerWeekSummary(opts: {
   });
 }
 
+export async function sendPlannerWeekReopened(opts: {
+  toEmail: string;
+  toName: string;
+  franchiseName: string;
+  weekLabel: string;
+  reopenedByName: string;
+}) {
+  if (!isEmailConfigured()) return;
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `⚠️ Semana reaberta — ${opts.franchiseName} (${opts.weekLabel})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;color:#111;">
+        <h2 style="color:#d97706;margin-bottom:4px;">Semana reaberta para correção</h2>
+        <p style="color:#6b7280;margin-top:0;">${opts.franchiseName}</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;"/>
+        <p>A semana <strong>${opts.weekLabel}</strong> foi reaberta por <strong>${opts.reopenedByName}</strong> para correção de dados.</p>
+        <p>Os dados da semana podem ser editados novamente e uma nova finalização será necessária.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0;"/>
+        <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendCheckinReminder(opts: {
   toEmail: string;
   toName: string;

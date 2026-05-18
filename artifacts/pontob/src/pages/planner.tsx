@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -169,6 +169,7 @@ export default function Planner() {
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const weekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [localGaps, setLocalGaps] = useState<Record<string, string>>({});
   const [localActions, setLocalActions] = useState<Record<string, string>>({});
 
@@ -218,6 +219,24 @@ export default function Planner() {
       toast({ title: "Semana finalizada!", description: "Resumo enviado por e-mail para a equipe regional." });
     },
     onError: () => toast({ title: "Erro ao finalizar semana", variant: "destructive" }),
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/planner/reopen", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ franchiseId, weekStartDate: weekStartStr }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] });
+      toast({ title: "Semana reaberta", description: "Os dados desta semana podem ser editados novamente. A equipe regional foi notificada." });
+    },
+    onError: () => toast({ title: "Erro ao reabrir semana", variant: "destructive" }),
   });
 
   // Sync local state when data loads
@@ -348,10 +367,22 @@ export default function Planner() {
 
           {canWrite && franchiseId && !isLoading && (
             isSubmitted ? (
-              <Badge className="bg-green-600 hover:bg-green-600 text-white gap-1.5 px-3 py-1.5 text-xs">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Enviado {submittedAtLabel}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-green-600 hover:bg-green-600 text-white gap-1.5 px-3 py-1.5 text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Enviado {submittedAtLabel}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 gap-1.5"
+                  onClick={() => setConfirmReopen(true)}
+                  disabled={reopenMutation.isPending}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Corrigir envio
+                </Button>
+              </div>
             ) : (
               <Button
                 size="sm"
@@ -706,9 +737,21 @@ export default function Planner() {
                 Dados salvos automaticamente · Finalize para enviar resumo ao time regional
               </p>
               {isSubmitted ? (
-                <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Semana finalizada e enviada
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Semana finalizada e enviada
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 gap-1.5"
+                    onClick={() => setConfirmReopen(true)}
+                    disabled={reopenMutation.isPending}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    {reopenMutation.isPending ? "Reabrindo..." : "Corrigir envio por engano"}
+                  </Button>
                 </div>
               ) : (
                 <Button
@@ -739,6 +782,38 @@ export default function Planner() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" onClick={handleSubmit}>
               Sim, finalizar e enviar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm reopen dialog */}
+      <AlertDialog open={confirmReopen} onOpenChange={setConfirmReopen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-amber-500" />
+              Reabrir semana para correção?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  A semana <strong className="text-foreground">{formatWeekRange(weekStartStr, weekEndStr)}</strong> será
+                  reaberta e os campos voltarão a estar editáveis.
+                </p>
+                <p>
+                  A equipe regional será notificada por e-mail da reabertura. Após corrigir os dados, finalize a semana novamente.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={() => { setConfirmReopen(false); reopenMutation.mutate(); }}
+            >
+              Sim, reabrir para correção
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
