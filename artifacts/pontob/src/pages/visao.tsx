@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Pencil, Check, X, Users, Building2, TrendingUp, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Check, X, Users, Building2, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Milestone {
@@ -92,6 +92,26 @@ async function apiFetch(url: string, opts?: RequestInit) {
   const res = await fetch(url, { credentials: "include", ...opts });
   if (!res.ok) throw new Error("Request failed");
   return res.json();
+}
+
+function generateStatement(
+  franchiseName: string,
+  year: number,
+  q4: { targetCreci: number | null; targetCres: number | null; targetVgh: number | null } | null
+): string {
+  if (!q4) return "";
+  const creci = q4.targetCreci != null ? `${q4.targetCreci} corretores ativos` : null;
+  const cres  = q4.targetCres  != null ? `${q4.targetCres} representações` : null;
+  const vgh   = q4.targetVgh   != null ? `${formatVgh(q4.targetVgh)} em honorários` : null;
+
+  const parts = [creci, cres, vgh].filter(Boolean);
+  if (parts.length === 0) return "";
+
+  const body = parts.length === 1
+    ? parts[0]
+    : parts.slice(0, -1).join(", ") + " e " + parts[parts.length - 1];
+
+  return `Em dezembro de ${year}, a ${franchiseName} terá ${body}.`;
 }
 
 function KriBlock({
@@ -279,6 +299,26 @@ export default function Visao() {
   const hasStatement = !!data?.visao?.statement;
   const currentYear = new Date().getFullYear();
 
+  // Derive Q4 milestone (last quarter) for auto-generation
+  const q4Date = QUARTERS[3].date(year);
+  const q4Milestone = data?.milestones?.find((m: any) => m.quarterDate === q4Date) ?? null;
+  const q4HasTargets = !!(q4Milestone?.targetCreci != null || q4Milestone?.targetCres != null || q4Milestone?.targetVgh != null);
+
+  function openEditWithAutoFill() {
+    const current = data?.visao?.statement ?? "";
+    // If no statement yet but Q4 targets exist, auto-fill suggestion
+    const draft = current || (q4HasTargets ? generateStatement(franchiseName, year, q4Milestone) : "");
+    setStatementDraft(draft);
+    setEditingStatement(true);
+  }
+
+  function syncFromQ4() {
+    if (!q4HasTargets) return;
+    const generated = generateStatement(franchiseName, year, q4Milestone);
+    setStatementDraft(generated);
+    setEditingStatement(true);
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12">
 
@@ -314,7 +354,7 @@ export default function Visao() {
           ? "border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer"
           : "border-dashed border-border/60 bg-muted/20 hover:border-primary/30 cursor-pointer"
       )}
-        onClick={() => !editingStatement && canWrite && (setStatementDraft(data?.visao?.statement ?? ""), setEditingStatement(true))}
+        onClick={() => !editingStatement && canWrite && openEditWithAutoFill()}
       >
         {/* Left accent bar */}
         <div className={cn("absolute left-0 top-4 bottom-4 w-0.5 rounded-full bg-primary transition-opacity", editingStatement || hasStatement ? "opacity-100" : "opacity-30")} />
@@ -350,6 +390,14 @@ export default function Visao() {
               <div className="shrink-0 flex gap-2 mt-0.5" onClick={e => e.stopPropagation()}>
                 {editingStatement ? (
                   <>
+                    {/* Sync from Q4 button (inside edit mode) */}
+                    {q4HasTargets && (
+                      <Button size="sm" variant="outline" className="h-8 px-3 rounded-lg text-xs gap-1.5"
+                        onClick={() => syncFromQ4()}>
+                        <RefreshCw className="h-3 w-3" />
+                        Usar metas do Q4
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg"
                       onClick={() => { setEditingStatement(false); setStatementDraft(data?.visao?.statement ?? ""); }}>
                       <X className="h-4 w-4" />
@@ -362,11 +410,21 @@ export default function Visao() {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="ghost" size="sm"
-                    className="h-8 w-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => { setStatementDraft(data?.visao?.statement ?? ""); setEditingStatement(true); }}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {q4HasTargets && (
+                      <Button variant="ghost" size="sm"
+                        className="h-8 px-2.5 rounded-lg text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                        onClick={() => syncFromQ4()}>
+                        <RefreshCw className="h-3 w-3" />
+                        Sincronizar com Q4
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm"
+                      className="h-8 w-8 p-0 rounded-lg"
+                      onClick={() => openEditWithAutoFill()}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
