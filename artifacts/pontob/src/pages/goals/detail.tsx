@@ -660,6 +660,10 @@ function KpiFormFields({ register, control }: { register: any; control: any }) {
               </SelectContent>
             </Select>
           )} />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <strong>Maior é melhor</strong>: progresso sobe conforme o valor cresce (ex: corretores, VGH).<br />
+            <strong>Menor é melhor</strong>: progresso sobe conforme o valor cai (ex: custo por lead, tempo de resposta).
+          </p>
         </div>
       </div>
     </>
