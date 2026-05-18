@@ -2659,6 +2659,90 @@ export const useUpdateGoalInitiative = <
 };
 
 /**
+ * @summary Delete a goal initiative
+ */
+export const getDeleteGoalInitiativeUrl = (id: number) => {
+  return `/api/goal-initiatives/${id}`;
+};
+
+export const deleteGoalInitiative = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteGoalInitiativeUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteGoalInitiativeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGoalInitiative>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteGoalInitiative>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteGoalInitiative"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteGoalInitiative>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteGoalInitiative(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteGoalInitiativeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteGoalInitiative>>
+>;
+
+export type DeleteGoalInitiativeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a goal initiative
+ */
+export const useDeleteGoalInitiative = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteGoalInitiative>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteGoalInitiative>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteGoalInitiativeMutationOptions(options));
+};
+
+/**
  * @summary List daily check-ins
  */
 export const getListDailyCheckinsUrl = (params?: ListDailyCheckinsParams) => {

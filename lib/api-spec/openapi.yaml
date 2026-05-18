@@ -611,6 +611,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GoalInitiative"
+    delete:
+      operationId: deleteGoalInitiative
+      tags: [goalInitiatives]
+      summary: Delete a goal initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /daily-checkins:
     get:

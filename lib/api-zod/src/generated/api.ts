@@ -849,6 +849,13 @@ export const UpdateGoalInitiativeResponse = zod.object({
 });
 
 /**
+ * @summary Delete a goal initiative
+ */
+export const DeleteGoalInitiativeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List daily check-ins
  */
 export const ListDailyCheckinsQueryParams = zod.object({

@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import {
   useGetGoal, getGetGoalQueryKey,
   useCreateKpi, useDeleteKpi, useUpdateKpi,
-  useUpdateGoalInitiative,
+  useUpdateGoalInitiative, useDeleteGoalInitiative,
 } from "@workspace/api-client-react";
 import {
   Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2,
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,6 +82,22 @@ export default function GoalDetail() {
   const deleteKpi = useDeleteKpi();
   const updateKpi = useUpdateKpi();
   const updateInitiative = useUpdateGoalInitiative();
+  const deleteInitiative = useDeleteGoalInitiative();
+  const [confirmDeleteInitiativeId, setConfirmDeleteInitiativeId] = useState<number | null>(null);
+  const [confirmDeleteInitiativeName, setConfirmDeleteInitiativeName] = useState("");
+
+  const onDeleteInitiative = async () => {
+    if (!confirmDeleteInitiativeId) return;
+    try {
+      await deleteInitiative.mutateAsync({ id: confirmDeleteInitiativeId });
+      qc.invalidateQueries({ queryKey: qKey });
+      toast({ title: "Iniciativa excluída" });
+    } catch {
+      toast({ title: "Erro ao excluir iniciativa", variant: "destructive" });
+    } finally {
+      setConfirmDeleteInitiativeId(null);
+    }
+  };
 
   // ── CREATE KPI form ──
   const { register, handleSubmit, reset, control, setValue: setKpiValue } = useForm<KpiForm>({
@@ -485,9 +502,21 @@ export default function GoalDetail() {
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">
-                      <Badge variant="outline" className={`text-xs ${statusColor[initiative.status] || ""}`}>
-                        {statusLabel[initiative.status] || initiative.status}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className={`text-xs ${statusColor[initiative.status] || ""}`}>
+                          {statusLabel[initiative.status] || initiative.status}
+                        </Badge>
+                        {canWrite && (
+                          <Button
+                            variant="ghost" size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={e => { e.stopPropagation(); setConfirmDeleteInitiativeName(initiative.initiativeName || "esta iniciativa"); setConfirmDeleteInitiativeId(initiative.id); }}
+                            title="Excluir iniciativa"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                       {canWrite && (
                         <Select value={initiative.status} onValueChange={v => onUpdateInitiativeStatus(initiative.id, v)}>
                           <SelectTrigger className="h-7 text-xs w-32"><SelectValue /></SelectTrigger>
@@ -597,6 +626,28 @@ export default function GoalDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirm delete initiative */}
+      <AlertDialog open={!!confirmDeleteInitiativeId} onOpenChange={open => { if (!open) setConfirmDeleteInitiativeId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir iniciativa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso irá excluir permanentemente <strong>"{confirmDeleteInitiativeName}"</strong>. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={onDeleteInitiative}
+              disabled={deleteInitiative.isPending}
+            >
+              {deleteInitiative.isPending ? "Excluindo..." : "Sim, excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

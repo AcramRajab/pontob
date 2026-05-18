@@ -592,4 +592,16 @@ router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (re
   }
 });
 
+router.delete("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [deleted] = await db.delete(goalInitiativesTable).where(eq(goalInitiativesTable.id, id)).returning({ id: goalInitiativesTable.id });
+    if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
+    res.status(204).end();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

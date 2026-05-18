@@ -1,4 +1,4 @@
-import { useListAllGoalInitiatives, getListAllGoalInitiativesQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
+import { useListAllGoalInitiatives, getListAllGoalInitiativesQueryKey, useListGoals, getListGoalsQueryKey, useDeleteGoalInitiative } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -7,12 +7,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { TrendingUp, Clock, CheckCircle2, PauseCircle, XCircle, Plus } from "lucide-react";
+import { TrendingUp, Clock, CheckCircle2, PauseCircle, XCircle, Plus, Trash2 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const statusLabel: Record<string, string> = {
   ativa: "Ativa",
@@ -38,10 +41,15 @@ const StatusIcon = ({ status }: { status: string }) => {
 export default function Initiatives() {
   const [filter, setFilter] = useState("all");
   const [goalPickerOpen, setGoalPickerOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [confirmDeleteName, setConfirmDeleteName] = useState("");
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const canWrite = user?.role !== "responsavel_interno";
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const deleteInitiative = useDeleteGoalInitiative();
 
   const initParams = { franchiseId: franchiseId ?? undefined };
   const { data: initiatives = [], isLoading } = useListAllGoalInitiatives(
@@ -56,6 +64,19 @@ export default function Initiatives() {
   );
 
   const filtered = filter === "all" ? initiatives : initiatives.filter((i: any) => i.status === filter);
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await deleteInitiative.mutateAsync({ id: confirmDeleteId });
+      qc.invalidateQueries({ queryKey: getListAllGoalInitiativesQueryKey(initParams) });
+      toast({ title: "Iniciativa excluída" });
+    } catch {
+      toast({ title: "Erro ao excluir iniciativa", variant: "destructive" });
+    } finally {
+      setConfirmDeleteId(null);
+    }
+  };
 
   const handleGoalSelect = (goalId: number) => {
     setGoalPickerOpen(false);
@@ -155,9 +176,25 @@ export default function Initiatives() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        <Badge variant="outline" className={`text-xs ${statusColor[initiative.status] || ""}`}>
-                          {statusLabel[initiative.status] || initiative.status}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className={`text-xs ${statusColor[initiative.status] || ""}`}>
+                            {statusLabel[initiative.status] || initiative.status}
+                          </Badge>
+                          {canWrite && (
+                            <Button
+                              variant="ghost" size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              title="Excluir iniciativa"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setConfirmDeleteName(initiative.initiativeName || "esta iniciativa");
+                                setConfirmDeleteId(initiative.id);
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                         <span className="text-xs font-mono text-muted-foreground">{initiative.progressPercentage ?? 0}%</span>
                       </div>
                     </div>
@@ -179,6 +216,27 @@ export default function Initiatives() {
           )}
         </>
       )}
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={open => { if (!open) setConfirmDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir iniciativa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso irá excluir permanentemente <strong>"{confirmDeleteName}"</strong>. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={handleDelete}
+              disabled={deleteInitiative.isPending}
+            >
+              {deleteInitiative.isPending ? "Excluindo..." : "Sim, excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={goalPickerOpen} onOpenChange={setGoalPickerOpen}>
         <DialogContent className="max-w-md">
