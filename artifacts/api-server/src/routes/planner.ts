@@ -317,4 +317,74 @@ router.get("/planner/indicators", requireAuth, async (_req, res) => {
   res.json(PLANNER_INDICATORS);
 });
 
+// GET /planner/history?franchiseId=&year= — weekly totals per indicator for the full year
+router.get("/planner/history", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+      ? paramFranchiseId
+      : req.session.franchiseId ?? undefined;
+
+    if (!effectiveFranchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+    if (!canAccessFranchise(req, effectiveFranchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const [sumRows, metaRows] = await Promise.all([
+      db
+        .select({
+          weekStartDate: weeklyPlannerEntriesTable.weekStartDate,
+          indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+          total: sql<number>`COALESCE(SUM(${weeklyPlannerEntriesTable.value}), 0)`.as("total"),
+        })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+          gte(weeklyPlannerEntriesTable.weekStartDate, `${year}-01-01`),
+          lte(weeklyPlannerEntriesTable.weekStartDate, `${year}-12-31`),
+        ))
+        .groupBy(weeklyPlannerEntriesTable.weekStartDate, weeklyPlannerEntriesTable.indicatorKey)
+        .orderBy(weeklyPlannerEntriesTable.weekStartDate),
+      db
+        .select({
+          indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+          meta: weeklyPlannerEntriesTable.meta,
+        })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+          gte(weeklyPlannerEntriesTable.weekStartDate, `${year}-01-01`),
+          lte(weeklyPlannerEntriesTable.weekStartDate, `${year}-12-31`),
+        ))
+        .orderBy(weeklyPlannerEntriesTable.weekStartDate),
+    ]);
+
+    // Build week -> indicator -> total map
+    const byWeek: Record<string, Record<string, number>> = {};
+    for (const row of sumRows) {
+      if (!byWeek[row.weekStartDate]) byWeek[row.weekStartDate] = {};
+      byWeek[row.weekStartDate][row.indicatorKey] = Number(row.total);
+    }
+
+    // Latest meta per indicator (last non-null value seen)
+    const metas: Record<string, number | null> = {};
+    for (const row of metaRows) {
+      if (row.meta != null) metas[row.indicatorKey] = Number(row.meta);
+    }
+
+    const weeks = Object.keys(byWeek).sort();
+
+    res.json({
+      year,
+      franchiseId: effectiveFranchiseId,
+      weeks: weeks.map(w => ({ weekStartDate: w, totals: byWeek[w] })),
+      metas,
+      indicators: PLANNER_INDICATORS,
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

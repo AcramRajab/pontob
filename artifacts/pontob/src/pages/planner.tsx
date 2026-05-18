@@ -369,92 +369,130 @@ export default function Planner() {
 
       {/* ── YTD KRI Progress ── */}
       {franchiseId && (
-        <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="rounded-2xl border bg-card overflow-hidden">
+          {/* Header */}
           <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">Progresso no Ano — {currentYear}</span>
               <span className="text-xs text-muted-foreground hidden sm:inline">acumulado das entradas do planner vs meta anual (Q4)</span>
             </div>
-            <Link href="/visao" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-              <ExternalLink className="h-3 w-3" />
-              <span>Definir metas</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/planner/historico" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                <ExternalLink className="h-3 w-3" />
+                <span>Ver histórico</span>
+              </Link>
+              <Link href="/visao" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                <ExternalLink className="h-3 w-3" />
+                <span>Definir metas</span>
+              </Link>
+            </div>
           </div>
+
+          {/* KRI cards — Variante A layout */}
           <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
             {[
               {
                 icon: Users,
                 label: "Corretores novos",
-                sublabel: "corretores_entraram",
                 ytd: ytdData?.ytd.corretores ?? 0,
                 target: ytdData?.targets.corretores ?? null,
-                color: "text-blue-600",
+                accentColor: "text-blue-600",
                 bar: "bg-blue-500",
                 fmt: (v: number) => String(v),
               },
               {
                 icon: Building2,
                 label: "Novos contratos CRE",
-                sublabel: "novos_contratos_representacao",
                 ytd: ytdData?.ytd.contratos ?? 0,
                 target: ytdData?.targets.contratos ?? null,
-                color: "text-violet-600",
+                accentColor: "text-violet-600",
                 bar: "bg-violet-500",
                 fmt: (v: number) => String(v),
               },
               {
                 icon: TrendingUp,
                 label: "Vendas assinadas",
-                sublabel: "venda_assinada",
                 ytd: ytdData?.ytd.vendas ?? 0,
                 target: ytdData?.targets.vendas ?? null,
-                color: "text-emerald-600",
+                accentColor: "text-emerald-600",
                 bar: "bg-emerald-500",
                 fmt: (v: number) =>
                   v >= 1_000_000
-                    ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
+                    ? `R$${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
                     : v >= 1_000
-                    ? `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`
-                    : `R$ ${v.toLocaleString("pt-BR")}`,
+                    ? `R$${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`
+                    : `R$${v.toLocaleString("pt-BR")}`,
               },
-            ].map(({ icon: Icon, label, ytd, target, color, bar, fmt }) => {
-              const pct = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
-              const isGood = pct != null && pct >= 100;
+            ].map(({ icon: Icon, label, ytd, target, accentColor, bar, fmt }) => {
+              const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
+              const isGood = p != null && p >= 100;
               const hasData = ytd > 0;
+              const pctColor = isGood ? "text-green-600" : p != null && p >= 75 ? "text-amber-500" : "text-muted-foreground";
               return (
-                <div key={label} className="px-5 py-4 space-y-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={cn("h-3.5 w-3.5", color)} />
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+                <div key={label} className="px-5 py-4">
+                  {/* Indicator label */}
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Icon className={cn("h-3.5 w-3.5 shrink-0", accentColor)} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                   </div>
-                  <div className="flex items-end justify-between gap-2">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className={cn("text-2xl font-bold tabular-nums leading-none", hasData ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/40")}>
+
+                  {/* Column headers */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex-1">
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Acumulado</span>
+                    </div>
+                    <div className="w-16 text-center">
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">% da meta</span>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Meta anual</span>
+                    </div>
+                  </div>
+
+                  {/* Values row */}
+                  <div className="flex items-end gap-2 mb-3">
+                    {/* Acumulado */}
+                    <div className="flex-1">
+                      <span className={cn("text-xl font-bold tabular-nums leading-none", hasData ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30")}>
                         {fmt(ytd)}
                       </span>
-                      {pct != null && (
-                        <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-orange-500")}>
-                          {pct}%
-                        </span>
+                    </div>
+
+                    {/* % badge center */}
+                    <div className="w-16 flex flex-col items-center pb-0.5">
+                      {p != null ? (
+                        <>
+                          <span className={cn("text-base font-black leading-none tabular-nums", pctColor)}>{p}%</span>
+                          <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">atingido</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground/20">—</span>
                       )}
                     </div>
-                    {target != null ? (
-                      <span className="text-xs text-muted-foreground shrink-0">meta: <strong>{fmt(target)}</strong></span>
-                    ) : (
-                      <Link href="/visao" className={cn("text-xs shrink-0 hover:underline", color)}>
-                        + definir meta
-                      </Link>
-                    )}
+
+                    {/* Meta */}
+                    <div className="flex-1 text-right">
+                      {target != null ? (
+                        <span className={cn("text-sm font-semibold tabular-nums", accentColor)}>{fmt(target)}</span>
+                      ) : (
+                        <Link href="/visao" className={cn("text-xs hover:underline", accentColor)}>
+                          + definir
+                        </Link>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Progress bar */}
                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                     <div
                       className={cn("h-full rounded-full transition-all duration-500", isGood ? "bg-green-500" : bar)}
-                      style={{ width: `${pct ?? 0}%` }}
+                      style={{ width: `${p ?? 0}%` }}
                     />
                   </div>
+
                   {!hasData && (
-                    <p className="text-[10px] text-muted-foreground/50 italic">
+                    <p className="text-[10px] text-muted-foreground/50 italic mt-2">
                       Insira dados semanais para ver a evolução
                     </p>
                   )}
