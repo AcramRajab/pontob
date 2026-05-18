@@ -1,15 +1,15 @@
 import { useRoute, useLocation } from "wouter";
-import { useListDimensions, useListKeyProcesses, useListStrategicInitiatives, useCreateGoalInitiative, getListGoalInitiativesQueryKey, useListUsers, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey, getListUsersQueryKey, GoalInitiativeInputFrequency, getGetGoalQueryKey } from "@workspace/api-client-react";
+import { useListKeyProcesses, useListStrategicInitiatives, useCreateGoalInitiative, getListGoalInitiativesQueryKey, useListUsers, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey, getListUsersQueryKey, GoalInitiativeInputFrequency, getGetGoalQueryKey, useGetGoal } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ChevronRight, BookOpen, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -46,17 +46,30 @@ export default function NewGoalInitiative() {
   const [dimensionId, setDimensionId] = useState<string>("");
   const [keyProcessId, setKeyProcessId] = useState<string>("");
 
-  const { data: dimensions = [] } = useListDimensions();
+  // Load the goal so we can lock filters to its dimension/key-process
+  const { data: goal } = useGetGoal(goalId, {
+    query: { queryKey: getGetGoalQueryKey(goalId) },
+  });
+
+  // Pre-set dimension + key-process from the goal when data arrives
+  useEffect(() => {
+    if (!goal) return;
+    if ((goal as any).dimensionId) setDimensionId(String((goal as any).dimensionId));
+    if ((goal as any).keyProcessId) setKeyProcessId(String((goal as any).keyProcessId));
+  }, [goal]);
+
   const kpParams = { dimensionId: dimensionId ? parseInt(dimensionId) : undefined };
   const { data: keyProcesses = [] } = useListKeyProcesses(
     kpParams,
-    { query: { enabled: true, queryKey: getListKeyProcessesQueryKey(kpParams) } }
+    { query: { enabled: !!dimensionId, queryKey: getListKeyProcessesQueryKey(kpParams) } }
   );
   const initParams = { dimensionId: dimensionId ? parseInt(dimensionId) : undefined, keyProcessId: keyProcessId ? parseInt(keyProcessId) : undefined };
   const { data: initiatives = [] } = useListStrategicInitiatives(
     initParams,
-    { query: { enabled: mode === "catalog-select", queryKey: getListStrategicInitiativesQueryKey(initParams) } }
+    { query: { enabled: mode === "catalog-select" && !!dimensionId, queryKey: getListStrategicInitiativesQueryKey(initParams) } }
   );
+
+  const goalDimensionName = (goal as any)?.dimensionName ?? "";
   const { data: users = [] } = useListUsers({}, { query: { enabled: !!user?.franchiseId, queryKey: getListUsersQueryKey({}) } });
   const franchiseUsers = users.filter((u: any) => u.franchiseId === user?.franchiseId);
 
@@ -271,35 +284,23 @@ export default function NewGoalInitiative() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Selecionar Iniciativa</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Escolha uma iniciativa estratégica do catálogo</p>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Iniciativas do catálogo para a dimensão <span className="font-semibold text-foreground">{goalDimensionName}</span>
+            </p>
           </div>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
-          <Select
-            value={dimensionId || "all"}
-            onValueChange={v => { setDimensionId(v === "all" ? "" : v); setKeyProcessId(""); }}
-          >
-            <SelectTrigger className="w-44" data-testid="select-dimension">
-              <SelectValue placeholder="Dimensão" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {dimensions.map((d: any) => (
-                <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Key-process filter — stays within the goal's dimension */}
+        <div className="flex items-center gap-3 flex-wrap">
           <Select
             value={keyProcessId || "all"}
             onValueChange={v => setKeyProcessId(v === "all" ? "" : v)}
-            disabled={!dimensionId}
           >
-            <SelectTrigger className="w-56" data-testid="select-key-process">
-              <SelectValue placeholder="Processo-chave" />
+            <SelectTrigger className="w-64" data-testid="select-key-process">
+              <SelectValue placeholder="Todos os processos-chave" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="all">Todos os processos-chave</SelectItem>
               {keyProcesses.map((kp: any) => (
                 <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
               ))}
@@ -308,7 +309,10 @@ export default function NewGoalInitiative() {
         </div>
 
         <div className="space-y-2">
-          {initiatives.map((ini: any) => (
+          {!dimensionId && (
+            <p className="text-sm text-muted-foreground text-center py-8">Carregando iniciativas…</p>
+          )}
+          {dimensionId && initiatives.map((ini: any) => (
             <Card
               key={ini.id}
               data-testid={`card-initiative-${ini.id}`}
@@ -319,15 +323,15 @@ export default function NewGoalInitiative() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium text-sm">{ini.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ini.dimensionName} — {ini.keyProcessName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{ini.keyProcessName}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </div>
               </CardContent>
             </Card>
           ))}
-          {initiatives.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma iniciativa encontrada para os filtros selecionados.</p>
+          {dimensionId && initiatives.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhuma iniciativa encontrada.</p>
           )}
         </div>
       </div>
