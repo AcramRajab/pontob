@@ -13,12 +13,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import { progressColorHex } from "@/lib/progress-color";
 
-function getProgressColor(pct: number) {
-  if (pct >= 80) return "#22c55e";
-  if (pct >= 50) return "#f59e0b";
-  return "#ef4444";
-}
+const getProgressColor = progressColorHex;
 
 function formatVgh(v: number | null | undefined) {
   if (v == null) return "—";

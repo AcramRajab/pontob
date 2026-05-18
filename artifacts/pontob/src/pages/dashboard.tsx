@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
+import { progressColorHex } from "@/lib/progress-color";
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTH_NAMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -45,11 +46,7 @@ const PERIOD_PRESETS = [
   { label: "Ano todo", startDate: (y: number) => `${y}-01-01`, endDate: (y: number) => `${y}-12-31` },
 ];
 
-function getProgressColor(pct: number) {
-  if (pct >= 80) return "#22c55e";
-  if (pct >= 50) return "#f59e0b";
-  return "#ef4444";
-}
+const getProgressColor = progressColorHex;
 
 interface KriForm {
   creci: string;

@@ -15,6 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { progressColorClass } from "@/lib/progress-color";
+import { ProgressLegend } from "@/components/progress-legend";
 
 export default function Goals() {
   const { user } = useAuth();
@@ -48,10 +50,11 @@ export default function Goals() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Metas</h1>
           <p className="text-muted-foreground mt-2">Menos planejamento bonito. Mais execução visível.</p>
+          <ProgressLegend className="mt-3" />
         </div>
         {canWrite && franchiseId && (
           <Button asChild>
@@ -104,13 +107,7 @@ export default function Goals() {
                     <div className="w-full md:w-64 space-y-2 shrink-0">
                       <div className="flex justify-between text-sm">
                         <span>Progresso</span>
-                        <span className={`font-medium ${
-                          goal.progressPercentage >= 80
-                            ? "text-blue-600"
-                            : goal.progressPercentage >= 51
-                            ? "text-foreground"
-                            : "text-red-600"
-                        }`}>
+                        <span className={`font-medium ${progressColorClass(goal.progressPercentage)}`}>
                           {goal.progressPercentage}%
                         </span>
                       </div>

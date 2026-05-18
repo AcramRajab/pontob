@@ -1,5 +1,6 @@
 import { useParams, Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { progressColorClass } from "@/lib/progress-color";
 import {
   useGetGoal, getGetGoalQueryKey,
   useCreateKpi, useDeleteKpi, useUpdateKpi,
@@ -265,7 +266,7 @@ export default function GoalDetail() {
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Progresso</div>
-            <div className={`text-3xl font-bold ${goal.progressPercentage >= 80 ? "text-blue-600" : goal.progressPercentage >= 51 ? "text-foreground" : "text-red-600"}`}>{goal.progressPercentage}%</div>
+            <div className={`text-3xl font-bold ${progressColorClass(goal.progressPercentage)}`}>{goal.progressPercentage}%</div>
           </CardContent>
         </Card>
         <Card>
@@ -293,7 +294,7 @@ export default function GoalDetail() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Atual: <strong>{goal.currentValue} {goal.unit}</strong></span>
-            <span className={`font-bold ${goal.progressPercentage >= 80 ? "text-blue-600" : goal.progressPercentage >= 51 ? "text-foreground" : "text-red-600"}`}>{goal.progressPercentage}%</span>
+            <span className={`font-bold ${progressColorClass(goal.progressPercentage)}`}>{goal.progressPercentage}%</span>
             <span className="text-muted-foreground">Meta: <strong>{goal.targetValue} {goal.unit}</strong></span>
           </div>
           <Progress value={goal.progressPercentage} className="h-3" />
@@ -367,7 +368,7 @@ export default function GoalDetail() {
             <div className="space-y-4">
               {kpis.map((kpi: any) => {
                 const { pct, barPct, projected, isPeriodic, freqLabel } = kpiPeriodProgress(kpi);
-                const pctColor = pct >= 90 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-500";
+                const pctColor = progressColorClass(pct);
                 return (
                   <div
                     key={kpi.id}
@@ -555,7 +556,7 @@ export default function GoalDetail() {
                             setProgressEditValue(String(initiative.progressPercentage ?? 0));
                           }}
                         >
-                          {initiative.progressPercentage ?? 0}%
+                          <span className={progressColorClass(initiative.progressPercentage ?? 0)}>{initiative.progressPercentage ?? 0}%</span>
                           {canWrite && <Pencil className="h-2.5 w-2.5 opacity-50" />}
                         </span>
                       )}

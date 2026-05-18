@@ -13,6 +13,7 @@ import { TrendingUp, Clock, CheckCircle2, PauseCircle, XCircle, Plus, Trash2 } f
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useAuth } from "@/lib/auth";
+import { progressColorClass } from "@/lib/progress-color";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -195,7 +196,7 @@ export default function Initiatives() {
                             </Button>
                           )}
                         </div>
-                        <span className="text-xs font-mono text-muted-foreground">{initiative.progressPercentage ?? 0}%</span>
+                        <span className={`text-xs font-mono font-semibold ${progressColorClass(initiative.progressPercentage ?? 0)}`}>{initiative.progressPercentage ?? 0}%</span>
                       </div>
                     </div>
                     <div className="mt-3">
