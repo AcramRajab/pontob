@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, BarChart2, TrendingUp, Users, Building2, ArrowRightCircle, ShoppingBag } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, BarChart2, TrendingUp,
+  Users, Building2, LineChart as LineChartIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   ResponsiveContainer,
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ReferenceLine,
-  Legend,
 } from "recharts";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const SECTIONS = [
   {
@@ -25,16 +30,14 @@ const SECTIONS = [
     bg: "bg-blue-50",
     border: "border-blue-200",
     dot: "bg-blue-500",
-    chartColor: "#3b82f6",
     indicators: [
-      { key: "reunioes_agendadas", label: "Reuniões agendadas" },
-      { key: "reunioes_realizadas", label: "Reuniões realizadas" },
-      { key: "corretores_entraram", label: "Corretores entraram" },
-      { key: "estagiarios_entraram", label: "Estagiários entraram" },
-      { key: "corretores_sairam", label: "Corretores saíram" },
-      { key: "estagiarios_sairam", label: "Estagiários saíram" },
+      { key: "reunioes_agendadas",          label: "Reuniões agendadas",        color: "#3b82f6", isNegative: false },
+      { key: "reunioes_realizadas",          label: "Reuniões realizadas",       color: "#1d4ed8", isNegative: false },
+      { key: "corretores_entraram",          label: "Corretores entraram",       color: "#10b981", isNegative: false },
+      { key: "estagiarios_entraram",         label: "Estagiários entraram",      color: "#06b6d4", isNegative: false },
+      { key: "corretores_sairam",            label: "Corretores saíram",         color: "#ef4444", isNegative: true  },
+      { key: "estagiarios_sairam",           label: "Estagiários saíram",        color: "#f97316", isNegative: true  },
     ],
-    indicatorColors: ["#3b82f6", "#60a5fa", "#1d4ed8", "#93c5fd", "#ef4444", "#fca5a5"],
   },
   {
     key: "operacao",
@@ -44,13 +47,11 @@ const SECTIONS = [
     bg: "bg-violet-50",
     border: "border-violet-200",
     dot: "bg-violet-500",
-    chartColor: "#8b5cf6",
     indicators: [
-      { key: "novos_contratos_representacao", label: "Novos contratos de representação" },
-      { key: "contratos_cancelados", label: "Contratos cancelados" },
-      { key: "contratos_vendidos", label: "Contratos vendidos" },
+      { key: "novos_contratos_representacao", label: "Novos contratos de representação", color: "#8b5cf6", isNegative: false },
+      { key: "contratos_cancelados",          label: "Contratos cancelados",             color: "#ef4444", isNegative: true  },
+      { key: "contratos_vendidos",            label: "Contratos vendidos",               color: "#10b981", isNegative: false },
     ],
-    indicatorColors: ["#8b5cf6", "#ef4444", "#10b981"],
   },
   {
     key: "vendas",
@@ -60,19 +61,16 @@ const SECTIONS = [
     bg: "bg-emerald-50",
     border: "border-emerald-200",
     dot: "bg-emerald-500",
-    chartColor: "#10b981",
     indicators: [
-      { key: "venda_assinada", label: "Venda assinada (R$)" },
-      { key: "venda_realizada", label: "Venda realizada (R$)" },
+      { key: "venda_assinada",  label: "Venda assinada (R$)",  color: "#10b981", isNegative: false },
+      { key: "venda_realizada", label: "Venda realizada (R$)", color: "#34d399", isNegative: false },
     ],
-    indicatorColors: ["#10b981", "#34d399"],
   },
 ];
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 type WeekEntry = { weekStartDate: string; totals: Record<string, number> };
-
 type HistoryData = {
   year: number;
   franchiseId: number;
@@ -80,52 +78,155 @@ type HistoryData = {
   metas: Record<string, number | null>;
   indicators: { key: string; label: string }[];
 };
-
+type ChartType = "line" | "bar";
 type ViewMode = "weekly" | "monthly";
 
-function formatWeekLabel(weekStartDate: string): string {
-  const [, m, d] = weekStartDate.split("-");
-  return `${d}/${m}`;
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getMonth(weekStartDate: string): number {
-  return parseInt(weekStartDate.split("-")[1]) - 1;
-}
+function isVgh(key: string) { return key.includes("venda"); }
 
-function isVgh(key: string) {
-  return key.includes("venda");
-}
-
-function fmtVal(v: number, key: string) {
-  if (!isVgh(key)) return String(Math.round(v));
+function fmtVal(v: number, key: string, compact = false) {
+  if (!isVgh(key)) return compact ? String(Math.round(v)) : String(Math.round(v));
   if (v >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `R$${Math.round(v / 1_000)}k`;
+  if (v >= 1_000)     return `R$${Math.round(v / 1_000)}k`;
   return `R$${Math.round(v)}`;
 }
 
-function CustomTooltip({ active, payload, label, sectionIndicators }: any) {
+function formatWeekLabel(d: string) {
+  const [, m, day] = d.split("-");
+  return `${day}/${m}`;
+}
+function getMonth(d: string) { return parseInt(d.split("-")[1]) - 1; }
+
+// ─── Custom tooltip (per-indicator chart) ─────────────────────────────────────
+
+function MiniTooltip({ active, payload, label, indicatorKey }: any) {
   if (!active || !payload?.length) return null;
+  const val = payload[0]?.value ?? 0;
   return (
-    <div className="rounded-xl border bg-card shadow-lg px-3 py-2.5 text-xs space-y-1.5">
-      <p className="font-bold text-foreground mb-1">{label}</p>
-      {payload.map((p: any) => (
-        <div key={p.dataKey} className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.fill }} />
-            <span className="text-muted-foreground">{sectionIndicators.find((i: any) => i.key === p.dataKey)?.label ?? p.dataKey}</span>
-          </span>
-          <span className="font-semibold tabular-nums">{fmtVal(p.value, p.dataKey)}</span>
-        </div>
-      ))}
+    <div className="rounded-lg border bg-card shadow-md px-2.5 py-1.5 text-xs">
+      <p className="font-semibold text-foreground mb-0.5">{label}</p>
+      <p className="tabular-nums font-bold" style={{ color: payload[0]?.stroke ?? payload[0]?.fill }}>
+        {fmtVal(Number(val), indicatorKey)}
+      </p>
     </div>
   );
 }
+
+// ─── Per-indicator mini chart ─────────────────────────────────────────────────
+
+function IndicatorChart({
+  data,
+  indicatorKey,
+  label,
+  color,
+  monthlyMeta,
+  chartType,
+  viewMode,
+}: {
+  data: { label: string; value: number }[];
+  indicatorKey: string;
+  label: string;
+  color: string;
+  monthlyMeta: number | null;
+  chartType: ChartType;
+  viewMode: ViewMode;
+}) {
+  const ytd = data.reduce((s, d) => s + d.value, 0);
+  const pct = monthlyMeta && monthlyMeta > 0 ? Math.round((ytd / monthlyMeta) * 100) : null;
+  const pctColor = pct == null ? "" : pct >= 100 ? "text-green-600" : pct >= 75 ? "text-amber-500" : "text-muted-foreground";
+  const hasData = data.some(d => d.value > 0);
+  const maxVal = Math.max(...data.map(d => d.value), 1);
+
+  // Weekly reference: monthlyMeta / 4 weeks avg
+  const weeklyRef = monthlyMeta && viewMode === "weekly" ? monthlyMeta / 4.33 : null;
+  const monthlyRef = monthlyMeta && viewMode === "monthly" ? monthlyMeta : null;
+  const refVal = weeklyRef ?? monthlyRef;
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-2">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground leading-tight truncate">{label}</p>
+          {monthlyMeta != null && (
+            <p className="text-[10px] text-muted-foreground/60 mt-0.5">meta: {fmtVal(monthlyMeta, indicatorKey)}/mês</p>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-lg font-black tabular-nums leading-none" style={{ color }}>
+            {fmtVal(ytd, indicatorKey)}
+          </p>
+          {pct != null && (
+            <p className={cn("text-[10px] font-bold mt-0.5", pctColor)}>{pct}% da meta</p>
+          )}
+        </div>
+      </div>
+
+      {/* Chart */}
+      {!hasData ? (
+        <div className="h-24 flex items-center justify-center text-[11px] text-muted-foreground/40 italic">
+          Sem dados neste período
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={80}>
+          <ComposedChart data={data} margin={{ top: 4, right: 2, left: -28, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.6} />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              axisLine={false}
+              tickLine={false}
+              interval={data.length > 8 ? Math.floor(data.length / 6) : 0}
+            />
+            <YAxis hide domain={[0, Math.ceil(maxVal * 1.2) || 1]} />
+            <Tooltip
+              content={<MiniTooltip indicatorKey={indicatorKey} />}
+              cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
+            />
+            {refVal != null && (
+              <ReferenceLine
+                y={refVal}
+                stroke={color}
+                strokeDasharray="4 2"
+                strokeWidth={1}
+                opacity={0.5}
+              />
+            )}
+            {chartType === "bar" ? (
+              <Bar
+                dataKey="value"
+                fill={color}
+                opacity={0.85}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={viewMode === "weekly" ? 12 : 32}
+              />
+            ) : (
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={color}
+                strokeWidth={2}
+                dot={{ r: 3, fill: color, strokeWidth: 0 }}
+                activeDot={{ r: 4 }}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PlannerHistorico() {
   const { user } = useAuth();
   const [year, setYear] = useState(new Date().getFullYear());
   const [viewMode, setViewMode] = useState<ViewMode>("monthly");
+  const [chartType, setChartType] = useState<ChartType>("line");
   const franchiseId = user?.franchiseId;
+  const currentYear = new Date().getFullYear();
 
   const { data, isLoading } = useQuery<HistoryData>({
     queryKey: ["planner-history", franchiseId, year],
@@ -137,43 +238,28 @@ export default function PlannerHistorico() {
     enabled: !!franchiseId,
   });
 
-  // Build chart data per view mode
-  function buildChartData(indicatorKeys: string[]) {
+  function buildChartData(indicatorKey: string): { label: string; value: number }[] {
     if (!data?.weeks?.length) return [];
 
     if (viewMode === "weekly") {
       return data.weeks.map(w => ({
         label: formatWeekLabel(w.weekStartDate),
-        weekStartDate: w.weekStartDate,
-        ...Object.fromEntries(indicatorKeys.map(k => [k, w.totals[k] ?? 0])),
+        value: w.totals[indicatorKey] ?? 0,
       }));
     }
 
-    // Monthly: aggregate weeks into months
-    const monthly: Record<number, Record<string, number>> = {};
+    // Monthly aggregation
+    const monthly: Record<number, number> = {};
     for (const w of data.weeks) {
       const m = getMonth(w.weekStartDate);
-      if (!monthly[m]) monthly[m] = {};
-      for (const k of indicatorKeys) {
-        monthly[m][k] = (monthly[m][k] ?? 0) + (w.totals[k] ?? 0);
-      }
+      monthly[m] = (monthly[m] ?? 0) + (w.totals[indicatorKey] ?? 0);
     }
     return Object.entries(monthly)
       .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([m, totals]) => ({
-        label: MONTH_LABELS[Number(m)],
-        ...Object.fromEntries(indicatorKeys.map(k => [k, totals[k] ?? 0])),
-      }));
-  }
-
-  // Cumulative YTD total per indicator
-  function ytdTotal(key: string): number {
-    if (!data?.weeks) return 0;
-    return data.weeks.reduce((s, w) => s + (w.totals[key] ?? 0), 0);
+      .map(([m, total]) => ({ label: MONTH_LABELS[Number(m)], value: total }));
   }
 
   const hasAnyData = (data?.weeks?.length ?? 0) > 0;
-  const currentYear = new Date().getFullYear();
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
@@ -185,11 +271,35 @@ export default function PlannerHistorico() {
             <BarChart2 className="h-6 w-6 text-primary" />
             Histórico de Indicadores
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Evolução semanal e mensal acumulada por categoria</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Evolução {viewMode === "monthly" ? "mensal" : "semanal"} por indicador · {year}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* View mode toggle */}
+          {/* Chart type toggle */}
+          <div className="flex items-center rounded-lg border bg-card p-1 gap-0.5">
+            <Button
+              variant={chartType === "line" ? "default" : "ghost"}
+              size="sm"
+              className="h-7 px-3 text-xs rounded-md gap-1.5"
+              onClick={() => setChartType("line")}
+            >
+              <LineChartIcon className="h-3 w-3" />
+              Linha
+            </Button>
+            <Button
+              variant={chartType === "bar" ? "default" : "ghost"}
+              size="sm"
+              className="h-7 px-3 text-xs rounded-md gap-1.5"
+              onClick={() => setChartType("bar")}
+            >
+              <BarChart2 className="h-3 w-3" />
+              Barras
+            </Button>
+          </div>
+
+          {/* Period toggle */}
           <div className="flex items-center rounded-lg border bg-card p-1 gap-0.5">
             <Button
               variant={viewMode === "monthly" ? "default" : "ghost"}
@@ -241,103 +351,41 @@ export default function PlannerHistorico() {
           <BarChart2 className="h-12 w-12 text-muted-foreground/30" />
           <div>
             <p className="font-semibold text-foreground">Nenhum dado registrado em {year}</p>
-            <p className="text-sm text-muted-foreground mt-1">Use o Planner Semanal para inserir dados diários — o histórico aparecerá aqui.</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Use o Planner Semanal para inserir dados diários — o histórico aparecerá aqui automaticamente.
+            </p>
           </div>
         </div>
       )}
 
       {franchiseId && !isLoading && hasAnyData && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {SECTIONS.map(section => {
-            const chartData = buildChartData(section.indicators.map(i => i.key));
-
+            const SectionIcon = section.icon;
             return (
-              <div key={section.key} className={cn("rounded-2xl border-2 overflow-hidden", section.border)}>
+              <div key={section.key}>
                 {/* Section header */}
-                <div className={cn("px-5 py-3 flex items-center justify-between gap-3", section.bg)}>
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2.5 h-2.5 rounded-full", section.dot)} />
-                    <span className={cn("font-bold text-sm", section.color)}>{section.label}</span>
-                  </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={cn("w-2.5 h-2.5 rounded-full", section.dot)} />
+                  <SectionIcon className={cn("h-4 w-4", section.color)} />
+                  <span className={cn("font-bold text-base", section.color)}>{section.label}</span>
+                  <div className="h-px flex-1 bg-border ml-1" />
                 </div>
 
-                {/* YTD summary strip */}
-                <div className="px-5 py-3 border-b border-border/40 bg-muted/20">
-                  <div className="flex flex-wrap gap-x-6 gap-y-1.5">
-                    {section.indicators.map((ind, i) => {
-                      const ytd = ytdTotal(ind.key);
-                      const meta = data?.metas?.[ind.key] ?? null;
-                      const pct = meta && meta > 0 ? Math.round((ytd / meta) * 100) : null;
-                      return (
-                        <div key={ind.key} className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: section.indicatorColors[i] }} />
-                          <span className="text-xs text-muted-foreground">{ind.label}:</span>
-                          <span className="text-xs font-bold tabular-nums text-foreground">{fmtVal(ytd, ind.key)}</span>
-                          {pct != null && (
-                            <span className={cn("text-[10px] font-semibold", pct >= 100 ? "text-green-600" : pct >= 75 ? "text-amber-500" : "text-muted-foreground")}>
-                              ({pct}%)
-                            </span>
-                          )}
-                          {meta != null && (
-                            <span className="text-[10px] text-muted-foreground/50">meta: {fmtVal(Number(meta), ind.key)}/mês</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Chart */}
-                <div className="px-5 pt-4 pb-5">
-                  {chartData.length === 0 ? (
-                    <div className="h-48 flex items-center justify-center text-sm text-muted-foreground/50 italic">
-                      Nenhum dado para este período
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={chartData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }} barCategoryGap="30%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis
-                          dataKey="label"
-                          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                          axisLine={false}
-                          tickLine={false}
-                          tickFormatter={v => isVgh(section.indicators[0]?.key) && v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)}
-                          width={40}
-                        />
-                        <Tooltip
-                          content={<CustomTooltip sectionIndicators={section.indicators} />}
-                          cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }}
-                        />
-                        {section.indicators.length > 1 && (
-                          <Legend
-                            formatter={(value) => {
-                              const ind = section.indicators.find(i => i.key === value);
-                              return <span style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>{ind?.label ?? value}</span>;
-                            }}
-                            iconSize={8}
-                            iconType="circle"
-                            wrapperStyle={{ paddingTop: 8 }}
-                          />
-                        )}
-                        {section.indicators.map((ind, i) => (
-                          <Bar
-                            key={ind.key}
-                            dataKey={ind.key}
-                            name={ind.label}
-                            fill={section.indicatorColors[i]}
-                            radius={[3, 3, 0, 0]}
-                            maxBarSize={viewMode === "weekly" ? 14 : 36}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
+                {/* Grid of per-indicator charts */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {section.indicators.map(ind => (
+                    <IndicatorChart
+                      key={ind.key}
+                      data={buildChartData(ind.key)}
+                      indicatorKey={ind.key}
+                      label={ind.label}
+                      color={ind.color}
+                      monthlyMeta={data?.metas?.[ind.key] ?? null}
+                      chartType={chartType}
+                      viewMode={viewMode}
+                    />
+                  ))}
                 </div>
               </div>
             );
