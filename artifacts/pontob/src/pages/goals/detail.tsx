@@ -207,9 +207,13 @@ export default function GoalDetail() {
       return;
     }
     try {
-      await updateInitiative.mutateAsync({ id: initiativeId, data: { progressPercentage: val } as any });
+      const update: any = { progressPercentage: val };
+      if (val === 100) update.status = "concluida";
+      await updateInitiative.mutateAsync({ id: initiativeId, data: update });
       qc.invalidateQueries({ queryKey: qKey });
-      toast({ title: "Progresso atualizado" });
+      toast({
+        title: val === 100 ? "Iniciativa concluída automaticamente! 🎉" : "Progresso atualizado",
+      });
       setProgressEditId(null);
       setProgressEditValue("");
     } catch {
