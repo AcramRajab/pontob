@@ -83,6 +83,18 @@ function addDays(date: Date, n: number): Date {
   return d;
 }
 
+/** Count Mondays (calendar weeks) in the month that contains `date`. */
+function weeksInMonth(date: Date): number {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    if (new Date(year, month, d).getDay() === 1) count++;
+  }
+  return count || 4;
+}
+
 function formatWeekRange(start: string, end: string) {
   const [sy, sm, sd] = start.split("-");
   const [, em, ed] = end.split("-");
@@ -263,20 +275,33 @@ export default function Planner() {
     setConfirmSubmit(false);
   };
 
+  // How many calendar weeks (Mondays) are in the month of the current week
+  const numWeeksInMonth = weeksInMonth(weekStart);
+
   function weekTotal(indicatorKey: string): number {
     if (!data?.entries) return 0;
     return data.entries.filter((e: any) => e.indicatorKey === indicatorKey).reduce((s: number, e: any) => s + (e.value ?? 0), 0);
   }
 
+  /** Monthly target as stored (user-entered). */
   function metaForIndicator(indicatorKey: string): number | null {
     if (!data?.entries) return null;
     const metas = data.entries.filter((e: any) => e.indicatorKey === indicatorKey && e.meta != null).map((e: any) => e.meta);
     return metas.length ? metas[metas.length - 1] : null;
   }
 
+  /** Weekly target = monthly ÷ weeks in the current month. */
+  function weeklyMetaForIndicator(indicatorKey: string): number | null {
+    const monthly = metaForIndicator(indicatorKey);
+    if (monthly === null) return null;
+    return monthly / numWeeksInMonth;
+  }
+
   const isVgh = (key: string) => key.includes("venda");
   const fmtNum = (n: number, key: string) =>
     isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : String(n);
+  const fmtWeekly = (n: number, key: string) =>
+    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + "/sem" : `~${Math.round(n)}/sem`;
 
   const today = new Date();
   const isCurrentWeek = formatDate(getMondayOfWeek(today)) === weekStartStr;
@@ -489,8 +514,8 @@ export default function Planner() {
                       <th className="text-center px-3 py-2 font-medium text-muted-foreground text-xs min-w-[80px] border-l border-border/60">
                         Total
                       </th>
-                      <th className="text-center px-2 py-2 font-medium text-muted-foreground text-xs min-w-[80px]">
-                        Meta
+                      <th className="text-center px-2 py-2 font-medium text-muted-foreground text-xs min-w-[90px]">
+                        Meta/mês
                       </th>
                       <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs min-w-[120px]">
                         Status
@@ -500,9 +525,10 @@ export default function Planner() {
                   <tbody>
                     {section.indicators.map((ind, rowIdx) => {
                       const total = weekTotal(ind.key);
-                      const meta = metaForIndicator(ind.key);
-                      const isOver = meta !== null && total >= meta && meta > 0;
-                      const p = meta && meta > 0 ? Math.min(Math.round((total / meta) * 100), 100) : null;
+                      const meta = metaForIndicator(ind.key);          // monthly
+                      const weeklyMeta = weeklyMetaForIndicator(ind.key); // monthly ÷ weeks
+                      const isOver = weeklyMeta !== null && total >= weeklyMeta && weeklyMeta > 0;
+                      const p = weeklyMeta && weeklyMeta > 0 ? Math.min(Math.round((total / weeklyMeta) * 100), 100) : null;
                       const isValueKey = isVgh(ind.key);
 
                       return (
@@ -551,24 +577,31 @@ export default function Planner() {
                             </span>
                           </td>
 
-                          {/* Meta input */}
+                          {/* Meta/mês input + derived weekly */}
                           <td className="p-0 text-center">
-                            <Input
-                              type="number"
-                              min={0}
-                              step={isValueKey ? 1000 : 1}
-                              defaultValue={meta ?? ""}
-                              key={`${ind.key}-meta-${weekStartStr}`}
-                              disabled={!canWrite || isSubmitted}
-                              placeholder="—"
-                              className="h-8 w-full text-center text-xs font-medium border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5 disabled:opacity-40"
-                              onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
-                            />
+                            <div className="flex flex-col items-center">
+                              <Input
+                                type="number"
+                                min={0}
+                                step={isValueKey ? 1000 : 1}
+                                defaultValue={meta ?? ""}
+                                key={`${ind.key}-meta-${weekStartStr}`}
+                                disabled={!canWrite || isSubmitted}
+                                placeholder="—"
+                                className="h-8 w-full text-center text-xs font-medium border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5 disabled:opacity-40"
+                                onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
+                              />
+                              {weeklyMeta !== null && (
+                                <span className="text-[10px] text-muted-foreground/60 pb-0.5 leading-none">
+                                  {fmtWeekly(weeklyMeta, ind.key)}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Status */}
                           <td className="px-3 py-1">
-                            {meta && total > 0 ? (
+                            {weeklyMeta && total > 0 ? (
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[60px]">
                                   <div
