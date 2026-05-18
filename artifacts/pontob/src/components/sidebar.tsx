@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
-import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot, TableIcon, Eye, ClipboardList, LineChart } from "lucide-react";
+import { Target, CheckSquare, LayoutDashboard, History, HelpCircle, Trophy, Map, Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen, CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot, TableIcon, Eye, ClipboardList, LineChart, PlusCircle } from "lucide-react";
 import { Button } from "./ui/button";
 
 export function AppSidebar() {
@@ -85,6 +85,14 @@ export function AppSidebar() {
                   <Link href="/visao">
                     <Eye />
                     <span>Visão Anual</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/planner/registro")}>
+                  <Link href="/planner/registro">
+                    <PlusCircle />
+                    <span>Registro de Eventos</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

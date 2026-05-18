@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable, usersTable, PLANNER_INDICATORS, franchiseVisaoMilestonesTable } from "@workspace/db";
+import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable, usersTable, PLANNER_INDICATORS, franchiseVisaoMilestonesTable, plannerEventLogTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
@@ -358,6 +358,141 @@ router.post("/planner/reopen", requireAuth, requireWriteAccess, async (req, res)
     }
 
     res.json({ ok: true, submittedAt: null });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Event log ──────────────────────────────────────────────────────────────────
+
+function getMondayStr(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay(); // 0=Sun, 1=Mon…
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function getDayOfWeek(dateStr: string): number {
+  const d = new Date(dateStr + "T12:00:00");
+  const jsDay = d.getDay(); // 0=Sun, 1=Mon…
+  return jsDay === 0 ? 6 : jsDay - 1; // 0=Mon…6=Sun
+}
+
+// POST /planner/events — log a real-time event and update the day's aggregate
+router.post("/planner/events", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, indicatorKey, delta, note, eventDate } = req.body;
+    if (!franchiseId || !indicatorKey || delta == null || !eventDate) {
+      res.status(400).json({ error: "franchiseId, indicatorKey, delta, eventDate required" }); return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const weekStartDate = getMondayStr(eventDate);
+    const dayOfWeek = getDayOfWeek(eventDate);
+    const userId = req.session.userId!;
+
+    // Insert event log entry
+    const [event] = await db.insert(plannerEventLogTable).values({
+      franchiseId, userId, weekStartDate, eventDate, dayOfWeek,
+      indicatorKey, delta, note: note || null,
+    }).returning();
+
+    // Upsert the daily aggregate (add delta to existing value)
+    const existing = await db.select().from(weeklyPlannerEntriesTable)
+      .where(and(
+        eq(weeklyPlannerEntriesTable.franchiseId, franchiseId),
+        eq(weeklyPlannerEntriesTable.weekStartDate, weekStartDate),
+        eq(weeklyPlannerEntriesTable.indicatorKey, indicatorKey),
+        eq(weeklyPlannerEntriesTable.dayOfWeek, dayOfWeek),
+      )).limit(1);
+
+    if (existing[0]) {
+      const newVal = (existing[0].value ?? 0) + delta;
+      await db.update(weeklyPlannerEntriesTable)
+        .set({ value: newVal })
+        .where(eq(weeklyPlannerEntriesTable.id, existing[0].id));
+    } else {
+      await db.insert(weeklyPlannerEntriesTable).values({
+        franchiseId, userId, weekStartDate, indicatorKey, dayOfWeek,
+        value: delta, meta: null,
+      });
+    }
+
+    res.json({ ok: true, event });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /planner/events/:id — undo a specific event (subtracts delta from aggregate)
+router.delete("/planner/events/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const eventId = parseInt(req.params.id as string);
+    const [event] = await db.select().from(plannerEventLogTable)
+      .where(eq(plannerEventLogTable.id, eventId)).limit(1);
+    if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+    if (!canAccessFranchise(req, event.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    await db.delete(plannerEventLogTable).where(eq(plannerEventLogTable.id, eventId));
+
+    // Reverse the delta from the daily aggregate
+    const existing = await db.select().from(weeklyPlannerEntriesTable)
+      .where(and(
+        eq(weeklyPlannerEntriesTable.franchiseId, event.franchiseId),
+        eq(weeklyPlannerEntriesTable.weekStartDate, event.weekStartDate),
+        eq(weeklyPlannerEntriesTable.indicatorKey, event.indicatorKey),
+        eq(weeklyPlannerEntriesTable.dayOfWeek, event.dayOfWeek),
+      )).limit(1);
+
+    if (existing[0]) {
+      const newVal = (existing[0].value ?? 0) - event.delta;
+      await db.update(weeklyPlannerEntriesTable)
+        .set({ value: newVal })
+        .where(eq(weeklyPlannerEntriesTable.id, existing[0].id));
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /planner/events?franchiseId=&weekStartDate= — event log for a week
+router.get("/planner/events", requireAuth, async (req, res) => {
+  try {
+    const franchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+    const weekStartDate = req.query.weekStartDate as string | undefined;
+    if (!franchiseId || !weekStartDate) {
+      res.status(400).json({ error: "franchiseId and weekStartDate required" }); return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const events = await db
+      .select({
+        id: plannerEventLogTable.id,
+        userId: plannerEventLogTable.userId,
+        userName: usersTable.name,
+        weekStartDate: plannerEventLogTable.weekStartDate,
+        eventDate: plannerEventLogTable.eventDate,
+        dayOfWeek: plannerEventLogTable.dayOfWeek,
+        indicatorKey: plannerEventLogTable.indicatorKey,
+        delta: plannerEventLogTable.delta,
+        note: plannerEventLogTable.note,
+        createdAt: plannerEventLogTable.createdAt,
+      })
+      .from(plannerEventLogTable)
+      .innerJoin(usersTable, eq(plannerEventLogTable.userId, usersTable.id))
+      .where(and(
+        eq(plannerEventLogTable.franchiseId, franchiseId),
+        eq(plannerEventLogTable.weekStartDate, weekStartDate),
+      ))
+      .orderBy(sql`${plannerEventLogTable.createdAt} DESC`);
+
+    res.json({ events });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

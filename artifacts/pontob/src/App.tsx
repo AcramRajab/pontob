@@ -35,6 +35,7 @@ import VagaNew from "@/pages/recrutamento/vagas-new";
 import VagaDetail from "@/pages/recrutamento/vaga-detail";
 import Secretaria from "@/pages/recrutamento/secretaria";
 import Planner from "@/pages/planner";
+import PlannerRegistro from "@/pages/planner-registro";
 import PlannerHistorico from "@/pages/planner-historico";
 import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
@@ -82,6 +83,7 @@ function Router() {
         <Route path="/recrutamento/vagas/:id" component={VagaDetail} />
         <Route path="/recrutamento" component={Recrutamento} />
         <Route path="/planner/historico" component={PlannerHistorico} />
+        <Route path="/planner/registro" component={PlannerRegistro} />
         <Route path="/planner" component={Planner} />
         <Route path="/visao" component={Visao} />
         <Route path="/" component={() => {

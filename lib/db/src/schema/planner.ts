@@ -57,3 +57,21 @@ export const weeklyPlannerWeeksTable = pgTable("weekly_planner_weeks", {
 ]);
 
 export type WeeklyPlannerWeek = typeof weeklyPlannerWeeksTable.$inferSelect;
+
+// Event log — one row per event registered in real-time
+export const plannerEventLogTable = pgTable("planner_event_log", {
+  id: serial("id").primaryKey(),
+  franchiseId: integer("franchise_id").notNull().references(() => franchisesTable.id),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  weekStartDate: text("week_start_date").notNull(),   // Monday YYYY-MM-DD
+  eventDate: text("event_date").notNull(),            // Actual date YYYY-MM-DD
+  dayOfWeek: integer("day_of_week").notNull(),        // 0=Mon … 6=Sun
+  indicatorKey: text("indicator_key").notNull(),
+  delta: real("delta").notNull(),                     // +1, -1, +150000, etc.
+  note: text("note"),                                 // Optional: name, property, etc.
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertPlannerEventLogSchema = createInsertSchema(plannerEventLogTable).omit({ id: true, createdAt: true });
+export type InsertPlannerEventLog = z.infer<typeof insertPlannerEventLogSchema>;
+export type PlannerEventLog = typeof plannerEventLogTable.$inferSelect;
