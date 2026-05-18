@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm, Controller } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const statusLabel: Record<string, string> = {
   ativa: "Ativa", concluida: "Concluída", pausada: "Pausada", cancelada: "Cancelada",
@@ -101,13 +101,14 @@ export default function GoalDetail() {
   };
 
   // ── CREATE KPI form ──
-  const { register, handleSubmit, reset, control, setValue: setKpiValue } = useForm<KpiForm>({
+  const { register, handleSubmit, reset, control, setValue: setKpiValue, watch: watchKpi } = useForm<KpiForm>({
     defaultValues: { indicatorType: "resultado", desiredDirection: "higher", frequency: "mensal" },
   });
 
   // ── EDIT KPI form ──
   const {
     register: regEdit, handleSubmit: handleEditSubmit, reset: resetEdit, control: controlEdit,
+    setValue: setKpiEditValue, watch: watchKpiEdit,
   } = useForm<KpiForm>({ defaultValues: { indicatorType: "resultado", desiredDirection: "higher", frequency: "mensal" } });
 
   const onCreateKpi = async (data: KpiForm) => {
@@ -335,7 +336,7 @@ export default function GoalDetail() {
                       <div className="flex flex-wrap gap-1">
                         {templatesBySection(sec.key).map(t => (
                           <button key={t.name} type="button"
-                            onClick={() => { setKpiValue("name", t.name); setKpiValue("unit", t.unit); setKpiValue("desiredDirection", t.desiredDirection === "diminuir" ? "lower" : "higher"); }}
+                            onClick={() => { setKpiValue("name", t.name); setKpiValue("unit", t.unit); }}
                             className={`text-xs px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${sec.bg} ${sec.color} ${sec.border} hover:opacity-80`}>
                             {t.name}{t.desiredDirection === "diminuir" ? " ↓" : ""}
                           </button>
@@ -345,7 +346,7 @@ export default function GoalDetail() {
                   ))}
                 </div>
                 <form onSubmit={handleSubmit(onCreateKpi)} className="space-y-4 mt-2">
-                  <KpiFormFields register={register} control={control} />
+                  <KpiFormFields register={register} control={control} watch={watchKpi} setValue={setKpiValue} />
                   <div className="flex gap-2 justify-end pt-2">
                     <Button variant="outline" type="button" onClick={() => setKpiOpen(false)}>Cancelar</Button>
                     <Button type="submit" disabled={createKpi.isPending}>
@@ -449,7 +450,7 @@ export default function GoalDetail() {
             <DialogTitle>Editar KPI</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditSubmit(onSaveKpi)} className="space-y-4 mt-2">
-            <KpiFormFields register={regEdit} control={controlEdit} />
+            <KpiFormFields register={regEdit} control={controlEdit} watch={watchKpiEdit} setValue={setKpiEditValue} />
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" type="button" onClick={() => setEditKpi(null)}>Cancelar</Button>
               <Button type="submit" disabled={updateKpi.isPending}>
@@ -768,7 +769,28 @@ function kpiPeriodProgress(kpi: any): KpiProgress {
 
 // ──────────────────────────────────────────────────────────────────────────
 
-function KpiFormFields({ register, control }: { register: any; control: any }) {
+// Metas automáticas por nome e período
+const KPI_PRESETS: Record<string, Record<string, number>> = {
+  "reuniões realizadas": { diario: 1, semanal: 5, mensal: 22 },
+  "reuniões agendadas":  { diario: 2, semanal: 10, mensal: 44 },
+};
+
+function KpiFormFields({ register, control, watch, setValue }: {
+  register: any; control: any; watch?: any; setValue?: any;
+}) {
+  const name: string = watch ? (watch("name") ?? "") : "";
+  const frequency: string = watch ? (watch("frequency") ?? "") : "";
+
+  useEffect(() => {
+    if (!watch || !setValue || !frequency) return;
+    const key = name.trim().toLowerCase();
+    const preset = KPI_PRESETS[key];
+    if (preset && preset[frequency] !== undefined) {
+      setValue("targetValue", String(preset[frequency]));
+      setValue("unit", "reuniões");
+    }
+  }, [name, frequency]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <div className="space-y-1.5">
