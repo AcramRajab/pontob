@@ -383,7 +383,6 @@ export default function GoalDetail() {
                         <p className="text-xs text-muted-foreground">
                           {kpi.currentValue} / {kpi.targetValue} {kpi.unit}
                           {isPeriodic && <span className="ml-1.5 text-muted-foreground/60">por {freqLabel}</span>}
-                          {kpi.indicatorType && <span className="ml-1.5 capitalize">({kpi.indicatorType})</span>}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -708,15 +707,9 @@ function kpiPeriodProgress(kpi: any): KpiProgress {
   const cur: number = kpi.currentValue ?? 0;
   const tgt: number = kpi.targetValue ?? 0;
   const freq: string | undefined = kpi.frequency;
-  const dir: string = kpi.desiredDirection ?? "higher";
 
   // ── pct: progresso total (atual ÷ meta) ──────────────────────────────────
-  let pct = 0;
-  if (dir === "lower") {
-    pct = tgt > 0 && cur > 0 ? Math.round((tgt / cur) * 100) : (cur === 0 ? 100 : 0);
-  } else {
-    pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
-  }
+  const pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
 
   // ── rhythmPct: atual vs esperado até hoje dentro do período ───────────────
   let expectedByNow = tgt; // sem período = meta cheia
@@ -760,14 +753,7 @@ function kpiPeriodProgress(kpi: any): KpiProgress {
     expectedByNow = Math.round((tgt * Math.min(elapsed, total)) / total * 10) / 10;
   }
 
-  let rhythmPct = 0;
-  if (dir === "lower") {
-    rhythmPct = expectedByNow > 0 && cur >= 0
-      ? Math.round((expectedByNow / Math.max(cur, 0.001)) * 100)
-      : 100;
-  } else {
-    rhythmPct = expectedByNow > 0 ? Math.round((cur / expectedByNow) * 100) : (cur > 0 ? 100 : 0);
-  }
+  const rhythmPct = expectedByNow > 0 ? Math.round((cur / expectedByNow) * 100) : (cur > 0 ? 100 : 0);
 
   return {
     pct,
@@ -822,40 +808,6 @@ function KpiFormFields({ register, control }: { register: any; control: any }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Tipo</Label>
-          <Controller name="indicatorType" control={control} render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="resultado">Resultado</SelectItem>
-                <SelectItem value="processo">Processo</SelectItem>
-              </SelectContent>
-            </Select>
-          )} />
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <strong>Resultado</strong>: mede o objetivo final (ex: corretores ativos, VGH, CREs).<br />
-            <strong>Processo</strong>: mede a atividade que gera o resultado (ex: reuniões agendadas, ligações feitas). Use quando o KPI é uma ação, não um destino.
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Direção Desejada</Label>
-          <Controller name="desiredDirection" control={control} render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="higher">Maior é melhor</SelectItem>
-                <SelectItem value="lower">Menor é melhor</SelectItem>
-              </SelectContent>
-            </Select>
-          )} />
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <strong>Maior é melhor</strong>: progresso sobe conforme o valor cresce (ex: corretores, VGH).<br />
-            <strong>Menor é melhor</strong>: progresso sobe conforme o valor cai (ex: custo por lead, tempo de resposta).
-          </p>
-        </div>
-      </div>
     </>
   );
 }
