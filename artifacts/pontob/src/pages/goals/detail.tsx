@@ -362,7 +362,7 @@ export default function GoalDetail() {
           ) : (
             <div className="space-y-4">
               {kpis.map((kpi: any) => {
-                const { pct, barPct, projected, isPeriodic, freqLabel } = kpiPeriodProgress(kpi, goal);
+                const { pct, barPct, projected, isPeriodic, freqLabel } = kpiPeriodProgress(kpi);
                 const pctColor = pct >= 90 ? "text-green-600" : pct >= 60 ? "text-yellow-600" : "text-red-500";
                 return (
                   <div
@@ -375,21 +375,10 @@ export default function GoalDetail() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-sm truncate">{kpi.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {isPeriodic ? (
-                            <>
-                              {kpi.currentValue} / {projected} {kpi.unit}
-                              <span className="ml-1.5 text-muted-foreground/60">(meta: {kpi.targetValue}/{freqLabel})</span>
-                            </>
-                          ) : (
-                            <>{kpi.currentValue} / {kpi.targetValue} {kpi.unit}</>
-                          )}
+                          {kpi.currentValue} / {kpi.targetValue} {kpi.unit}
+                          {isPeriodic && <span className="ml-1.5 text-muted-foreground/60">por {freqLabel}</span>}
                           {kpi.indicatorType && <span className="ml-1.5 capitalize">({kpi.indicatorType})</span>}
                         </p>
-                        {isPeriodic && (
-                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                            realizado vs projetado até hoje
-                          </p>
-                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className={`text-sm font-mono font-semibold ${pctColor}`}>{pct}%</span>
@@ -682,78 +671,26 @@ interface KpiProgress {
   freqLabel: string;  // short label for the period
 }
 
-function kpiPeriodProgress(kpi: any, goal: any): KpiProgress {
+function kpiPeriodProgress(kpi: any): KpiProgress {
   const cur: number = kpi.currentValue ?? 0;
   const tgt: number = kpi.targetValue ?? 0;
   const freq: string | undefined = kpi.frequency;
   const dir: string = kpi.desiredDirection ?? "higher";
 
-  // No period info or lower-is-better → simple ratio
-  if (!freq || dir === "lower") {
-    let pct = 0;
-    if (dir === "lower") {
-      pct = cur > 0 ? Math.round((tgt / cur) * 100) : 100;
-    } else {
-      pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
-    }
-    const capped = Math.min(pct, 100);
-    return { pct, barPct: capped, projected: tgt, isPeriodic: false, freqLabel: "" };
+  let pct = 0;
+  if (dir === "lower") {
+    // Lower is better: full marks when cur ≤ tgt, scales down as cur rises above tgt
+    pct = tgt > 0 && cur > 0 ? Math.round((tgt / cur) * 100) : (cur === 0 ? 100 : 0);
+  } else {
+    pct = tgt > 0 ? Math.round((cur / tgt) * 100) : 0;
   }
 
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const start = goal?.startDate ? new Date(goal.startDate) : today;
-  start.setHours(0, 0, 0, 0);
-  const endGoal = goal?.endDate ? new Date(goal.endDate) : null;
-  const ref = endGoal && endGoal < today ? endGoal : today;
-
-  if (ref < start) {
-    return { pct: 0, barPct: 0, projected: tgt, isPeriodic: true, freqLabel: FREQ_LABEL[freq] ?? freq };
-  }
-
-  const diffDays = (ref.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-
-  let periods = 1;
-  switch (freq) {
-    case "diario":
-      periods = countWorkdays(start, ref);
-      break;
-    case "semanal":
-      periods = Math.max(1, Math.ceil(diffDays / 7));
-      break;
-    case "mensal":
-      periods = Math.max(1,
-        (ref.getFullYear() - start.getFullYear()) * 12 +
-        ref.getMonth() - start.getMonth() + 1
-      );
-      break;
-    case "trimestral":
-      periods = Math.max(1, Math.ceil(
-        ((ref.getFullYear() - start.getFullYear()) * 12 +
-        ref.getMonth() - start.getMonth() + 1) / 3
-      ));
-      break;
-    case "semestral":
-      periods = Math.max(1, Math.ceil(
-        ((ref.getFullYear() - start.getFullYear()) * 12 +
-        ref.getMonth() - start.getMonth() + 1) / 6
-      ));
-      break;
-    case "anual":
-      periods = Math.max(1, ref.getFullYear() - start.getFullYear() + 1);
-      break;
-    default:
-      periods = 1;
-  }
-
-  const projected = Math.round(tgt * periods);
-  const pct = projected > 0 ? Math.round((cur / projected) * 100) : 0;
   return {
     pct,
     barPct: Math.min(100, pct),
-    projected,
-    isPeriodic: true,
-    freqLabel: FREQ_LABEL[freq] ?? freq,
+    projected: tgt,          // always the target itself
+    isPeriodic: !!freq,
+    freqLabel: freq ? (FREQ_LABEL[freq] ?? freq) : "",
   };
 }
 
