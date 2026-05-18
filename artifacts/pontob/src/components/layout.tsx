@@ -29,9 +29,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex h-screen w-full bg-background">
         <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0">
           <header className="h-14 lg:hidden border-b flex items-center px-4 shrink-0 bg-card">
             <SidebarTrigger />
             <div className="font-bold text-lg ml-4 text-primary">Ponto B</div>
