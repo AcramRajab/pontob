@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import {
@@ -20,6 +20,13 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 
 type KriType = "corretores" | "cres" | "vgh";
+
+// Maps each KRI to its default dimension and key process (by name, resolved at runtime)
+const KRI_SUGGEST: Record<KriType, { dimensionName: string; keyProcessName: string }> = {
+  corretores: { dimensionName: "Pessoas",      keyProcessName: "Recrutamento e Seleção" },
+  cres:       { dimensionName: "Real Estate",  keyProcessName: "Negociação e Fechamento" },
+  vgh:        { dimensionName: "Real Estate",  keyProcessName: "Negociação e Fechamento" },
+};
 
 const KRI_OPTIONS: { type: KriType; label: string; subtitle: string; unit: string; icon: React.ElementType; color: string }[] = [
   {
@@ -71,6 +78,7 @@ export default function GoalNew() {
 
   const [step, setStep] = useState<1 | 2>(1);
   const [kriType, setKriType] = useState<KriType | null>(null);
+  const [pendingKeyProcess, setPendingKeyProcess] = useState<string | null>(null);
 
   const isAdmin = isAdminRole(user?.role);
 
@@ -100,12 +108,33 @@ export default function GoalNew() {
 
   const createGoal = useCreateGoal();
 
+  // When keyProcesses loads, auto-fill the pending key process
+  useEffect(() => {
+    if (pendingKeyProcess && keyProcesses.length > 0) {
+      const kp = keyProcesses.find((k: any) => k.name === pendingKeyProcess);
+      if (kp) {
+        setValue("keyProcessId", String(kp.id));
+        setPendingKeyProcess(null);
+      }
+    }
+  }, [keyProcesses, pendingKeyProcess, setValue]);
+
   function handleKriSelect(type: KriType) {
     setKriType(type);
     const found = KRI_OPTIONS.find(k => k.type === type)!;
     const year = new Date().getFullYear();
     setValue("title", `Meta de ${found.label} ${year}`);
     setValue("kriDescription", found.subtitle);
+
+    // Auto-fill dimension + trigger key process load
+    const suggest = KRI_SUGGEST[type];
+    const dim = (dimensions as any[]).find((d: any) => d.name === suggest.dimensionName);
+    if (dim) {
+      setValue("dimensionId", String(dim.id));
+      setValue("keyProcessId", "");
+      setPendingKeyProcess(suggest.keyProcessName);
+    }
+
     setStep(2);
   }
 
