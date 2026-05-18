@@ -119,26 +119,29 @@ function KriBlock({
   label,
   target,
   actual,
+  actualRaw,
   targetRaw,
   isVgh,
   canWrite,
   onChange,
+  onActualChange,
   cfg,
 }: {
   icon: any;
   label: string;
   target: number | null;
   actual: number | null;
+  actualRaw: string | number;
   targetRaw: string | number;
   isVgh?: boolean;
   canWrite: boolean;
   onChange: (v: string) => void;
+  onActualChange: (v: string) => void;
   cfg: (typeof Q_CONFIG)[0];
 }) {
   const p = pct(actual, target);
   const capped = p != null ? Math.min(p, 100) : 0;
   const isGood = p != null && p >= 100;
-  const hasActual = actual != null;
   const hasTarget = target != null && target !== 0;
 
   const barColor = isGood ? "bg-green-500" : p != null && p >= 75 ? "bg-amber-400" : cfg.bar;
@@ -153,23 +156,47 @@ function KriBlock({
 
       {/* Values row */}
       <div className="flex items-end justify-between gap-2">
-        {/* Actual value */}
-        <div className="min-w-0">
-          {hasActual ? (
-            <div className="flex items-baseline gap-1">
-              <span className={cn("text-xl font-bold tabular-nums leading-none", isGood ? "text-green-600" : "text-foreground")}>
-                {isVgh ? formatVgh(actual) : actual}
-              </span>
-              {p != null && (
-                <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-muted-foreground")}>
-                  {p}%
-                </span>
+        {/* Actual value — editable when canWrite */}
+        {canWrite ? (
+          <div className="relative min-w-0">
+            <Input
+              type="number"
+              min={0}
+              step={isVgh ? 1000 : 1}
+              key={String(actualRaw)}
+              defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
+              placeholder="real"
+              className={cn(
+                "text-left text-xl font-bold h-8 pl-0 pr-1 border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid",
+                isVgh ? "w-28" : "w-20",
+                actual != null ? (isGood ? "text-green-600 border-green-300" : "text-foreground border-border") : "text-muted-foreground/40 border-dashed border-muted-foreground/20",
               )}
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground/50 italic">sem dados</span>
-          )}
-        </div>
+              onChange={e => onActualChange(e.target.value)}
+            />
+            {p != null && (
+              <div className="absolute -bottom-4 left-0 text-[9px] font-semibold text-muted-foreground/60">
+                {p}%
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="min-w-0">
+            {actual != null ? (
+              <div className="flex items-baseline gap-1">
+                <span className={cn("text-xl font-bold tabular-nums leading-none", isGood ? "text-green-600" : "text-foreground")}>
+                  {isVgh ? formatVgh(actual) : actual}
+                </span>
+                {p != null && (
+                  <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-muted-foreground")}>
+                    {p}%
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground/50 italic">sem dados</span>
+            )}
+          </div>
+        )}
 
         {/* Target input or display */}
         {canWrite ? (
@@ -268,6 +295,20 @@ export default function Visao() {
     onError: () => toast({ title: "Erro ao salvar meta", variant: "destructive" }),
   });
 
+  const saveActual = useMutation({
+    mutationFn: (body: object) =>
+      apiFetch("/api/franchise-kris", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: () => toast({ title: "Erro ao salvar dado real", variant: "destructive" }),
+  });
+
+  // Quarter end month: Q1=3, Q2=6, Q3=9, Q4=12
+  const QUARTER_MONTH = [3, 6, 9, 12];
+
   const getMilestone = useCallback((quarterDate: string) => {
     return data?.milestones?.find((m: any) => m.quarterDate === quarterDate) ?? null;
   }, [data]);
@@ -293,6 +334,27 @@ export default function Visao() {
       }, 600);
     },
     [franchiseId, year, getMilestone, saveMilestone]
+  );
+
+  const handleActualChange = useCallback(
+    (quarterIdx: number, field: "creci" | "cres" | "vgh", raw: string) => {
+      if (!franchiseId) return;
+      const month = QUARTER_MONTH[quarterIdx];
+      const key = `actual-${month}-${field}`;
+      clearTimeout(debounceRef.current[key]);
+      debounceRef.current[key] = setTimeout(() => {
+        const qDate = QUARTERS[quarterIdx].date(year);
+        const existing = getActual(qDate);
+        const val = raw === "" ? null : parseFloat(raw);
+        saveActual.mutate({
+          franchiseId, year, month,
+          creci: field === "creci" ? val : (existing?.actualCreci ?? null),
+          cres:  field === "cres"  ? val : (existing?.actualCres  ?? null),
+          vgh:   field === "vgh"   ? val : (existing?.actualVgh   ?? null),
+        });
+      }, 600);
+    },
+    [franchiseId, year, getActual, saveActual]
   );
 
   const franchiseName = user?.franchiseName ?? "Franquia";
@@ -505,31 +567,37 @@ export default function Visao() {
                     label="Corretores CRECI"
                     target={milestone?.targetCreci ?? null}
                     actual={actual?.actualCreci ?? null}
+                    actualRaw={actual?.actualCreci ?? ""}
                     targetRaw={milestone?.targetCreci ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetCreci", v)}
+                    onActualChange={v => handleActualChange(idx, "creci", v)}
                   />
                   <KriBlock
                     icon={Building2}
                     label="Representações (CREs)"
                     target={milestone?.targetCres ?? null}
                     actual={actual?.actualCres ?? null}
+                    actualRaw={actual?.actualCres ?? ""}
                     targetRaw={milestone?.targetCres ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetCres", v)}
+                    onActualChange={v => handleActualChange(idx, "cres", v)}
                   />
                   <KriBlock
                     icon={TrendingUp}
                     label="VGH (Honorários)"
                     target={milestone?.targetVgh ?? null}
                     actual={actual?.actualVgh ?? null}
+                    actualRaw={actual?.actualVgh ?? ""}
                     targetRaw={milestone?.targetVgh ?? ""}
                     isVgh
                     canWrite={canWrite}
                     cfg={cfg}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetVgh", v)}
+                    onActualChange={v => handleActualChange(idx, "vgh", v)}
                   />
                 </div>
 
