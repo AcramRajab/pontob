@@ -104,7 +104,15 @@ export default function Goals() {
                     <div className="w-full md:w-64 space-y-2 shrink-0">
                       <div className="flex justify-between text-sm">
                         <span>Progresso</span>
-                        <span className="font-medium">{goal.progressPercentage}%</span>
+                        <span className={`font-medium ${
+                          goal.progressPercentage >= 80
+                            ? "text-blue-600"
+                            : goal.progressPercentage >= 51
+                            ? "text-foreground"
+                            : "text-red-600"
+                        }`}>
+                          {goal.progressPercentage}%
+                        </span>
                       </div>
                       <Progress value={goal.progressPercentage} className="h-2" />
                     </div>

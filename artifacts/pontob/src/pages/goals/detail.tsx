@@ -261,7 +261,7 @@ export default function GoalDetail() {
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Progresso</div>
-            <div className="text-3xl font-bold">{goal.progressPercentage}%</div>
+            <div className={`text-3xl font-bold ${goal.progressPercentage >= 80 ? "text-blue-600" : goal.progressPercentage >= 51 ? "text-foreground" : "text-red-600"}`}>{goal.progressPercentage}%</div>
           </CardContent>
         </Card>
         <Card>
@@ -289,7 +289,7 @@ export default function GoalDetail() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Atual: <strong>{goal.currentValue} {goal.unit}</strong></span>
-            <span className="font-bold">{goal.progressPercentage}%</span>
+            <span className={`font-bold ${goal.progressPercentage >= 80 ? "text-blue-600" : goal.progressPercentage >= 51 ? "text-foreground" : "text-red-600"}`}>{goal.progressPercentage}%</span>
             <span className="text-muted-foreground">Meta: <strong>{goal.targetValue} {goal.unit}</strong></span>
           </div>
           <Progress value={goal.progressPercentage} className="h-3" />
