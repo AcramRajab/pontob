@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable } from "@workspace/db";
+import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable, weeklyPlannerEntriesTable, PLANNER_INDICATORS } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte, ne, inArray } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
@@ -521,6 +521,130 @@ router.get("/dashboard/ranking", requireAuth, async (req, res) => {
     });
 
     res.json(ranking.map((r, i) => ({ ...r, rank: i + 1 })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /dashboard/regional/franchise/:id?year= — franchise drill-down for regional admin
+router.get("/dashboard/regional/franchise/:id", requireAuth, requireAdminOrStaff, async (req, res) => {
+  try {
+    const franchiseId = parseInt(req.params.id);
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+
+    if (isNaN(franchiseId)) { res.status(400).json({ error: "Invalid franchiseId" }); return; }
+
+    const [franchise, plannerRows, milestones, kris, checkinRows, goalRows, kpiRows, initRows, dimRows] = await Promise.all([
+      db.select().from(franchisesTable).where(eq(franchisesTable.id, franchiseId)).limit(1),
+      db.select({
+        weekStartDate: weeklyPlannerEntriesTable.weekStartDate,
+        indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+        total: sql<number>`COALESCE(SUM(${weeklyPlannerEntriesTable.value}), 0)`.as("total"),
+        latestMeta: sql<number | null>`MAX(${weeklyPlannerEntriesTable.meta})`.as("latestMeta"),
+      })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, franchiseId),
+          gte(weeklyPlannerEntriesTable.weekStartDate, `${year}-01-01`),
+          lte(weeklyPlannerEntriesTable.weekStartDate, `${year}-12-31`),
+        ))
+        .groupBy(weeklyPlannerEntriesTable.weekStartDate, weeklyPlannerEntriesTable.indicatorKey)
+        .orderBy(weeklyPlannerEntriesTable.weekStartDate),
+      db.select().from(franchiseVisaoMilestonesTable)
+        .where(and(eq(franchiseVisaoMilestonesTable.franchiseId, franchiseId), eq(franchiseVisaoMilestonesTable.year, year)))
+        .orderBy(franchiseVisaoMilestonesTable.quarterDate),
+      db.select().from(franchiseKrisTable)
+        .where(and(eq(franchiseKrisTable.franchiseId, franchiseId), eq(franchiseKrisTable.year, year)))
+        .orderBy(franchiseKrisTable.month),
+      db.select({
+        month: sql<string>`TO_CHAR(${dailyCheckinsTable.date}::date, 'YYYY-MM')`.as("month"),
+        count: sql<number>`COUNT(*)`.as("count"),
+      })
+        .from(dailyCheckinsTable)
+        .where(and(
+          eq(dailyCheckinsTable.franchiseId, franchiseId),
+          gte(dailyCheckinsTable.date, `${year}-01-01`),
+          lte(dailyCheckinsTable.date, `${year}-12-31`),
+        ))
+        .groupBy(sql`TO_CHAR(${dailyCheckinsTable.date}::date, 'YYYY-MM')`)
+        .orderBy(sql`TO_CHAR(${dailyCheckinsTable.date}::date, 'YYYY-MM')`),
+      db.select().from(goalsTable).where(eq(goalsTable.franchiseId, franchiseId)),
+      db.select().from(kpisTable),
+      db.select().from(goalInitiativesTable),
+      db.select().from(dimensionsTable).where(eq(dimensionsTable.active, true)),
+    ]);
+
+    if (!franchise[0]) { res.status(404).json({ error: "Franchise not found" }); return; }
+
+    // Aggregate planner into monthly buckets
+    const monthlyMap: Record<string, Record<string, number>> = {};
+    const metasMap: Record<string, number | null> = {};
+    for (const row of plannerRows) {
+      const month = row.weekStartDate.substring(0, 7);
+      if (!monthlyMap[month]) monthlyMap[month] = {};
+      monthlyMap[month][row.indicatorKey] = (monthlyMap[month][row.indicatorKey] ?? 0) + Number(row.total);
+      if (row.latestMeta != null) metasMap[row.indicatorKey] = Number(row.latestMeta);
+    }
+
+    const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const plannerMonths = Object.keys(monthlyMap).sort().map(m => ({
+      month: m,
+      monthLabel: MONTH_LABELS[parseInt(m.split("-")[1]) - 1],
+      totals: monthlyMap[m],
+    }));
+
+    // KRI quarterly data — kris has year+month integers (not a date field)
+    const QUARTERS = [
+      { label: "1ºTRI", date: `${year}-03-31`, description: "Jan – Mar", maxMonth: 3 },
+      { label: "2ºTRI", date: `${year}-06-30`, description: "Abr – Jun", maxMonth: 6 },
+      { label: "3ºTRI", date: `${year}-09-30`, description: "Jul – Set", maxMonth: 9 },
+      { label: "4ºTRI", date: `${year}-12-31`, description: "Out – Dez", maxMonth: 12 },
+    ];
+    const kriQuarters = QUARTERS.map(q => {
+      const milestone = milestones.find(ms => ms.quarterDate === q.date);
+      // Latest KRI record whose month falls within or before this quarter
+      const actualKri = [...kris]
+        .filter(k => k.month <= q.maxMonth)
+        .sort((a, b) => b.month - a.month)[0];
+      return {
+        quarterLabel: q.label,
+        quarterDate: q.date,
+        description: q.description,
+        targetCreci: milestone?.targetCreci ?? null,
+        targetCres: milestone?.targetCres ?? null,
+        targetVgh: milestone?.targetVgh != null ? Number(milestone.targetVgh) : null,
+        actualCreci: actualKri?.creci ?? null,
+        actualCres: actualKri?.cres ?? null,
+        actualVgh: actualKri?.vgh != null ? Number(actualKri.vgh) : null,
+      };
+    });
+
+    // Check-in by month
+    const checkinsByMonth = checkinRows.map(c => ({
+      month: c.month,
+      monthLabel: MONTH_LABELS[parseInt(c.month.split("-")[1]) - 1],
+      count: Number(c.count),
+    }));
+
+    // Goal progress by dimension
+    const goalProgressByDimension = dimRows.map(dim => {
+      const dimGoals = goalRows.filter(g => g.dimensionId === dim.id);
+      if (dimGoals.length === 0) return { dimensionId: dim.id, dimensionName: dim.name, progressPercentage: null, goalsCount: 0 };
+      const avg = dimGoals.reduce((s, g) => s + effectiveGoalProgress(g, kpiRows, initRows), 0) / dimGoals.length;
+      return { dimensionId: dim.id, dimensionName: dim.name, progressPercentage: Math.round(avg), goalsCount: dimGoals.length };
+    });
+
+    res.json({
+      franchise: { id: franchise[0].id, name: franchise[0].name, active: franchise[0].active },
+      year,
+      plannerMonths,
+      metas: metasMap,
+      indicators: PLANNER_INDICATORS,
+      kriQuarters,
+      checkinsByMonth,
+      goalProgressByDimension,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

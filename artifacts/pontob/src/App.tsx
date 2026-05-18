@@ -26,6 +26,7 @@ import Help from "@/pages/help";
 import Catalog from "@/pages/catalog";
 import Ranking from "@/pages/ranking";
 import Regional from "@/pages/regional";
+import RegionalFranchise from "@/pages/regional-franchise";
 import AdminFranchises from "@/pages/admin/franchises";
 import AdminUsers from "@/pages/admin/users";
 import Settings from "@/pages/settings";
@@ -72,6 +73,7 @@ function Router() {
         <Route path="/help" component={Help} />
         <Route path="/catalog" component={Catalog} />
         <Route path="/ranking" component={Ranking} />
+        <Route path="/regional/franchise/:id" component={RegionalFranchise} />
         <Route path="/regional" component={Regional} />
         <Route path="/admin/franchises" component={AdminFranchises} />
         <Route path="/admin/users" component={AdminUsers} />

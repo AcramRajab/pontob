@@ -7,12 +7,13 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2, TrendingUp, CheckCircle2, AlertTriangle, LifeBuoy,
+  Building2, TrendingUp, CheckCircle2, AlertTriangle,
   Users, FileSignature, DollarSign, ChevronLeft, ChevronRight,
-  Eye, EyeOff,
+  Eye, EyeOff, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo } from "react";
+import { Link } from "wouter";
 import { progressColorHex } from "@/lib/progress-color";
 
 const getProgressColor = progressColorHex;
@@ -285,10 +286,13 @@ export default function Regional() {
                     const quarters = f.quarters ?? [];
                     const finalQ = quarters[3];
                     return (
-                      <div key={f.franchiseId} className="border rounded-lg p-3 space-y-2">
+                      <div key={f.franchiseId} className="border rounded-lg p-3 space-y-2 hover:border-primary/40 hover:bg-muted/20 transition-colors">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <div className="font-medium text-sm">{f.franchiseName}</div>
+                            <Link href={`/regional/franchise/${f.franchiseId}`} className="font-medium text-sm hover:text-primary hover:underline inline-flex items-center gap-1 group">
+                              {f.franchiseName}
+                              <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                            </Link>
                             {f.statement && (
                               <p className="text-xs text-muted-foreground italic mt-0.5 leading-relaxed line-clamp-2">
                                 "{f.statement}"
@@ -393,9 +397,12 @@ export default function Regional() {
                 </thead>
                 <tbody>
                   {((dash as any).franchiseProgress as any[]).map((f: any) => (
-                    <tr key={f.franchiseId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <tr key={f.franchiseId} className="border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer">
                       <td className="py-2.5 px-4">
-                        <span className="font-medium text-sm">{f.franchiseName}</span>
+                        <Link href={`/regional/franchise/${f.franchiseId}`} className="font-medium text-sm hover:text-primary hover:underline flex items-center gap-1 group">
+                          {f.franchiseName}
+                          <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                        </Link>
                       </td>
                       {f.progressByDimension.map((d: any) => (
                         <td key={d.dimensionId} className="py-2.5 px-3 text-center">
