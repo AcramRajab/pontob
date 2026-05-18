@@ -113,7 +113,7 @@ export default function NewGoalInitiative() {
   };
 
   const ConfigureForm = ({ isCustom }: { isCustom: boolean }) => (
-    <div className="max-w-xl mx-auto space-y-6">
+    <div className="max-w-xl mx-auto space-y-6 pb-64">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => setMode(isCustom ? "choose" : "catalog-select")} data-testid="button-back">
           <ArrowLeft className="h-4 w-4" />
