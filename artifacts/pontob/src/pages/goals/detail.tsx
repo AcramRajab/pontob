@@ -387,20 +387,7 @@ export default function GoalDetail() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* % da meta total do período */}
-                        <div className="text-right">
-                          <span className={`text-sm font-mono font-semibold ${pctColor}`}>{pct}%</span>
-                          <p className="text-[10px] text-muted-foreground leading-none mt-0.5">da meta</p>
-                        </div>
-                        {/* ritmo: atual vs esperado até hoje */}
-                        {isPeriodic && (
-                          <div className="text-right border-l pl-2">
-                            <span className={`text-sm font-mono font-semibold ${rhythmColor}`}>{rhythmPct}%</span>
-                            <p className="text-[10px] text-muted-foreground leading-none mt-0.5">
-                              ritmo · esp. {expectedByNow} {kpi.unit}
-                            </p>
-                          </div>
-                        )}
+                        <span className={`text-sm font-mono font-semibold ${pctColor}`}>{pct}%</span>
                         {canWrite && (
                           <>
                             <Button
@@ -422,19 +409,7 @@ export default function GoalDetail() {
                         )}
                       </div>
                     </div>
-                    {/* Barra dupla: meta total + ritmo até hoje */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Meta total</span>
-                        <Progress value={barPct} className="h-1.5 flex-1" />
-                      </div>
-                      {isPeriodic && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground w-14 shrink-0">Ritmo hoje</span>
-                          <Progress value={rhythmBarPct} className="h-1.5 flex-1" />
-                        </div>
-                      )}
-                    </div>
+                    <Progress value={barPct} className="h-1.5" />
                   </div>
                 );
               })}
