@@ -42,6 +42,7 @@ interface KpiForm {
   currentValue: string;
   targetValue: string;
   unit: string;
+  frequency: string;
   indicatorType: string;
   desiredDirection: string;
 }
@@ -83,13 +84,13 @@ export default function GoalDetail() {
 
   // ── CREATE KPI form ──
   const { register, handleSubmit, reset, control, setValue: setKpiValue } = useForm<KpiForm>({
-    defaultValues: { indicatorType: "resultado", desiredDirection: "higher" },
+    defaultValues: { indicatorType: "resultado", desiredDirection: "higher", frequency: "mensal" },
   });
 
   // ── EDIT KPI form ──
   const {
     register: regEdit, handleSubmit: handleEditSubmit, reset: resetEdit, control: controlEdit,
-  } = useForm<KpiForm>({ defaultValues: { indicatorType: "resultado", desiredDirection: "higher" } });
+  } = useForm<KpiForm>({ defaultValues: { indicatorType: "resultado", desiredDirection: "higher", frequency: "mensal" } });
 
   const onCreateKpi = async (data: KpiForm) => {
     try {
@@ -100,6 +101,7 @@ export default function GoalDetail() {
           currentValue: data.currentValue ? parseFloat(data.currentValue) : 0,
           targetValue: data.targetValue ? parseFloat(data.targetValue) : 0,
           unit: data.unit || undefined,
+          frequency: (data.frequency || undefined) as any,
           indicatorType: data.indicatorType as any,
           desiredDirection: data.desiredDirection as any,
         },
@@ -120,6 +122,7 @@ export default function GoalDetail() {
       currentValue: kpi.currentValue != null ? String(kpi.currentValue) : "",
       targetValue: kpi.targetValue != null ? String(kpi.targetValue) : "",
       unit: kpi.unit ?? "",
+      frequency: kpi.frequency ?? "mensal",
       indicatorType: kpi.indicatorType ?? "resultado",
       desiredDirection: kpi.desiredDirection ?? "higher",
     });
@@ -135,6 +138,7 @@ export default function GoalDetail() {
           currentValue: data.currentValue !== "" ? parseFloat(data.currentValue) : undefined,
           targetValue: data.targetValue !== "" ? parseFloat(data.targetValue) : undefined,
           unit: data.unit || undefined,
+          frequency: data.frequency || undefined,
           indicatorType: data.indicatorType as any,
           desiredDirection: data.desiredDirection as any,
         },
@@ -356,7 +360,8 @@ export default function GoalDetail() {
                         <p className="font-medium text-sm truncate">{kpi.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {kpi.currentValue} / {kpi.targetValue} {kpi.unit}
-                          {kpi.indicatorType && <span className="ml-2 capitalize">({kpi.indicatorType})</span>}
+                          {kpi.frequency && <span className="ml-1.5">· {kpi.frequency}</span>}
+                          {kpi.indicatorType && <span className="ml-1.5 capitalize">({kpi.indicatorType})</span>}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -592,7 +597,7 @@ function KpiFormFields({ register, control }: { register: any; control: any }) {
     <>
       <div className="space-y-1.5">
         <Label>Nome do KPI *</Label>
-        <Input {...register("name", { required: true })} placeholder="Ex: Taxa de conversão de leads" />
+        <Input {...register("name", { required: true })} placeholder="Ex: Reuniões agendadas" />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1.5">
@@ -608,6 +613,25 @@ function KpiFormFields({ register, control }: { register: any; control: any }) {
           <Input {...register("unit")} placeholder="%, R$, un" />
         </div>
       </div>
+
+      {/* Period */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Período da Meta</Label>
+        <Controller name="frequency" control={control} render={({ field }) => (
+          <Select value={field.value} onValueChange={field.onChange}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="diario">Diário — meta por dia útil</SelectItem>
+              <SelectItem value="semanal">Semanal — meta por semana</SelectItem>
+              <SelectItem value="mensal">Mensal — meta por mês</SelectItem>
+            </SelectContent>
+          </Select>
+        )} />
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Ex: "Reuniões agendadas" — 2/dia, 10/semana ou 44/mês são valores diferentes para o mesmo KPI. Defina o período da meta que você quer acompanhar.
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="text-xs">Tipo</Label>
@@ -620,6 +644,10 @@ function KpiFormFields({ register, control }: { register: any; control: any }) {
               </SelectContent>
             </Select>
           )} />
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <strong>Resultado</strong>: mede o objetivo final (ex: corretores ativos, VGH, CREs).<br />
+            <strong>Processo</strong>: mede a atividade que gera o resultado (ex: reuniões agendadas, ligações feitas). Use quando o KPI é uma ação, não um destino.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Direção Desejada</Label>
