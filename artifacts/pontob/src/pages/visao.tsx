@@ -126,6 +126,8 @@ function KriBlock({
   onChange,
   onActualChange,
   cfg,
+  isCarried,
+  carriedFromQ,
 }: {
   icon: any;
   label: string;
@@ -138,6 +140,8 @@ function KriBlock({
   onChange: (v: string) => void;
   onActualChange: (v: string) => void;
   cfg: (typeof Q_CONFIG)[0];
+  isCarried?: boolean;
+  carriedFromQ?: number;
 }) {
   const p = pct(actual, target);
   const barPct = p != null ? Math.min(p, 100) : 0;
@@ -172,25 +176,41 @@ function KriBlock({
         {/* Realizado */}
         <div className="flex-1">
           {canWrite ? (
-            <Input
-              type="number"
-              min={0}
-              step={isVgh ? 1000 : 1}
-              key={String(actualRaw)}
-              defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
-              placeholder="—"
-              className={cn(
-                "h-8 pl-0 pr-1 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
-                actual != null
-                  ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
-                  : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
+            <div className="relative">
+              <Input
+                type="number"
+                min={0}
+                step={isVgh ? 1000 : 1}
+                key={String(actualRaw)}
+                defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
+                placeholder={isCarried && actual != null ? String(actual) : "—"}
+                className={cn(
+                  "h-8 pl-0 pr-1 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                  isCarried
+                    ? "text-muted-foreground/50 border-dashed border-muted-foreground/20 placeholder:text-muted-foreground/50 placeholder:font-bold placeholder:text-xl"
+                    : actual != null
+                    ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
+                    : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
+                )}
+                onChange={e => onActualChange(e.target.value)}
+              />
+              {isCarried && carriedFromQ != null && (
+                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
+                  ↑ do Q{carriedFromQ}
+                </div>
               )}
-              onChange={e => onActualChange(e.target.value)}
-            />
+            </div>
           ) : (
-            <span className={cn("text-xl font-bold tabular-nums", actual != null ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30 italic text-sm")}>
-              {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
-            </span>
+            <div>
+              <span className={cn("text-xl font-bold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30 italic text-sm")}>
+                {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
+              </span>
+              {isCarried && carriedFromQ != null && (
+                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
+                  ↑ do Q{carriedFromQ}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -518,13 +538,29 @@ export default function Visao() {
             const actual = getActual(qDate);
             const cfg = Q_CONFIG[idx];
             const isFinal = idx === 3;
-            const hasData = actual?.actualCreci != null;
             const hasTargets = !!(milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh);
 
-            // Overall % average (creci + cres only, VGH excluded from simple average)
-            const pCreci = pct(actual?.actualCreci ?? null, milestone?.targetCreci ?? null);
-            const pCres  = pct(actual?.actualCres  ?? null, milestone?.targetCres  ?? null);
-            const pVgh   = pct(actual?.actualVgh   ?? null, milestone?.targetVgh   ?? null);
+            // Carry-forward: find the most recent actual for each KRI from prior quarters
+            type CarryResult = { value: number | null; fromQ: number | null };
+            function carryForward(field: "actualCreci" | "actualCres" | "actualVgh"): CarryResult {
+              const own = actual?.[field] ?? null;
+              if (own != null) return { value: own, fromQ: null };
+              for (let i = idx - 1; i >= 0; i--) {
+                const prev = getActual(QUARTERS[i].date(year));
+                if (prev?.[field] != null) return { value: prev[field] as number, fromQ: i + 1 };
+              }
+              return { value: null, fromQ: null };
+            }
+            const cfCreci = carryForward("actualCreci");
+            const cfCres  = carryForward("actualCres");
+            const cfVgh   = carryForward("actualVgh");
+
+            const hasData = cfCreci.value != null || cfCres.value != null || cfVgh.value != null;
+
+            // Overall % average using effective (carried) actuals vs this quarter's targets
+            const pCreci = pct(cfCreci.value, milestone?.targetCreci ?? null);
+            const pCres  = pct(cfCres.value,  milestone?.targetCres  ?? null);
+            const pVgh   = pct(cfVgh.value,   milestone?.targetVgh   ?? null);
             const pValues = [pCreci, pCres, pVgh].filter((v): v is number => v != null);
             const overallPct = pValues.length > 0 ? Math.round(pValues.reduce((a, b) => a + b, 0) / pValues.length) : null;
             const overallColor = overallPct == null ? "" : overallPct >= 100 ? "text-green-600" : overallPct >= 75 ? "text-amber-500" : "text-muted-foreground";
@@ -585,11 +621,13 @@ export default function Visao() {
                     icon={Users}
                     label="Corretores CRECI"
                     target={milestone?.targetCreci ?? null}
-                    actual={actual?.actualCreci ?? null}
+                    actual={cfCreci.value}
                     actualRaw={actual?.actualCreci ?? ""}
                     targetRaw={milestone?.targetCreci ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
+                    isCarried={cfCreci.fromQ != null}
+                    carriedFromQ={cfCreci.fromQ ?? undefined}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetCreci", v)}
                     onActualChange={v => handleActualChange(idx, "creci", v)}
                   />
@@ -597,11 +635,13 @@ export default function Visao() {
                     icon={Building2}
                     label="Representações (CREs)"
                     target={milestone?.targetCres ?? null}
-                    actual={actual?.actualCres ?? null}
+                    actual={cfCres.value}
                     actualRaw={actual?.actualCres ?? ""}
                     targetRaw={milestone?.targetCres ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
+                    isCarried={cfCres.fromQ != null}
+                    carriedFromQ={cfCres.fromQ ?? undefined}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetCres", v)}
                     onActualChange={v => handleActualChange(idx, "cres", v)}
                   />
@@ -609,12 +649,14 @@ export default function Visao() {
                     icon={TrendingUp}
                     label="VGH (Honorários)"
                     target={milestone?.targetVgh ?? null}
-                    actual={actual?.actualVgh ?? null}
+                    actual={cfVgh.value}
                     actualRaw={actual?.actualVgh ?? ""}
                     targetRaw={milestone?.targetVgh ?? ""}
                     isVgh
                     canWrite={canWrite}
                     cfg={cfg}
+                    isCarried={cfVgh.fromQ != null}
+                    carriedFromQ={cfVgh.fromQ ?? undefined}
                     onChange={v => handleMilestoneChange(qDate, q.label, "targetVgh", v)}
                     onActualChange={v => handleActualChange(idx, "vgh", v)}
                   />
