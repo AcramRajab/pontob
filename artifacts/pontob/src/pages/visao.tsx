@@ -140,103 +140,103 @@ function KriBlock({
   cfg: (typeof Q_CONFIG)[0];
 }) {
   const p = pct(actual, target);
-  const capped = p != null ? Math.min(p, 100) : 0;
+  const barPct = p != null ? Math.min(p, 100) : 0;
   const isGood = p != null && p >= 100;
   const hasTarget = target != null && target !== 0;
-
   const barColor = isGood ? "bg-green-500" : p != null && p >= 75 ? "bg-amber-400" : cfg.bar;
+  const pctColor = isGood ? "text-green-600" : p != null && p >= 75 ? "text-amber-500" : "text-muted-foreground";
 
   return (
-    <div className="space-y-2">
-      {/* Label row */}
-      <div className="flex items-center gap-1.5">
-        <Icon className={cn("h-3 w-3", cfg.accent)} />
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+    <div className="py-3 border-b border-border/50 last:border-0">
+      {/* Label */}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <Icon className={cn("h-3 w-3 shrink-0", cfg.accent)} />
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+      </div>
+
+      {/* Column headers */}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Realizado</span>
+        </div>
+        <div className="w-16 text-center">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">% atingido</span>
+        </div>
+        <div className="flex-1 text-right">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Meta</span>
+        </div>
       </div>
 
       {/* Values row */}
-      <div className="flex items-end justify-between gap-2">
-        {/* Actual value — editable when canWrite */}
-        {canWrite ? (
-          <div className="relative min-w-0">
+      <div className="flex items-end gap-2 mb-2.5">
+        {/* Realizado */}
+        <div className="flex-1">
+          {canWrite ? (
             <Input
               type="number"
               min={0}
               step={isVgh ? 1000 : 1}
               key={String(actualRaw)}
               defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
-              placeholder="real"
+              placeholder="—"
               className={cn(
-                "text-left text-xl font-bold h-8 pl-0 pr-1 border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid",
-                isVgh ? "w-28" : "w-20",
-                actual != null ? (isGood ? "text-green-600 border-green-300" : "text-foreground border-border") : "text-muted-foreground/40 border-dashed border-muted-foreground/20",
+                "h-8 pl-0 pr-1 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                actual != null
+                  ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
+                  : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
               )}
               onChange={e => onActualChange(e.target.value)}
             />
-            {p != null && (
-              <div className="absolute -bottom-4 left-0 text-[9px] font-semibold text-muted-foreground/60">
-                {p}%
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="min-w-0">
-            {actual != null ? (
-              <div className="flex items-baseline gap-1">
-                <span className={cn("text-xl font-bold tabular-nums leading-none", isGood ? "text-green-600" : "text-foreground")}>
-                  {isVgh ? formatVgh(actual) : actual}
-                </span>
-                {p != null && (
-                  <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-muted-foreground")}>
-                    {p}%
-                  </span>
-                )}
-              </div>
-            ) : (
-              <span className="text-sm text-muted-foreground/50 italic">sem dados</span>
-            )}
-          </div>
-        )}
+          ) : (
+            <span className={cn("text-xl font-bold tabular-nums", actual != null ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30 italic text-sm")}>
+              {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
+            </span>
+          )}
+        </div>
 
-        {/* Target input or display */}
-        {canWrite ? (
-          <div className="relative shrink-0">
+        {/* % badge — center */}
+        <div className="w-16 flex flex-col items-center pb-0.5">
+          {p != null ? (
+            <>
+              <span className={cn("text-base font-black leading-none tabular-nums", pctColor)}>{p}%</span>
+              <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">atingido</span>
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground/20">—</span>
+          )}
+        </div>
+
+        {/* Meta */}
+        <div className="flex-1 flex justify-end">
+          {canWrite ? (
             <Input
               type="number"
               min={0}
               step={isVgh ? 1000 : 1}
-              defaultValue={targetRaw === null ? "" : targetRaw}
-              placeholder={hasTarget ? undefined : "meta"}
+              defaultValue={targetRaw === null || targetRaw === "" ? "" : targetRaw}
+              placeholder="meta"
               className={cn(
-                "text-right text-sm font-semibold h-8 pr-2 border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid",
-                isVgh ? "w-28" : "w-20",
+                "h-8 pr-0 pl-1 text-right text-sm font-semibold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
                 cfg.accent,
-                "placeholder:text-muted-foreground/30 placeholder:font-normal placeholder:text-xs"
+                "placeholder:text-muted-foreground/20 placeholder:font-normal",
               )}
               onChange={e => onChange(e.target.value)}
             />
-            {hasTarget && (
-              <div className="absolute -bottom-4 right-0 text-[9px] text-muted-foreground/50 font-medium">
-                {isVgh ? formatVgh(target) : `meta: ${target}`}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className={cn("text-sm font-semibold shrink-0", cfg.accent)}>
-            {isVgh ? formatVgh(target) : (target != null ? target : "—")}
-          </span>
-        )}
+          ) : (
+            <span className={cn("text-sm font-semibold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30")}>
+              {hasTarget ? (isVgh ? formatVgh(target) : target) : "—"}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Progress bar */}
-      {hasTarget && (
-        <div className="h-1 w-full rounded-full bg-muted overflow-hidden mt-1">
-          <div
-            className={cn("h-full rounded-full transition-all duration-500", barColor)}
-            style={{ width: `${capped}%` }}
-          />
-        </div>
-      )}
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", hasTarget || actual != null ? barColor : "bg-transparent")}
+          style={{ width: `${barPct}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -521,6 +521,14 @@ export default function Visao() {
             const hasData = actual?.actualCreci != null;
             const hasTargets = !!(milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh);
 
+            // Overall % average (creci + cres only, VGH excluded from simple average)
+            const pCreci = pct(actual?.actualCreci ?? null, milestone?.targetCreci ?? null);
+            const pCres  = pct(actual?.actualCres  ?? null, milestone?.targetCres  ?? null);
+            const pVgh   = pct(actual?.actualVgh   ?? null, milestone?.targetVgh   ?? null);
+            const pValues = [pCreci, pCres, pVgh].filter((v): v is number => v != null);
+            const overallPct = pValues.length > 0 ? Math.round(pValues.reduce((a, b) => a + b, 0) / pValues.length) : null;
+            const overallColor = overallPct == null ? "" : overallPct >= 100 ? "text-green-600" : overallPct >= 75 ? "text-amber-500" : "text-muted-foreground";
+
             return (
               <div
                 key={qDate}
@@ -530,38 +538,49 @@ export default function Visao() {
                 )}
               >
                 {/* Card header strip */}
-                <div className={cn("px-5 pt-5 pb-4")}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold", cfg.accentBg)}>
+                <div className={cn("px-5 pt-4 pb-3", cfg.accentLight)}>
+                  <div className="flex items-center justify-between gap-2">
+                    {/* Left: Q badge + label */}
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0", cfg.accentBg)}>
                         {q.short}
                       </div>
                       <div>
-                        <div className="text-xs font-medium text-muted-foreground leading-none">{q.label}</div>
-                        <div className={cn("text-sm font-semibold leading-tight mt-0.5", cfg.accent)}>{q.display(year)}</div>
+                        <div className="text-[11px] font-medium text-muted-foreground leading-none">{q.label}</div>
+                        <div className={cn("text-sm font-bold leading-tight mt-0.5", cfg.accent)}>{q.display(year)}</div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {isFinal && (
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full", cfg.accentLight, cfg.accent)}>
-                          Final
-                        </span>
+
+                    {/* Right: overall % + status badge */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {overallPct != null && (
+                        <div className="flex items-baseline gap-0.5">
+                          <span className={cn("text-xl font-black tabular-nums leading-none", overallColor)}>{overallPct}%</span>
+                          <span className="text-[9px] text-muted-foreground/50 font-medium ml-0.5">méd.</span>
+                        </div>
                       )}
-                      <div className={cn(
-                        "text-[10px] font-semibold px-2 py-0.5 rounded-full",
-                        hasData ? "bg-green-50 text-green-600" : "bg-muted text-muted-foreground"
-                      )}>
-                        {hasData ? "com dados reais" : "sem dados reais"}
+                      <div className="flex items-center gap-1">
+                        {isFinal && (
+                          <span className={cn("text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full", cfg.accentBg, "text-white")}>
+                            Final
+                          </span>
+                        )}
+                        <div className={cn(
+                          "text-[9px] font-semibold px-1.5 py-0.5 rounded-full",
+                          hasData ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground/60"
+                        )}>
+                          {hasData ? "com dados" : "sem dados"}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Divider */}
-                <div className={cn("mx-5 h-px", cfg.accentLight, "bg-border/60")} />
+                <div className="h-px bg-border/40" />
 
                 {/* KRI blocks */}
-                <div className="px-5 pt-4 pb-5 space-y-5">
+                <div className="px-5 pt-1 pb-4">
                   <KriBlock
                     icon={Users}
                     label="Corretores CRECI"
