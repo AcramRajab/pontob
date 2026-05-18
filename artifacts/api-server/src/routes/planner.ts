@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable, usersTable, PLANNER_INDICATORS } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { db, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable, franchisesTable, usersTable, PLANNER_INDICATORS, franchiseVisaoMilestonesTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 import { sendPlannerWeekSummary } from "../services/email";
 
@@ -20,6 +21,71 @@ function formatWeekLabel(weekStartDate: string): string {
   const fmt = (dt: Date) => `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
   return `${fmt(start)}–${fmt(end)}/${y}`;
 }
+
+// GET /planner/ytd?franchiseId=&year= — year-to-date accumulated totals for key KRI indicators
+router.get("/planner/ytd", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+      ? paramFranchiseId
+      : req.session.franchiseId ?? undefined;
+
+    if (!effectiveFranchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+
+    const KEY_INDICATORS = ["corretores_entraram", "novos_contratos_representacao", "venda_assinada"];
+
+    const [rows, milestoneRows] = await Promise.all([
+      db
+        .select({
+          indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+          total: sql<number>`COALESCE(SUM(${weeklyPlannerEntriesTable.value}), 0)`.as("total"),
+        })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+          inArray(weeklyPlannerEntriesTable.indicatorKey, KEY_INDICATORS),
+          gte(weeklyPlannerEntriesTable.weekStartDate, `${year}-01-01`),
+          lte(weeklyPlannerEntriesTable.weekStartDate, `${year}-12-31`),
+        ))
+        .groupBy(weeklyPlannerEntriesTable.indicatorKey),
+      db
+        .select()
+        .from(franchiseVisaoMilestonesTable)
+        .where(and(
+          eq(franchiseVisaoMilestonesTable.franchiseId, effectiveFranchiseId),
+          eq(franchiseVisaoMilestonesTable.year, year),
+          eq(franchiseVisaoMilestonesTable.quarterDate, `${year}-12-31`),
+        ))
+        .limit(1),
+    ]);
+
+    const totals: Record<string, number> = {};
+    for (const row of rows) totals[row.indicatorKey] = Number(row.total);
+
+    const milestone = milestoneRows[0] ?? null;
+
+    res.json({
+      year,
+      franchiseId: effectiveFranchiseId,
+      ytd: {
+        corretores: totals["corretores_entraram"] ?? 0,
+        contratos: totals["novos_contratos_representacao"] ?? 0,
+        vendas: totals["venda_assinada"] ?? 0,
+      },
+      targets: {
+        corretores: milestone?.targetCreci ?? null,
+        contratos: milestone?.targetCres ?? null,
+        vendas: milestone?.targetVgh ?? null,
+      },
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // GET /planner?franchiseId=&weekStartDate=
 router.get("/planner", requireAuth, async (req, res) => {

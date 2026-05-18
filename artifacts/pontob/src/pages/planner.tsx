@@ -4,7 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -160,6 +162,21 @@ export default function Planner() {
 
   const franchiseId = user?.franchiseId;
   const weekKey = `${franchiseId}-${weekStartStr}`;
+  const currentYear = new Date().getFullYear();
+
+  const { data: ytdData } = useQuery({
+    queryKey: ["planner-ytd", franchiseId, currentYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/planner/ytd?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<{
+        year: number;
+        ytd: { corretores: number; contratos: number; vendas: number };
+        targets: { corretores: number | null; contratos: number | null; vendas: number | null };
+      }>;
+    },
+    enabled: !!franchiseId,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["planner", franchiseId, weekStartStr],
@@ -324,6 +341,104 @@ export default function Planner() {
           )}
         </div>
       </div>
+
+      {/* ── YTD KRI Progress ── */}
+      {franchiseId && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Progresso no Ano — {currentYear}</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">acumulado das entradas do planner vs meta anual (Q4)</span>
+            </div>
+            <Link href="/visao" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+              <ExternalLink className="h-3 w-3" />
+              <span>Definir metas</span>
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+            {[
+              {
+                icon: Users,
+                label: "Corretores novos",
+                sublabel: "corretores_entraram",
+                ytd: ytdData?.ytd.corretores ?? 0,
+                target: ytdData?.targets.corretores ?? null,
+                color: "text-blue-600",
+                bar: "bg-blue-500",
+                fmt: (v: number) => String(v),
+              },
+              {
+                icon: Building2,
+                label: "Novos contratos CRE",
+                sublabel: "novos_contratos_representacao",
+                ytd: ytdData?.ytd.contratos ?? 0,
+                target: ytdData?.targets.contratos ?? null,
+                color: "text-violet-600",
+                bar: "bg-violet-500",
+                fmt: (v: number) => String(v),
+              },
+              {
+                icon: TrendingUp,
+                label: "Vendas assinadas",
+                sublabel: "venda_assinada",
+                ytd: ytdData?.ytd.vendas ?? 0,
+                target: ytdData?.targets.vendas ?? null,
+                color: "text-emerald-600",
+                bar: "bg-emerald-500",
+                fmt: (v: number) =>
+                  v >= 1_000_000
+                    ? `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
+                    : v >= 1_000
+                    ? `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`
+                    : `R$ ${v.toLocaleString("pt-BR")}`,
+              },
+            ].map(({ icon: Icon, label, ytd, target, color, bar, fmt }) => {
+              const pct = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
+              const isGood = pct != null && pct >= 100;
+              const hasData = ytd > 0;
+              return (
+                <div key={label} className="px-5 py-4 space-y-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <Icon className={cn("h-3.5 w-3.5", color)} />
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</span>
+                  </div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={cn("text-2xl font-bold tabular-nums leading-none", hasData ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/40")}>
+                        {fmt(ytd)}
+                      </span>
+                      {pct != null && (
+                        <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-orange-500")}>
+                          {pct}%
+                        </span>
+                      )}
+                    </div>
+                    {target != null ? (
+                      <span className="text-xs text-muted-foreground shrink-0">meta: <strong>{fmt(target)}</strong></span>
+                    ) : (
+                      <Link href="/visao" className={cn("text-xs shrink-0 hover:underline", color)}>
+                        + definir meta
+                      </Link>
+                    )}
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-500", isGood ? "bg-green-500" : bar)}
+                      style={{ width: `${pct ?? 0}%` }}
+                    />
+                  </div>
+                  {!hasData && (
+                    <p className="text-[10px] text-muted-foreground/50 italic">
+                      Insira dados semanais para ver a evolução
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {!franchiseId && (
         <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
