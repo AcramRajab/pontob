@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
-  Building2, TrendingUp, CheckCircle2, AlertTriangle,
+  Building2, TrendingUp, CheckCircle2, AlertTriangle, LifeBuoy,
   Users, FileSignature, DollarSign, ChevronLeft, ChevronRight,
   Eye, EyeOff, ExternalLink,
 } from "lucide-react";
