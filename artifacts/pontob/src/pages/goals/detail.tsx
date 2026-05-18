@@ -450,9 +450,12 @@ export default function GoalDetail() {
                     <div className="flex items-start gap-2.5 min-w-0">
                       <StatusIcon status={initiative.status} />
                       <div className="min-w-0">
-                        <p className="font-medium text-sm leading-tight truncate">
+                        <Link
+                          href={`/goals/${id}/initiatives/${initiative.id}/edit`}
+                          className="font-medium text-sm leading-tight truncate hover:text-primary hover:underline cursor-pointer"
+                        >
                           {initiative.initiativeName || "Iniciativa"}
-                        </p>
+                        </Link>
                         {initiative.keyProcessName && (
                           <p className="text-xs text-muted-foreground mt-0.5">{initiative.keyProcessName}</p>
                         )}

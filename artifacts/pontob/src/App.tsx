@@ -15,6 +15,7 @@ import GoalNew from "@/pages/goals/new";
 import GoalEdit from "@/pages/goals/edit";
 import KpisNew from "@/pages/goals/kpis-new";
 import InitiativesNew from "@/pages/goals/initiatives-new";
+import InitiativesEdit from "@/pages/goals/initiatives-edit";
 import Initiatives from "@/pages/initiatives";
 import DailyCheckin from "@/pages/checkin/daily";
 import WeeklyCheckin from "@/pages/checkin/weekly";
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/goals/new" component={GoalNew} />
         <Route path="/goals/:id/edit" component={GoalEdit} />
         <Route path="/goals/:id/kpis/new" component={KpisNew} />
+        <Route path="/goals/:goalId/initiatives/:initiativeId/edit" component={InitiativesEdit} />
         <Route path="/goals/:id/initiatives/new" component={InitiativesNew} />
         <Route path="/goals/:id" component={GoalDetail} />
         <Route path="/goals" component={Goals} />
