@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Pencil, Check, X, Target, Users, Building2, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Check, X, Users, Building2, TrendingUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Milestone {
@@ -31,24 +31,56 @@ interface VisaoData {
 }
 
 const QUARTERS = [
-  { label: "1º Trimestre", short: "Q1", date: (y: number) => `${y}-03-31`, display: (y: number) => `Mar ${y}` },
-  { label: "2º Trimestre", short: "Q2", date: (y: number) => `${y}-06-30`, display: (y: number) => `Jun ${y}` },
-  { label: "3º Trimestre", short: "Q3", date: (y: number) => `${y}-09-30`, display: (y: number) => `Set ${y}` },
-  { label: "4º Trimestre", short: "Q4", date: (y: number) => `${y}-12-31`, display: (y: number) => `Dez ${y}` },
+  { label: "1º Trimestre", short: "Q1", month: "Mar", date: (y: number) => `${y}-03-31`, display: (y: number) => `Mar ${y}` },
+  { label: "2º Trimestre", short: "Q2", month: "Jun", date: (y: number) => `${y}-06-30`, display: (y: number) => `Jun ${y}` },
+  { label: "3º Trimestre", short: "Q3", month: "Set", date: (y: number) => `${y}-09-30`, display: (y: number) => `Set ${y}` },
+  { label: "4º Trimestre", short: "Q4", month: "Dez", date: (y: number) => `${y}-12-31`, display: (y: number) => `Dez ${y}` },
 ];
 
-const Q_COLORS = [
-  { bg: "bg-blue-50", border: "border-blue-200", badge: "bg-blue-600", text: "text-blue-700", bar: "bg-blue-500" },
-  { bg: "bg-violet-50", border: "border-violet-200", badge: "bg-violet-600", text: "text-violet-700", bar: "bg-violet-500" },
-  { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-500", text: "text-amber-700", bar: "bg-amber-400" },
-  { bg: "bg-emerald-50", border: "border-emerald-200", badge: "bg-emerald-600", text: "text-emerald-700", bar: "bg-emerald-500" },
+const Q_CONFIG = [
+  {
+    accent: "text-blue-600",
+    accentBg: "bg-blue-600",
+    accentLight: "bg-blue-50",
+    accentBorder: "border-blue-100",
+    bar: "bg-blue-500",
+    ring: "ring-blue-200",
+    dot: "bg-blue-500",
+  },
+  {
+    accent: "text-violet-600",
+    accentBg: "bg-violet-600",
+    accentLight: "bg-violet-50",
+    accentBorder: "border-violet-100",
+    bar: "bg-violet-500",
+    ring: "ring-violet-200",
+    dot: "bg-violet-500",
+  },
+  {
+    accent: "text-amber-600",
+    accentBg: "bg-amber-500",
+    accentLight: "bg-amber-50",
+    accentBorder: "border-amber-100",
+    bar: "bg-amber-500",
+    ring: "ring-amber-200",
+    dot: "bg-amber-500",
+  },
+  {
+    accent: "text-emerald-600",
+    accentBg: "bg-emerald-600",
+    accentLight: "bg-emerald-50",
+    accentBorder: "border-emerald-100",
+    bar: "bg-emerald-500",
+    ring: "ring-emerald-200",
+    dot: "bg-emerald-500",
+  },
 ];
 
-function formatVgh(v: number | null | undefined) {
+function formatVgh(v: number | null | undefined, compact = false) {
   if (v == null) return "—";
   if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
-  if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}k`;
-  return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0 });
+  if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`;
+  return "R$ " + v.toLocaleString("pt-BR");
 }
 
 function pct(actual: number | null | undefined, target: number | null | undefined): number | null {
@@ -62,7 +94,7 @@ async function apiFetch(url: string, opts?: RequestInit) {
   return res.json();
 }
 
-function KriRow({
+function KriBlock({
   icon: Icon,
   label,
   target,
@@ -71,7 +103,7 @@ function KriRow({
   isVgh,
   canWrite,
   onChange,
-  colorBar,
+  cfg,
 }: {
   icon: any;
   label: string;
@@ -81,50 +113,83 @@ function KriRow({
   isVgh?: boolean;
   canWrite: boolean;
   onChange: (v: string) => void;
-  colorBar: string;
+  cfg: (typeof Q_CONFIG)[0];
 }) {
   const p = pct(actual, target);
   const capped = p != null ? Math.min(p, 100) : 0;
   const isGood = p != null && p >= 100;
   const hasActual = actual != null;
+  const hasTarget = target != null && target !== 0;
+
+  const barColor = isGood ? "bg-green-500" : p != null && p >= 75 ? "bg-amber-400" : cfg.bar;
 
   return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
-      <div className="w-7 h-7 rounded-lg bg-background border border-border flex items-center justify-center shrink-0">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+    <div className="space-y-2">
+      {/* Label row */}
+      <div className="flex items-center gap-1.5">
+        <Icon className={cn("h-3 w-3", cfg.accent)} />
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium text-muted-foreground mb-1">{label}</div>
-        {hasActual && target && (
-          <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className={cn("h-full rounded-full transition-all", isGood ? "bg-green-500" : p! >= 60 ? "bg-amber-400" : colorBar)}
-              style={{ width: `${capped}%` }}
-            />
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {hasActual && (
-          <div className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", isGood ? "text-green-600 bg-green-50" : "text-orange-500 bg-orange-50")}>
-            {isVgh ? formatVgh(actual) : actual}
-            {p != null && <span className="ml-1 opacity-70">{p}%</span>}
-          </div>
-        )}
+
+      {/* Values row */}
+      <div className="flex items-end justify-between gap-2">
+        {/* Actual value */}
+        <div className="min-w-0">
+          {hasActual ? (
+            <div className="flex items-baseline gap-1">
+              <span className={cn("text-xl font-bold tabular-nums leading-none", isGood ? "text-green-600" : "text-foreground")}>
+                {isVgh ? formatVgh(actual) : actual}
+              </span>
+              {p != null && (
+                <span className={cn("text-xs font-semibold", isGood ? "text-green-500" : "text-muted-foreground")}>
+                  {p}%
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground/50 italic">sem dados</span>
+          )}
+        </div>
+
+        {/* Target input or display */}
         {canWrite ? (
-          <Input
-            type="number"
-            min={0}
-            step={isVgh ? 1000 : 1}
-            defaultValue={targetRaw === null ? "" : targetRaw}
-            placeholder={isVgh ? "R$ meta" : "Meta"}
-            className={cn("text-center text-sm font-semibold h-8 border-dashed focus:border-solid", isVgh ? "w-28" : "w-20")}
-            onChange={e => onChange(e.target.value)}
-          />
+          <div className="relative shrink-0">
+            <Input
+              type="number"
+              min={0}
+              step={isVgh ? 1000 : 1}
+              defaultValue={targetRaw === null ? "" : targetRaw}
+              placeholder={hasTarget ? undefined : "meta"}
+              className={cn(
+                "text-right text-sm font-semibold h-8 pr-2 border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid",
+                isVgh ? "w-28" : "w-20",
+                cfg.accent,
+                "placeholder:text-muted-foreground/30 placeholder:font-normal placeholder:text-xs"
+              )}
+              onChange={e => onChange(e.target.value)}
+            />
+            {hasTarget && (
+              <div className="absolute -bottom-4 right-0 text-[9px] text-muted-foreground/50 font-medium">
+                {isVgh ? formatVgh(target) : `meta: ${target}`}
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="text-sm font-semibold w-20 text-center">{isVgh ? formatVgh(target) : (target ?? "—")}</div>
+          <span className={cn("text-sm font-semibold shrink-0", cfg.accent)}>
+            {isVgh ? formatVgh(target) : (target != null ? target : "—")}
+          </span>
         )}
       </div>
+
+      {/* Progress bar */}
+      {hasTarget && (
+        <div className="h-1 w-full rounded-full bg-muted overflow-hidden mt-1">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", barColor)}
+            style={{ width: `${capped}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -215,82 +280,92 @@ export default function Visao() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-10">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="max-w-6xl mx-auto space-y-8 pb-12">
+
+      {/* ── Page header ── */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
-            Visão Anual — {franchiseName}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Declare onde quer chegar e defina marcos trimestrais para medir o caminho
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Planejamento estratégico</p>
+          <h1 className="text-2xl font-bold tracking-tight">{franchiseName}</h1>
         </div>
-        <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear(y => y - 1)}>
+        {/* Year selector */}
+        <div className="flex items-center gap-0.5 rounded-xl border bg-card shadow-sm p-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setYear(y => y - 1)}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className={cn("font-bold text-lg px-4 min-w-[72px] text-center", year === currentYear ? "text-primary" : "text-foreground")}>
+          <span className={cn(
+            "font-bold text-base px-4 min-w-[64px] text-center tabular-nums",
+            year === currentYear ? "text-primary" : "text-foreground"
+          )}>
             {year}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setYear(y => y + 1)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setYear(y => y + 1)}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Vision Statement */}
+      {/* ── Vision Statement ── */}
       <div className={cn(
-        "relative rounded-xl border-2 transition-all overflow-hidden",
-        editingStatement ? "border-primary/50 shadow-md" : hasStatement ? "border-border bg-gradient-to-br from-primary/5 via-background to-background" : "border-dashed border-border bg-muted/20"
-      )}>
-        <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-xl" />
-        <div className="px-6 py-5 pl-8">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+        "group relative rounded-2xl border transition-all duration-200",
+        editingStatement
+          ? "border-primary/40 shadow-lg shadow-primary/5 bg-card"
+          : hasStatement
+          ? "border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer"
+          : "border-dashed border-border/60 bg-muted/20 hover:border-primary/30 cursor-pointer"
+      )}
+        onClick={() => !editingStatement && canWrite && (setStatementDraft(data?.visao?.statement ?? ""), setEditingStatement(true))}
+      >
+        {/* Left accent bar */}
+        <div className={cn("absolute left-0 top-4 bottom-4 w-0.5 rounded-full bg-primary transition-opacity", editingStatement || hasStatement ? "opacity-100" : "opacity-30")} />
+
+        <div className="px-8 py-6">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-3 flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3" />
+                Declaração de Visão {year}
+              </p>
               {editingStatement ? (
                 <textarea
                   ref={textareaRef}
                   value={statementDraft}
                   onChange={e => setStatementDraft(e.target.value)}
                   rows={3}
-                  className="w-full text-base leading-relaxed italic bg-transparent border-0 focus:outline-none resize-none placeholder:text-muted-foreground/60 placeholder:not-italic"
-                  placeholder={`Em dezembro de ${year}, a ${franchiseName} terá X corretores com CRECI, Y representações ativas e alcançará R$ Z em honorários...`}
+                  className="w-full text-lg leading-relaxed italic bg-transparent border-0 focus:outline-none resize-none placeholder:text-muted-foreground/40 placeholder:not-italic placeholder:text-base"
+                  placeholder={`"Em dezembro de ${year}, a ${franchiseName} terá X corretores ativos, Y representações e alcançará R$ Z em honorários..."`}
                 />
+              ) : hasStatement ? (
+                <p className="text-lg leading-relaxed italic text-foreground/80">
+                  "{data?.visao?.statement}"
+                </p>
               ) : (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Declaração de Visão {year}</p>
-                  {hasStatement ? (
-                    <p className="text-base leading-relaxed italic text-foreground/90">
-                      "{data?.visao?.statement}"
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {canWrite
-                        ? `Clique em Editar para escrever a declaração de visão da sua franquia para ${year}.`
-                        : `Nenhuma declaração de visão registrada para ${year}.`}
-                    </p>
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground/60">
+                  {canWrite ? `Clique para escrever a declaração de visão para ${year}` : `Nenhuma visão registrada para ${year}.`}
+                </p>
               )}
             </div>
+
             {canWrite && (
-              <div className="flex gap-2 shrink-0 pt-1">
+              <div className="shrink-0 flex gap-2 mt-0.5" onClick={e => e.stopPropagation()}>
                 {editingStatement ? (
                   <>
-                    <Button size="sm" variant="ghost" onClick={() => { setEditingStatement(false); setStatementDraft(data?.visao?.statement ?? ""); }}>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 rounded-lg"
+                      onClick={() => { setEditingStatement(false); setStatementDraft(data?.visao?.statement ?? ""); }}>
                       <X className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" onClick={() => saveStatement.mutate(statementDraft)} disabled={saveStatement.isPending}>
-                      <Check className="h-4 w-4 mr-1.5" />
+                    <Button size="sm" className="h-8 px-4 rounded-lg"
+                      onClick={() => saveStatement.mutate(statementDraft)}
+                      disabled={saveStatement.isPending}>
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
                       Salvar
                     </Button>
                   </>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => { setStatementDraft(data?.visao?.statement ?? ""); setEditingStatement(true); }}>
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                    {hasStatement ? "Editar" : "Escrever visão"}
+                  <Button variant="ghost" size="sm"
+                    className="h-8 w-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => { setStatementDraft(data?.visao?.statement ?? ""); setEditingStatement(true); }}>
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>
@@ -299,114 +374,122 @@ export default function Visao() {
         </div>
       </div>
 
-      {/* Quarter Cards */}
+      {/* ── Section label ── */}
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground px-2">
+          Marcos Trimestrais — KRIs
+        </p>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      {/* ── Quarter Cards ── */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-64 rounded-xl bg-muted/30 animate-pulse" />
+            <div key={i} className="h-72 rounded-2xl bg-muted/30 animate-pulse" />
           ))}
         </div>
       ) : (
-        <>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <TrendingUp className="h-4 w-4" />
-            <span className="font-medium text-foreground">Marcos Trimestrais de KRIs</span>
-            <span className="hidden sm:inline">— defina as metas de topo de linha por trimestre</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            {QUARTERS.map((q, idx) => {
-              const qDate = q.date(year);
-              const milestone = getMilestone(qDate);
-              const actual = getActual(qDate);
-              const color = Q_COLORS[idx];
-              const isFinal = idx === 3;
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {QUARTERS.map((q, idx) => {
+            const qDate = q.date(year);
+            const milestone = getMilestone(qDate);
+            const actual = getActual(qDate);
+            const cfg = Q_CONFIG[idx];
+            const isFinal = idx === 3;
+            const hasData = actual?.actualCreci != null;
+            const hasTargets = !!(milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh);
 
-              const anyTarget = milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh;
-
-              return (
-                <div
-                  key={qDate}
-                  className={cn(
-                    "rounded-xl border-2 overflow-hidden transition-shadow hover:shadow-md",
-                    color.border,
-                    isFinal ? color.bg : "bg-card"
-                  )}
-                >
-                  {/* Card header */}
-                  <div className={cn("px-4 py-3 flex items-center justify-between", color.bg)}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md text-white", color.badge)}>
-                          {q.short}
-                        </span>
-                        {isFinal && (
-                          <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                            Final
-                          </span>
-                        )}
+            return (
+              <div
+                key={qDate}
+                className={cn(
+                  "rounded-2xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-px",
+                  isFinal ? "ring-1 " + cfg.ring : ""
+                )}
+              >
+                {/* Card header strip */}
+                <div className={cn("px-5 pt-5 pb-4")}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm font-bold", cfg.accentBg)}>
+                        {q.short}
                       </div>
-                      <div className={cn("text-xs font-medium mt-1", color.text)}>{q.display(year)}</div>
+                      <div>
+                        <div className="text-xs font-medium text-muted-foreground leading-none">{q.label}</div>
+                        <div className={cn("text-sm font-semibold leading-tight mt-0.5", cfg.accent)}>{q.display(year)}</div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">{q.label}</div>
-                      {anyTarget && (
-                        <div className="text-xs font-medium text-muted-foreground mt-0.5">
-                          {actual?.actualCreci != null ? "com dados reais" : "sem dados reais"}
-                        </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {isFinal && (
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full", cfg.accentLight, cfg.accent)}>
+                          Final
+                        </span>
                       )}
+                      <div className={cn(
+                        "text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                        hasData ? "bg-green-50 text-green-600" : "bg-muted text-muted-foreground"
+                      )}>
+                        {hasData ? "com dados reais" : "sem dados reais"}
+                      </div>
                     </div>
                   </div>
-
-                  {/* KRI rows */}
-                  <div className="px-4 pb-2 pt-1">
-                    <KriRow
-                      icon={Users}
-                      label="Corretores CRECI"
-                      target={milestone?.targetCreci ?? null}
-                      actual={actual?.actualCreci ?? null}
-                      targetRaw={milestone?.targetCreci ?? ""}
-                      canWrite={canWrite}
-                      colorBar={color.bar}
-                      onChange={v => handleMilestoneChange(qDate, q.label, "targetCreci", v)}
-                    />
-                    <KriRow
-                      icon={Building2}
-                      label="Representações (CREs)"
-                      target={milestone?.targetCres ?? null}
-                      actual={actual?.actualCres ?? null}
-                      targetRaw={milestone?.targetCres ?? ""}
-                      canWrite={canWrite}
-                      colorBar={color.bar}
-                      onChange={v => handleMilestoneChange(qDate, q.label, "targetCres", v)}
-                    />
-                    <KriRow
-                      icon={TrendingUp}
-                      label="VGH (Honorários)"
-                      target={milestone?.targetVgh ?? null}
-                      actual={actual?.actualVgh ?? null}
-                      targetRaw={milestone?.targetVgh ?? ""}
-                      isVgh
-                      canWrite={canWrite}
-                      colorBar={color.bar}
-                      onChange={v => handleMilestoneChange(qDate, q.label, "targetVgh", v)}
-                    />
-                  </div>
-
-                  {!anyTarget && canWrite && (
-                    <div className="px-4 pb-3">
-                      <p className="text-xs text-muted-foreground/60 italic text-center">
-                        Preencha as metas acima
-                      </p>
-                    </div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
-        </>
+
+                {/* Divider */}
+                <div className={cn("mx-5 h-px", cfg.accentLight, "bg-border/60")} />
+
+                {/* KRI blocks */}
+                <div className="px-5 pt-4 pb-5 space-y-5">
+                  <KriBlock
+                    icon={Users}
+                    label="Corretores CRECI"
+                    target={milestone?.targetCreci ?? null}
+                    actual={actual?.actualCreci ?? null}
+                    targetRaw={milestone?.targetCreci ?? ""}
+                    canWrite={canWrite}
+                    cfg={cfg}
+                    onChange={v => handleMilestoneChange(qDate, q.label, "targetCreci", v)}
+                  />
+                  <KriBlock
+                    icon={Building2}
+                    label="Representações (CREs)"
+                    target={milestone?.targetCres ?? null}
+                    actual={actual?.actualCres ?? null}
+                    targetRaw={milestone?.targetCres ?? ""}
+                    canWrite={canWrite}
+                    cfg={cfg}
+                    onChange={v => handleMilestoneChange(qDate, q.label, "targetCres", v)}
+                  />
+                  <KriBlock
+                    icon={TrendingUp}
+                    label="VGH (Honorários)"
+                    target={milestone?.targetVgh ?? null}
+                    actual={actual?.actualVgh ?? null}
+                    targetRaw={milestone?.targetVgh ?? ""}
+                    isVgh
+                    canWrite={canWrite}
+                    cfg={cfg}
+                    onChange={v => handleMilestoneChange(qDate, q.label, "targetVgh", v)}
+                  />
+                </div>
+
+                {/* Empty state hint */}
+                {!hasTargets && canWrite && (
+                  <div className={cn("mx-5 mb-4 rounded-xl px-3 py-2.5 text-center", cfg.accentLight)}>
+                    <p className={cn("text-[11px] font-medium", cfg.accent)}>
+                      Digite as metas nos campos acima
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center italic pt-2">
+      <p className="text-[11px] text-muted-foreground/50 text-center">
         Metas salvas automaticamente · Valores reais calculados a partir dos KRIs mensais registrados
       </p>
     </div>
