@@ -148,6 +148,7 @@ export interface KeyProcess {
   /** @nullable */
   description?: string | null;
   orderIndex: number;
+  active?: boolean;
 }
 
 export interface StrategicInitiative {
@@ -163,6 +164,13 @@ export interface StrategicInitiative {
   kpi: string;
   /** @nullable */
   description?: string | null;
+  active?: boolean;
+}
+
+export interface CatalogToggleResult {
+  id: number;
+  name: string;
+  active: boolean;
 }
 
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];

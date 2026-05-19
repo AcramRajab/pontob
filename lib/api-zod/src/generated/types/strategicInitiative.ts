@@ -19,4 +19,5 @@ export interface StrategicInitiative {
   kpi: string;
   /** @nullable */
   description?: string | null;
+  active?: boolean;
 }

@@ -318,6 +318,69 @@ paths:
                 items:
                   $ref: "#/components/schemas/StrategicInitiative"
 
+  /dimensions/{id}/toggle-active:
+    patch:
+      operationId: toggleDimensionActive
+      tags: [dimensions]
+      summary: Toggle active status of a dimension (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated active status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogToggleResult"
+        "404":
+          description: Not found
+
+  /key-processes/{id}/toggle-active:
+    patch:
+      operationId: toggleKeyProcessActive
+      tags: [keyProcesses]
+      summary: Toggle active status of a key process (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated active status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogToggleResult"
+        "404":
+          description: Not found
+
+  /strategic-initiatives/{id}/toggle-active:
+    patch:
+      operationId: toggleStrategicInitiativeActive
+      tags: [strategicInitiatives]
+      summary: Toggle active status of a strategic initiative (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated active status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogToggleResult"
+        "404":
+          description: Not found
+
   /goals:
     get:
       operationId: listGoals
@@ -1441,6 +1504,8 @@ components:
           type: ["string", "null"]
         orderIndex:
           type: integer
+        active:
+          type: boolean
 
     StrategicInitiative:
       type: object
@@ -1464,6 +1529,19 @@ components:
           type: string
         description:
           type: ["string", "null"]
+        active:
+          type: boolean
+
+    CatalogToggleResult:
+      type: object
+      required: [id, name, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        active:
+          type: boolean
 
     Goal:
       type: object

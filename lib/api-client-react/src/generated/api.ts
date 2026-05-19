@@ -22,6 +22,7 @@ import type {
   Candidato,
   CandidatoInput,
   CandidatoUpdate,
+  CatalogToggleResult,
   DailyCheckin,
   DailyCheckinInput,
   Dimension,
@@ -1436,6 +1437,263 @@ export function useListStrategicInitiatives<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Toggle active status of a dimension (admin/staff only)
+ */
+export const getToggleDimensionActiveUrl = (id: number) => {
+  return `/api/dimensions/${id}/toggle-active`;
+};
+
+export const toggleDimensionActive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogToggleResult> => {
+  return customFetch<CatalogToggleResult>(getToggleDimensionActiveUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getToggleDimensionActiveMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleDimensionActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleDimensionActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleDimensionActive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleDimensionActive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleDimensionActive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleDimensionActiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleDimensionActive>>
+>;
+
+export type ToggleDimensionActiveMutationError = ErrorType<void>;
+
+/**
+ * @summary Toggle active status of a dimension (admin/staff only)
+ */
+export const useToggleDimensionActive = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleDimensionActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleDimensionActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getToggleDimensionActiveMutationOptions(options));
+};
+
+/**
+ * @summary Toggle active status of a key process (admin/staff only)
+ */
+export const getToggleKeyProcessActiveUrl = (id: number) => {
+  return `/api/key-processes/${id}/toggle-active`;
+};
+
+export const toggleKeyProcessActive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogToggleResult> => {
+  return customFetch<CatalogToggleResult>(getToggleKeyProcessActiveUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getToggleKeyProcessActiveMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleKeyProcessActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleKeyProcessActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleKeyProcessActive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleKeyProcessActive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleKeyProcessActive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleKeyProcessActiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleKeyProcessActive>>
+>;
+
+export type ToggleKeyProcessActiveMutationError = ErrorType<void>;
+
+/**
+ * @summary Toggle active status of a key process (admin/staff only)
+ */
+export const useToggleKeyProcessActive = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleKeyProcessActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleKeyProcessActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getToggleKeyProcessActiveMutationOptions(options));
+};
+
+/**
+ * @summary Toggle active status of a strategic initiative (admin/staff only)
+ */
+export const getToggleStrategicInitiativeActiveUrl = (id: number) => {
+  return `/api/strategic-initiatives/${id}/toggle-active`;
+};
+
+export const toggleStrategicInitiativeActive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogToggleResult> => {
+  return customFetch<CatalogToggleResult>(
+    getToggleStrategicInitiativeActiveUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+    },
+  );
+};
+
+export const getToggleStrategicInitiativeActiveMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleStrategicInitiativeActive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleStrategicInitiativeActive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleStrategicInitiativeActiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>
+>;
+
+export type ToggleStrategicInitiativeActiveMutationError = ErrorType<void>;
+
+/**
+ * @summary Toggle active status of a strategic initiative (admin/staff only)
+ */
+export const useToggleStrategicInitiativeActive = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleStrategicInitiativeActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(
+    getToggleStrategicInitiativeActiveMutationOptions(options),
+  );
+};
 
 /**
  * @summary List goals

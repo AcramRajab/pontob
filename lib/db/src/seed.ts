@@ -1,5 +1,5 @@
 import { db } from "./index.js";
-import { sql } from "drizzle-orm";
+import { sql, notInArray } from "drizzle-orm";
 import {
   franchisesTable,
   usersTable,
@@ -120,6 +120,15 @@ async function seed() {
   const dims = await db.select().from(dimensionsTable).orderBy(dimensionsTable.id);
   const dimPessoas = dims.find(d => d.name === "Pessoas")!;
   const dimRE      = dims.find(d => d.name === "Real Estate")!;
+
+  // Deactivate any dimension no longer present in the seed data
+  const seedDimNames = new Set(dimensionData.map(d => d.name));
+  const activeDimIds = dims.filter(d => seedDimNames.has(d.name)).map(d => d.id);
+  if (activeDimIds.length > 0) {
+    await db.update(dimensionsTable).set({ active: false }).where(notInArray(dimensionsTable.id, activeDimIds));
+  } else {
+    await db.update(dimensionsTable).set({ active: false });
+  }
   console.log("Dimensions seeded");
 
   // ── Key Processes ───────────────────────────────────────────────────────────
@@ -134,6 +143,7 @@ async function seed() {
         set: {
           description: row.description,
           orderIndex:  row.orderIndex,
+          active:      true,
         },
       });
   }
@@ -166,8 +176,26 @@ async function seed() {
     .select()
     .from(keyProcessesTable)
     .orderBy(keyProcessesTable.dimensionId, keyProcessesTable.orderIndex);
-  const pKPs = allKPs.filter(k => k.dimensionId === dimPessoas.id);
-  const rKPs = allKPs.filter(k => k.dimensionId === dimRE.id);
+
+  // Build a name-keyed map so initiative lookups are always stable regardless
+  // of what stale rows may exist in the DB alongside the seeded ones.
+  const kpByDimAndName = new Map<string, typeof allKPs[0]>();
+  for (const kp of allKPs) {
+    kpByDimAndName.set(`${kp.dimensionId}:${kp.name}`, kp);
+  }
+
+  // Resolve seeded key processes by name — never by position in the DB result set
+  const pKPs = pessoasKPs.map(r => kpByDimAndName.get(`${dimPessoas.id}:${r.name}`)!);
+  const rKPs = reKPs.map(r => kpByDimAndName.get(`${dimRE.id}:${r.name}`)!);
+
+  // Deactivate any key process no longer present in the seed data
+  const seedKPSet = new Set([...pessoasKPs, ...reKPs].map(kp => `${kp.dimensionId}:${kp.name}`));
+  const activeKPIds = allKPs.filter(kp => seedKPSet.has(`${kp.dimensionId}:${kp.name}`)).map(kp => kp.id);
+  if (activeKPIds.length > 0) {
+    await db.update(keyProcessesTable).set({ active: false }).where(notInArray(keyProcessesTable.id, activeKPIds));
+  } else {
+    await db.update(keyProcessesTable).set({ active: false });
+  }
   console.log("Key processes seeded:", allKPs.length);
 
   // ── Strategic Initiatives ───────────────────────────────────────────────────
@@ -184,7 +212,7 @@ async function seed() {
           kri:          row.kri,
           kpi:          row.kpi,
           description:  row.description,
-          active:       row.active,
+          active:       true,
         },
       });
   }
@@ -290,6 +318,18 @@ async function seed() {
   }
 
   const allInits = await db.select().from(strategicInitiativesTable);
+
+  // Deactivate any initiative no longer present in the seed data
+  const seedInitSet = new Set([
+    ...pessoasInits.map(([kpIdx, name]) => `${pKPs[kpIdx]?.id}:${name}`),
+    ...reInits.map(([kpIdx, name]) => `${rKPs[kpIdx]?.id}:${name}`),
+  ]);
+  const activeInitIds = allInits.filter(i => seedInitSet.has(`${i.keyProcessId}:${i.name}`)).map(i => i.id);
+  if (activeInitIds.length > 0) {
+    await db.update(strategicInitiativesTable).set({ active: false }).where(notInArray(strategicInitiativesTable.id, activeInitIds));
+  } else {
+    await db.update(strategicInitiativesTable).set({ active: false });
+  }
   console.log("Strategic initiatives seeded:", allInits.length);
   console.log("\nSeed completed successfully!");
   console.log("\nTest credentials:");

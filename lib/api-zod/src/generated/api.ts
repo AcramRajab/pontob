@@ -267,6 +267,7 @@ export const ListKeyProcessesResponseItem = zod.object({
   name: zod.string(),
   description: zod.string().nullish(),
   orderIndex: zod.number(),
+  active: zod.boolean().optional(),
 });
 export const ListKeyProcessesResponse = zod.array(ListKeyProcessesResponseItem);
 
@@ -288,10 +289,50 @@ export const ListStrategicInitiativesResponseItem = zod.object({
   kri: zod.string(),
   kpi: zod.string(),
   description: zod.string().nullish(),
+  active: zod.boolean().optional(),
 });
 export const ListStrategicInitiativesResponse = zod.array(
   ListStrategicInitiativesResponseItem,
 );
+
+/**
+ * @summary Toggle active status of a dimension (admin/staff only)
+ */
+export const ToggleDimensionActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleDimensionActiveResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Toggle active status of a key process (admin/staff only)
+ */
+export const ToggleKeyProcessActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleKeyProcessActiveResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Toggle active status of a strategic initiative (admin/staff only)
+ */
+export const ToggleStrategicInitiativeActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleStrategicInitiativeActiveResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  active: zod.boolean(),
+});
 
 /**
  * @summary List goals

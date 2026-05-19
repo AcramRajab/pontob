@@ -15,4 +15,5 @@ export interface KeyProcess {
   /** @nullable */
   description?: string | null;
   orderIndex: number;
+  active?: boolean;
 }

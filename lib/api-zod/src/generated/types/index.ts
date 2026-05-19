@@ -16,6 +16,7 @@ export * from "./candidatoInput";
 export * from "./candidatoRecommendation";
 export * from "./candidatoStage";
 export * from "./candidatoUpdate";
+export * from "./catalogToggleResult";
 export * from "./dailyCheckin";
 export * from "./dailyCheckinExecutedToday";
 export * from "./dailyCheckinInput";
