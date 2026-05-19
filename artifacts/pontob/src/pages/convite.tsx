@@ -31,7 +31,7 @@ export default function Convite() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,8 +69,11 @@ export default function Convite() {
         setError(data.error || "Erro ao criar conta.");
         return;
       }
-      setSuccess(true);
-      setTimeout(() => setLocation("/today"), 1500);
+      if (data.status === "pending_approval") {
+        setPendingApproval(true);
+        return;
+      }
+      setLocation("/today");
     } catch {
       setError("Erro de conexão. Tente novamente.");
     } finally {
@@ -105,15 +108,32 @@ export default function Convite() {
     );
   }
 
-  if (success) {
+  if (pendingApproval) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto" />
-            <h2 className="text-lg font-semibold">Conta criada com sucesso!</h2>
-            <p className="text-sm text-muted-foreground">Redirecionando para a plataforma...</p>
-            <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+            <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-lg font-semibold">Cadastro recebido!</h2>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Seu cadastro foi enviado para aprovação do administrador.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Você receberá um <strong>e-mail de confirmação</strong> assim que seu acesso for liberado.
+              </p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800 text-left space-y-1">
+              <p className="font-semibold">O que acontece agora?</p>
+              <p>1. O administrador recebe um e-mail com seus dados</p>
+              <p>2. Ele verifica e clica em "Aprovar acesso"</p>
+              <p>3. Você recebe um e-mail e já pode fazer login</p>
+            </div>
+            <Button variant="outline" onClick={() => setLocation("/login")} className="w-full">
+              Ir para o login
+            </Button>
           </CardContent>
         </Card>
       </div>

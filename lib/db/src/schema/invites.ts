@@ -10,6 +10,9 @@ export const inviteTokensTable = pgTable("invite_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
   usedByUserId: integer("used_by_user_id").references(() => usersTable.id),
+  approvalToken: text("approval_token").unique(),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

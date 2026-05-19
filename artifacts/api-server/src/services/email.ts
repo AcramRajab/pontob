@@ -415,6 +415,173 @@ export async function sendPlannerWeekReopened(opts: {
   });
 }
 
+export async function sendApprovalRequest(opts: {
+  userName: string;
+  userEmail: string;
+  franchiseName: string;
+  role: string;
+  approveUrl: string;
+  rejectUrl: string;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const roleLabel: Record<string, string> = {
+    franqueado: "Franqueado (acesso completo com edição)",
+    responsavel_interno: "Responsável Interno (somente visualização)",
+  };
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: "acramrajab@remax.com.br",
+    subject: `🔔 Novo cadastro aguardando aprovação — ${opts.userName} (${opts.franchiseName})`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#1e40af;padding:28px 24px;border-radius:8px 8px 0 0;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:20px;">Método Ponto B</h1>
+          <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">Aprovação de novo usuário</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
+          <h2 style="font-size:18px;margin-top:0;color:#111;">Novo cadastro aguardando aprovação</h2>
+          <p style="color:#374151;line-height:1.6;">Um novo responsável se cadastrou via link de convite e aguarda sua aprovação antes de poder acessar a plataforma.</p>
+
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0;">
+            <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Dados do cadastro</p>
+            <p style="margin:0 0 8px;font-size:15px;"><strong>Nome:</strong> ${opts.userName}</p>
+            <p style="margin:0 0 8px;font-size:15px;"><strong>E-mail:</strong> ${opts.userEmail}</p>
+            <p style="margin:0 0 8px;font-size:15px;"><strong>Franquia:</strong> ${opts.franchiseName}</p>
+            <p style="margin:0;font-size:15px;"><strong>Perfil:</strong> ${roleLabel[opts.role] ?? opts.role}</p>
+          </div>
+
+          <p style="color:#374151;font-size:14px;font-weight:500;">Você precisa verificar se os dados estão corretos e aprovar o acesso:</p>
+
+          <div style="display:flex;gap:12px;margin:24px 0;text-align:center;">
+            <a href="${opts.approveUrl}"
+               style="background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block;margin-right:12px;">
+              ✅ Aprovar acesso
+            </a>
+            <a href="${opts.rejectUrl}"
+               style="background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block;">
+              ❌ Rejeitar cadastro
+            </a>
+          </div>
+
+          <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin-top:20px;">
+            <p style="margin:0;font-size:13px;color:#92400e;">
+              <strong>⚠️ Atenção:</strong> Cada botão é de uso único. Ao clicar em Aprovar, o usuário receberá acesso imediatamente e um e-mail de boas-vindas.
+              Ao clicar em Rejeitar, o cadastro será removido permanentemente.
+            </p>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendApprovalGranted(opts: {
+  toEmail: string;
+  toName: string;
+  franchiseName: string;
+  role: string;
+  appUrl?: string;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const roleLabel: Record<string, string> = {
+    franqueado: "Franqueado",
+    responsavel_interno: "Responsável Interno",
+  };
+
+  const url = opts.appUrl || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "app"}`;
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `✅ Seu acesso ao Método Ponto B foi aprovado — ${opts.franchiseName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#16a34a;padding:28px 24px;border-radius:8px 8px 0 0;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:20px;">✅ Acesso Aprovado!</h1>
+          <p style="color:#bbf7d0;margin:4px 0 0;font-size:13px;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
+          <h2 style="font-size:18px;margin-top:0;">Olá, ${opts.toName}! 🎉</h2>
+          <p style="color:#374151;line-height:1.6;">
+            Seu cadastro no <strong>Método Ponto B</strong> foi revisado e <strong style="color:#16a34a;">aprovado</strong>.
+            Você já pode acessar a plataforma com o e-mail e senha que cadastrou.
+          </p>
+
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:20px 0;">
+            <p style="margin:0 0 4px;font-size:13px;color:#166534;"><strong>Franquia:</strong> ${opts.franchiseName}</p>
+            <p style="margin:0;font-size:13px;color:#166534;"><strong>Perfil:</strong> ${roleLabel[opts.role] ?? opts.role}</p>
+          </div>
+
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${url}/login" style="background:#1e40af;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;">
+              Acessar o Método Ponto B →
+            </a>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendAdminError(opts: {
+  subject: string;
+  context: string;
+  details: Record<string, unknown>;
+}) {
+  if (!isEmailConfigured()) return;
+
+  const now = new Date().toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+  });
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: "acramrajab@remax.com.br",
+    subject: `🚨 Erro no sistema: ${opts.subject}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#dc2626;padding:24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:18px;">🚨 Erro no Método Ponto B</h1>
+          <p style="color:#fecaca;margin:4px 0 0;font-size:13px;">${now}</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:28px 24px;">
+          <h2 style="font-size:16px;color:#dc2626;margin-top:0;">${opts.subject}</h2>
+          <p style="color:#374151;"><strong>Contexto:</strong> ${opts.context}</p>
+
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0;">
+            <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#991b1b;">Detalhes do erro:</p>
+            <pre style="margin:0;font-size:12px;color:#7f1d1d;white-space:pre-wrap;word-break:break-all;">${JSON.stringify(opts.details, null, 2)}</pre>
+          </div>
+
+          <p style="font-size:13px;color:#374151;">
+            Acesse o painel de administração para investigar e corrigir o problema sem precisar contatar o usuário.
+          </p>
+
+          <div style="text-align:center;margin:20px 0;">
+            <a href="https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "app"}/admin/users"
+               style="background:#1e40af;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block;">
+              Acessar painel admin →
+            </a>
+          </div>
+
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendCheckinReminder(opts: {
   toEmail: string;
   toName: string;

@@ -2,10 +2,48 @@ import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { db, inviteTokensTable, usersTable, franchisesTable } from "@workspace/db";
-import { eq, and, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
+import { sendApprovalRequest, sendApprovalGranted, sendAdminError } from "../services/email";
 
 const router = Router();
+
+function getAppUrl(req: import("express").Request): string {
+  const domains = process.env.REPLIT_DOMAINS;
+  if (domains) return `https://${domains.split(",")[0]}`;
+  const origin = req.headers.origin;
+  if (origin) return origin;
+  return `https://${req.headers.host}`;
+}
+
+const approvalHtml = (ok: boolean, title: string, body: string) => `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title} — Método Ponto B</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: white; border-radius: 12px; padding: 40px 32px; max-width: 440px; width: 100%; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+    .icon { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 22px; margin-bottom: 10px; color: #111; }
+    p { color: #6b7280; line-height: 1.6; font-size: 15px; }
+    .badge { display: inline-block; margin-top: 20px; padding: 8px 20px; border-radius: 9999px; font-size: 13px; font-weight: 600; background: ${ok ? "#f0fdf4" : "#fef2f2"}; color: ${ok ? "#16a34a" : "#dc2626"}; }
+    .footer { margin-top: 32px; font-size: 12px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">${ok ? "✅" : "❌"}</div>
+    <h1>${title}</h1>
+    <p>${body}</p>
+    <div class="badge">${ok ? "Acesso liberado" : "Cadastro removido"}</div>
+    <p class="footer">Método Ponto B — RE/MAX Santa Catarina</p>
+  </div>
+</body>
+</html>`;
 
 router.post("/invites", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
@@ -41,13 +79,18 @@ router.post("/invites", requireAuth, requireRole("master_admin", "staff_regional
       expiresAt,
     });
 
-    const host = req.headers.origin || `https://${req.headers.host}`;
     const base = process.env.BASE_PATH ?? "";
-    const link = `${host}${base}/convite/${token}`;
+    const appUrl = getAppUrl(req);
+    const link = `${appUrl}${base}/convite/${token}`;
 
     res.status(201).json({ token, link, franchiseName: franchise.name, role, expiresAt: expiresAt.toISOString() });
   } catch (err) {
     req.log.error(err);
+    sendAdminError({
+      subject: "Erro ao gerar link de convite",
+      context: `Admin userId=${req.session.userId} tentou gerar convite`,
+      details: { error: String(err), body: req.body },
+    }).catch(() => {});
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -86,11 +129,7 @@ router.get("/invites/:token", async (req, res) => {
       return;
     }
 
-    res.json({
-      valid: true,
-      franchiseName: invite.franchiseName,
-      role: invite.role,
-    });
+    res.json({ valid: true, franchiseName: invite.franchiseName, role: invite.role });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -153,6 +192,8 @@ router.post("/invites/:token/accept", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
+    const approvalToken = crypto.randomBytes(24).toString("hex");
+
     const [user] = await db
       .insert(usersTable)
       .values({
@@ -161,33 +202,173 @@ router.post("/invites/:token/accept", async (req, res) => {
         passwordHash,
         role: invite.role,
         franchiseId: invite.franchiseId,
-        active: true,
+        active: false,
         invitedAt: now,
       })
       .returning();
 
     await db
       .update(inviteTokensTable)
-      .set({ usedAt: now, usedByUserId: user.id })
+      .set({ usedAt: now, usedByUserId: user.id, approvalToken })
       .where(eq(inviteTokensTable.id, invite.id));
 
-    req.session.userId = user.id;
-    req.session.userRole = user.role;
-    req.session.userName = user.name;
-    req.session.userEmail = user.email;
-    req.session.franchiseId = user.franchiseId;
+    const base = process.env.BASE_PATH ?? "";
+    const appUrl = getAppUrl(req);
+    const approveUrl = `${appUrl}${base}/api/invites/approve/${approvalToken}`;
+    const rejectUrl = `${appUrl}${base}/api/invites/reject/${approvalToken}`;
 
-    res.status(201).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      franchiseId: user.franchiseId,
-      franchiseName: invite.franchiseName,
-    });
+    sendApprovalRequest({
+      userName: user.name,
+      userEmail: user.email,
+      franchiseName: invite.franchiseName ?? "—",
+      role: invite.role,
+      approveUrl,
+      rejectUrl,
+    }).catch(err => req.log.error({ err }, "Failed to send approval request email"));
+
+    res.status(201).json({ status: "pending_approval" });
   } catch (err) {
     req.log.error(err);
+    const { name, email } = req.body;
+    sendAdminError({
+      subject: "Erro no cadastro via link de convite",
+      context: `Usuário tentou se cadastrar via convite token=${req.params.token}`,
+      details: { error: String(err), name, email },
+    }).catch(() => {});
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/invites/approve/:approvalToken", async (req, res) => {
+  try {
+    const { approvalToken } = req.params;
+
+    const rows = await db
+      .select({
+        id: inviteTokensTable.id,
+        usedByUserId: inviteTokensTable.usedByUserId,
+        approvedAt: inviteTokensTable.approvedAt,
+        rejectedAt: inviteTokensTable.rejectedAt,
+        role: inviteTokensTable.role,
+        franchiseName: franchisesTable.name,
+      })
+      .from(inviteTokensTable)
+      .leftJoin(franchisesTable, eq(inviteTokensTable.franchiseId, franchisesTable.id))
+      .where(eq(inviteTokensTable.approvalToken, approvalToken))
+      .limit(1);
+
+    const invite = rows[0];
+
+    if (!invite || !invite.usedByUserId) {
+      res.status(404).send(approvalHtml(false, "Link inválido", "Este link de aprovação não é válido ou já foi utilizado."));
+      return;
+    }
+
+    if (invite.approvedAt) {
+      res.send(approvalHtml(true, "Já aprovado", "Este cadastro já foi aprovado anteriormente."));
+      return;
+    }
+
+    if (invite.rejectedAt) {
+      res.send(approvalHtml(false, "Já rejeitado", "Este cadastro já foi rejeitado anteriormente."));
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, invite.usedByUserId))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).send(approvalHtml(false, "Usuário não encontrado", "O cadastro não foi encontrado. Pode ter sido removido."));
+      return;
+    }
+
+    await db.update(usersTable).set({ active: true }).where(eq(usersTable.id, user.id));
+    await db.update(inviteTokensTable).set({ approvedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));
+
+    const appUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : `https://${req.headers.host}`;
+
+    sendApprovalGranted({
+      toEmail: user.email,
+      toName: user.name,
+      franchiseName: invite.franchiseName ?? "—",
+      role: invite.role,
+      appUrl,
+    }).catch(() => {});
+
+    res.send(approvalHtml(true, "Acesso aprovado!", `<strong>${user.name}</strong> agora tem acesso à plataforma. Um e-mail de boas-vindas foi enviado para <strong>${user.email}</strong>.`));
+  } catch (err) {
+    req.log.error(err);
+    sendAdminError({
+      subject: "Erro ao aprovar cadastro",
+      context: `Clique no botão de aprovação falhou: approvalToken=${req.params.approvalToken}`,
+      details: { error: String(err) },
+    }).catch(() => {});
+    res.status(500).send(approvalHtml(false, "Erro ao aprovar", "Ocorreu um erro ao processar a aprovação. Um alerta foi enviado para o administrador."));
+  }
+});
+
+router.get("/invites/reject/:approvalToken", async (req, res) => {
+  try {
+    const { approvalToken } = req.params;
+
+    const rows = await db
+      .select({
+        id: inviteTokensTable.id,
+        usedByUserId: inviteTokensTable.usedByUserId,
+        approvedAt: inviteTokensTable.approvedAt,
+        rejectedAt: inviteTokensTable.rejectedAt,
+        franchiseName: franchisesTable.name,
+        role: inviteTokensTable.role,
+      })
+      .from(inviteTokensTable)
+      .leftJoin(franchisesTable, eq(inviteTokensTable.franchiseId, franchisesTable.id))
+      .where(eq(inviteTokensTable.approvalToken, approvalToken))
+      .limit(1);
+
+    const invite = rows[0];
+
+    if (!invite || !invite.usedByUserId) {
+      res.status(404).send(approvalHtml(false, "Link inválido", "Este link de rejeição não é válido ou já foi utilizado."));
+      return;
+    }
+
+    if (invite.approvedAt) {
+      res.send(approvalHtml(true, "Já aprovado", "Este cadastro já foi aprovado e não pode ser rejeitado."));
+      return;
+    }
+
+    if (invite.rejectedAt) {
+      res.send(approvalHtml(false, "Já rejeitado", "Este cadastro já foi rejeitado anteriormente."));
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.id, invite.usedByUserId))
+      .limit(1);
+
+    const userName = user?.name ?? "Usuário";
+
+    if (user) {
+      await db.delete(usersTable).where(eq(usersTable.id, user.id));
+    }
+    await db.update(inviteTokensTable).set({ rejectedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));
+
+    res.send(approvalHtml(false, "Cadastro rejeitado", `O cadastro de <strong>${userName}</strong> foi removido permanentemente. O usuário não terá acesso à plataforma.`));
+  } catch (err) {
+    req.log.error(err);
+    sendAdminError({
+      subject: "Erro ao rejeitar cadastro",
+      context: `Clique no botão de rejeição falhou: approvalToken=${req.params.approvalToken}`,
+      details: { error: String(err) },
+    }).catch(() => {});
+    res.status(500).send(approvalHtml(false, "Erro ao rejeitar", "Ocorreu um erro ao processar a rejeição. Um alerta foi enviado para o administrador."));
   }
 });
 

@@ -29,8 +29,12 @@ router.post("/auth/login", async (req, res) => {
       .limit(1);
 
     const user = users[0];
-    if (!user || !user.active) {
+    if (!user) {
       res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    if (!user.active) {
+      res.status(403).json({ error: "pending_approval", message: "Seu cadastro está aguardando aprovação pelo administrador. Você receberá um e-mail assim que seu acesso for liberado." });
       return;
     }
 

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mail, Phone } from "lucide-react";
+import { Eye, EyeOff, Mail, Phone, Clock } from "lucide-react";
 
 const formSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -23,6 +23,7 @@ export default function Login() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
+  const [loginError, setLoginError] = useState<{ type: "invalid" | "pending" | "generic"; message?: string } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -36,10 +37,16 @@ export default function Login() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoginError(null);
     try {
       await login(values);
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      const data = error?.data ?? error?.response ?? null;
+      if (data?.error === "pending_approval") {
+        setLoginError({ type: "pending", message: data.message });
+      } else {
+        setLoginError({ type: "invalid" });
+      }
     }
   }
 
@@ -129,6 +136,24 @@ export default function Login() {
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? "Entrando..." : "Entrar"}
                 </Button>
+
+                {loginError?.type === "pending" && (
+                  <div className="flex gap-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                    <Clock className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">Cadastro aguardando aprovação</p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        {loginError.message ?? "Seu acesso ainda não foi liberado. Você receberá um e-mail quando for aprovado."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {loginError?.type === "invalid" && (
+                  <p className="text-sm text-center text-destructive">
+                    E-mail ou senha incorretos.
+                  </p>
+                )}
               </form>
             </Form>
           </CardContent>
