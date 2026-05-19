@@ -91,8 +91,8 @@ export function AppSidebar() {
         {/* Rotina Diária */}
         <NavSection label="Rotina" />
         <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
-        <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
         <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
+        <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
 
         {/* Semana */}
         <NavSection label="Semana" />
