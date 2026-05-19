@@ -10,6 +10,7 @@ Strategic execution SaaS platform for RE/MAX SC franchises. Franchises set goals
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/db run seed` — seed database with franchises, users, dimensions, key processes, and strategic initiatives
+- `pnpm --filter @workspace/db run migrate:deactivate-placeholders` — one-time migration to deactivate old placeholder accounts (admin@remaxsc.com.br, regional@remaxsc.com.br) on any DB seeded before the real-account migration
 - Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — express-session secret
 
 ## Stack
@@ -55,7 +56,6 @@ Strategic execution SaaS platform for RE/MAX SC franchises. Franchises set goals
 - marinasandri@remax.com.br / remax2026 (staff_regional)
 - franqueado@remaxsc.com.br / franqueado123 (franqueado)
 - responsavel@remaxsc.com.br / responsavel123 (responsavel_interno)
-- regional@remaxsc.com.br — deactivated (old test account)
 
 ## User preferences
 

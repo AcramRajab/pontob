@@ -39,15 +39,15 @@ async function seed() {
 
   console.log("Franchises seeded");
 
-  // Users
-  const pass = await bcrypt.hash("admin123", 10);
-  const pass2 = await bcrypt.hash("regional123", 10);
+  // Users — NOTE: this script is superseded by lib/db/src/seed.ts.
+  // Use `pnpm --filter @workspace/db run seed` instead.
+  // Placeholder emails (admin@remaxsc.com.br, regional@remaxsc.com.br) are
+  // intentionally omitted here; run the deactivate-old-placeholders migration
+  // to ensure they are inactive in any environment seeded with this old script.
   const pass3 = await bcrypt.hash("franqueado123", 10);
   const pass4 = await bcrypt.hash("responsavel123", 10);
 
   await db.insert(usersTable).values([
-    { name: "Admin Master", email: "admin@remaxsc.com.br", passwordHash: pass, role: "master_admin", franchiseId: null },
-    { name: "Equipe Regional", email: "regional@remaxsc.com.br", passwordHash: pass2, role: "staff_regional", franchiseId: null },
     { name: "Carlos Mendes", email: "franqueado@remaxsc.com.br", passwordHash: pass3, role: "franqueado", franchiseId: f1?.id ?? 1 },
     { name: "Maria Costa", email: "responsavel@remaxsc.com.br", passwordHash: pass4, role: "responsavel_interno", franchiseId: f1?.id ?? 1 },
   ]).onConflictDoNothing();
@@ -210,12 +210,12 @@ async function seed() {
   }
 
   console.log("Strategic initiatives seeded");
-  console.log("Seed completed successfully!");
-  console.log("\nTest credentials:");
-  console.log("  admin@remaxsc.com.br / admin123 (master_admin)");
-  console.log("  regional@remaxsc.com.br / regional123 (staff_regional)");
+  console.log("Seed completed successfully! (legacy script — use lib/db/src/seed.ts for full seed)");
+  console.log("\nTest credentials seeded by this script:");
   console.log("  franqueado@remaxsc.com.br / franqueado123 (franqueado)");
   console.log("  responsavel@remaxsc.com.br / responsavel123 (responsavel_interno)");
+  console.log("\nNOTE: admin@remaxsc.com.br and regional@remaxsc.com.br are no longer created.");
+  console.log("Run `pnpm --filter @workspace/db run migrate:deactivate-placeholders` to deactivate them.");
 }
 
 seed()
