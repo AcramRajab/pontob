@@ -1,4 +1,4 @@
-import { ExternalLink, Bot, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap, BarChart2, MessageCircle, Home } from "lucide-react";
+import { ExternalLink, Bot, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap, BarChart2, MessageCircle } from "lucide-react";
 import { useAiAssistant } from "@/components/ai-assistant-context";
 
 const AGENTS = [
@@ -134,40 +134,6 @@ export default function Agents() {
         <p className="text-muted-foreground mt-1">
           Escolha o agente certo para cada necessidade do seu dia a dia. Todos os agentes externos abrem no ChatGPT.
         </p>
-      </div>
-
-      {/* Ferramentas externas */}
-      <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="p-5 rounded-2xl border border-border bg-card flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground">Ranking RE/MAX SC</h2>
-            <p className="text-sm text-muted-foreground mt-0.5 leading-snug">Dashboard oficial de performance das franquias.</p>
-          </div>
-          <a
-            href="https://datastudio.google.com/u/0/reporting/b1c7fc2d-78f7-4957-a30d-f5320f991593/page/p_65ekbv19ad"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C8102E] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Abrir
-          </a>
-        </div>
-        <div className="p-5 rounded-2xl border border-border bg-card flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold text-foreground">Hub Minha RE/MAX</h2>
-            <p className="text-sm text-muted-foreground mt-0.5 leading-snug">Portal interno da rede RE/MAX com recursos e ferramentas.</p>
-          </div>
-          <a
-            href="https://hub.minharemax.com/login"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#003DA5] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
-          >
-            <Home className="h-4 w-4" />
-            Abrir
-          </a>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

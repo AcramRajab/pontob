@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
 import { ShortcutsPanel } from "./shortcuts-panel";
+import { RemaxPanel } from "./remax-panel";
 
 
 function NavItem({
@@ -163,6 +164,7 @@ export function AppSidebar() {
 
         {/* Quick actions */}
         <div className="px-2 py-2 space-y-0.5">
+          <RemaxPanel />
           <ShortcutsPanel />
           <button
             onClick={startTour}
