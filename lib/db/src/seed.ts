@@ -13,10 +13,12 @@ const RESET = process.argv.includes("--reset");
 
 const SEED_FRANCHISE_NAMES = ["RE/MAX Franquia Teste", "RE/MAX Capital", "RE/MAX Excellence"];
 const SEED_USER_EMAILS = [
-  "admin@remaxsc.com.br",
-  "regional@remaxsc.com.br",
+  "acramrajab@remax.com.br",
+  "claudiaroncolatto@remax.com.br",
+  "marinasandri@remax.com.br",
   "franqueado@remaxsc.com.br",
   "responsavel@remaxsc.com.br",
+  "regional@remaxsc.com.br",
 ];
 
 async function seed() {
@@ -64,17 +66,19 @@ async function seed() {
 
   // ── Users ───────────────────────────────────────────────────────────────────
   const passwords = {
-    admin:      await bcrypt.hash("admin123",      10),
-    regional:   await bcrypt.hash("regional123",   10),
-    franqueado: await bcrypt.hash("franqueado123", 10),
-    responsavel: await bcrypt.hash("responsavel123", 10),
+    admin123:       await bcrypt.hash("admin123",       10),
+    remax2026:      await bcrypt.hash("remax2026",      10),
+    franqueado123:  await bcrypt.hash("franqueado123",  10),
+    responsavel123: await bcrypt.hash("responsavel123", 10),
   };
 
   const userData = [
-    { name: "Admin Master",   email: "admin@remaxsc.com.br",      passwordHash: passwords.admin,       role: "master_admin",        franchiseId: null    },
-    { name: "Equipe Regional", email: "regional@remaxsc.com.br",  passwordHash: passwords.regional,    role: "staff_regional",      franchiseId: null    },
-    { name: "Carlos Mendes",  email: "franqueado@remaxsc.com.br", passwordHash: passwords.franqueado,  role: "franqueado",          franchiseId: f1.id   },
-    { name: "Maria Costa",    email: "responsavel@remaxsc.com.br",passwordHash: passwords.responsavel, role: "responsavel_interno", franchiseId: f1.id   },
+    { name: "Acram Rajab",         email: "acramrajab@remax.com.br",       passwordHash: passwords.admin123,       role: "master_admin",        franchiseId: null,  active: true  },
+    { name: "Claudia Roncolatto",  email: "claudiaroncolatto@remax.com.br",passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: true  },
+    { name: "Marina Sandri",       email: "marinasandri@remax.com.br",     passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: true  },
+    { name: "Carlos Mendes",       email: "franqueado@remaxsc.com.br",     passwordHash: passwords.franqueado123,  role: "franqueado",          franchiseId: f1.id, active: true  },
+    { name: "Maria Costa",         email: "responsavel@remaxsc.com.br",    passwordHash: passwords.responsavel123, role: "responsavel_interno", franchiseId: f1.id, active: true  },
+    { name: "Regional (legacy)",   email: "regional@remaxsc.com.br",       passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: false },
   ];
 
   for (const u of userData) {
@@ -88,6 +92,7 @@ async function seed() {
           passwordHash: u.passwordHash,
           role:         u.role,
           franchiseId:  u.franchiseId,
+          active:       u.active,
         },
       });
   }
@@ -288,10 +293,12 @@ async function seed() {
   console.log("Strategic initiatives seeded:", allInits.length);
   console.log("\nSeed completed successfully!");
   console.log("\nTest credentials:");
-  console.log("  admin@remaxsc.com.br      / admin123       (master_admin)");
-  console.log("  regional@remaxsc.com.br   / regional123    (staff_regional)");
-  console.log("  franqueado@remaxsc.com.br / franqueado123  (franqueado)");
-  console.log("  responsavel@remaxsc.com.br / responsavel123 (responsavel_interno)");
+  console.log("  acramrajab@remax.com.br         / admin123       (master_admin)");
+  console.log("  claudiaroncolatto@remax.com.br  / remax2026      (staff_regional)");
+  console.log("  marinasandri@remax.com.br       / remax2026      (staff_regional)");
+  console.log("  franqueado@remaxsc.com.br       / franqueado123  (franqueado)");
+  console.log("  responsavel@remaxsc.com.br      / responsavel123 (responsavel_interno)");
+  console.log("  regional@remaxsc.com.br         (staff_regional, DEACTIVATED — legacy account)");
 }
 
 seed()
