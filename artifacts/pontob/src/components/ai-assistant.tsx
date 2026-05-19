@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const SPIN_URL = "https://chatgpt.com/g/g-6830c25fdf3081918c35b78a6a5a87db-const
 const CONSELHO_URL = "https://chatgpt.com/g/g-68b4aaa283cc8191a267bd86646246ac-conselho-templum-evolutto";
 const CONSELHO_VIP_URL = "https://chatgpt.com/g/g-68bb3895e7f481918813f5a663bebf2f-conselho-vip-franqueados-re-max";
 const NUTRICAO_LEADS_URL = "https://chatgpt.com/g/g-67c5970a28588191b56f153a9f761d52-nutricao-de-leads-por-e-mail";
+const WEB_BROWSER_URL = "https://chatgpt.com/g/g-3w1rEXGE0-web-browser";
 
 interface Message {
   role: "user" | "assistant";
@@ -281,6 +282,21 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
           </a>
+          <a
+            href={WEB_BROWSER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <Globe className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Web Browser</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(q => (
               <button
@@ -401,6 +417,16 @@ export function AiAssistantButton() {
         >
           <Mail className="h-4 w-4 shrink-0" />
           <span>Nutrição de Leads por E-mail</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+        <a
+          href={WEB_BROWSER_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 transition-colors"
+        >
+          <Globe className="h-4 w-4 shrink-0" />
+          <span>Web Browser</span>
           <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
         </a>
       </div>
