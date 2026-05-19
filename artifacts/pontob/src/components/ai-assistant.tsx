@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const BROKERS_SDR_URL = "https://chatgpt.com/g/g-68be1c658e98819198dc349421011784-assitente-de-brokers-e-sdr-re-max";
 const CURRICULOS_URL = "https://chatgpt.com/g/g-6829f77aa8a48191a9decf10f23409f8-templum-analizador-de-curriculos";
+const BANT_URL = "https://chatgpt.com/g/g-68307072b6fc8191bbdd83d1c338f7fa-construtor-bant-script-de-pre-vendas-aptitude-r";
 
 interface Message {
   role: "user" | "assistant";
@@ -201,6 +202,21 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
           </a>
+          <a
+            href={BANT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <PhoneCall className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Construtor BANT &amp; Script</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(q => (
               <button
@@ -271,6 +287,16 @@ export function AiAssistantButton() {
         >
           <FileText className="h-4 w-4 shrink-0" />
           <span>Analisador de Currículos</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+        <a
+          href={BANT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 transition-colors"
+        >
+          <PhoneCall className="h-4 w-4 shrink-0" />
+          <span>Construtor BANT &amp; Script</span>
           <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
         </a>
       </div>
