@@ -43,6 +43,8 @@ import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
 import Convite from "@/pages/convite";
 import Agents from "@/pages/agents";
+import Jornada from "@/pages/jornada";
+import Coaching from "@/pages/coaching";
 
 function RootRedirect() {
   window.location.replace("/today");
@@ -165,6 +167,12 @@ function Router() {
         </Route>
         <Route path="/agents">
           <ProtectedRoute><Agents /></ProtectedRoute>
+        </Route>
+        <Route path="/jornada">
+          <ProtectedRoute><Jornada /></ProtectedRoute>
+        </Route>
+        <Route path="/coaching">
+          <ProtectedRoute><Coaching /></ProtectedRoute>
         </Route>
         <Route path="/">
           <ProtectedRoute><RootRedirect /></ProtectedRoute>

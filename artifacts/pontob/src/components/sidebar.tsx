@@ -6,7 +6,7 @@ import {
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
   TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle,
-  Sparkles,
+  Sparkles, Navigation, BrainCircuit,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
@@ -29,7 +29,7 @@ function NavItem({
     <Link href={href}>
       <div
         className={cn(
-          "flex items-center gap-2.5 mx-2 px-2.5 py-[7px] rounded-md text-[14px] font-medium transition-colors cursor-pointer select-none",
+          "flex items-center gap-2.5 mx-2 px-2.5 py-[7px] rounded-md text-[15px] font-medium transition-colors cursor-pointer select-none",
           active
             ? "bg-white/[0.12] text-white"
             : "text-white/70 hover:text-white hover:bg-white/[0.07]"
@@ -45,7 +45,7 @@ function NavItem({
 function NavSection({ label }: { label: string }) {
   return (
     <div className="px-4 pt-5 pb-1">
-      <span className="text-[10px] font-semibold tracking-widest uppercase text-white/40">
+      <span className="text-[11px] font-semibold tracking-widest uppercase text-white/40">
         {label}
       </span>
     </div>
@@ -112,6 +112,8 @@ export function AppSidebar() {
         {(isMasterAdmin || isStaffRegional || isFranqueado) && (
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
         )}
+        <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
+        <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
         <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
         <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
         <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
@@ -168,7 +170,7 @@ export function AppSidebar() {
           <ShortcutsPanel />
           <button
             onClick={startTour}
-            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[15px] font-medium text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors"
           >
             <Sparkles className="h-[15px] w-[15px] shrink-0 text-white/60" strokeWidth={1.8} />
             <span>Tutorial</span>
@@ -183,8 +185,8 @@ export function AppSidebar() {
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-medium text-white/80 truncate">{user.name}</p>
-            <p className="text-[10px] text-white/35 truncate">{user.franchiseName || user.role}</p>
+            <p className="text-[13px] font-medium text-white/80 truncate">{user.name}</p>
+            <p className="text-[11px] text-white/35 truncate">{user.franchiseName || user.role}</p>
           </div>
           <button
             onClick={() => logout()}
