@@ -167,6 +167,20 @@ router.post("/goals", requireAuth, requireWriteAccess, async (req, res) => {
       kriDescription, currentValue, targetValue, unit,
       startDate, endDate, ownerUserId, frequency,
       status: "em_andamento",
+    }).onConflictDoUpdate({
+      target: [goalsTable.franchiseId, goalsTable.keyProcessId, goalsTable.startDate],
+      targetWhere: sql`start_date IS NOT NULL`,
+      set: {
+        dimensionId: sql`excluded.dimension_id`,
+        title: sql`excluded.title`,
+        kriDescription: sql`excluded.kri_description`,
+        currentValue: sql`excluded.current_value`,
+        targetValue: sql`excluded.target_value`,
+        unit: sql`excluded.unit`,
+        endDate: sql`excluded.end_date`,
+        ownerUserId: sql`excluded.owner_user_id`,
+        frequency: sql`excluded.frequency`,
+      },
     }).returning();
     const enriched = await enrichGoal({ ...g, franchiseName: null, dimensionName: null, keyProcessName: null, ownerName: null });
     res.status(201).json(enriched);

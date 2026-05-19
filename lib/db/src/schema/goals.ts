@@ -1,4 +1,5 @@
-import { pgTable, serial, text, boolean, integer, timestamp, real, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, real, date, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { franchisesTable } from "./users";
@@ -25,7 +26,9 @@ export const goalsTable = pgTable("goals", {
   score: real("score").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("goals_franchise_keyprocess_startdate_uniq").on(t.franchiseId, t.keyProcessId, t.startDate).where(sql`start_date IS NOT NULL`),
+]);
 
 export const insertGoalSchema = createInsertSchema(goalsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertGoal = z.infer<typeof insertGoalSchema>;

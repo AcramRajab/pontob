@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, timestamp, real, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, real, date, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { franchisesTable, usersTable } from "./users";
@@ -19,7 +19,9 @@ export const dailyCheckinsTable = pgTable("daily_checkins", {
   needsHelp: boolean("needs_help").notNull().default(false),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique("daily_checkins_franchise_date_uniq").on(t.franchiseId, t.date),
+]);
 
 export const insertDailyCheckinSchema = createInsertSchema(dailyCheckinsTable).omit({ id: true, createdAt: true });
 export type InsertDailyCheckin = z.infer<typeof insertDailyCheckinSchema>;
@@ -43,7 +45,9 @@ export const weeklyCheckinsTable = pgTable("weekly_checkins", {
   executionPercentage: real("execution_percentage"),
   checkinDaysCount: integer("checkin_days_count"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique("weekly_checkins_franchise_weekstart_uniq").on(t.franchiseId, t.weekStartDate),
+]);
 
 export const insertWeeklyCheckinSchema = createInsertSchema(weeklyCheckinsTable).omit({ id: true, createdAt: true });
 export type InsertWeeklyCheckin = z.infer<typeof insertWeeklyCheckinSchema>;
@@ -66,7 +70,9 @@ export const monthlyCheckinsTable = pgTable("monthly_checkins", {
   startDoing: text("start_doing"),
   nextMonthFocus: text("next_month_focus"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique("monthly_checkins_franchise_month_year_uniq").on(t.franchiseId, t.month, t.year),
+]);
 
 export const insertMonthlyCheckinSchema = createInsertSchema(monthlyCheckinsTable).omit({ id: true, createdAt: true });
 export type InsertMonthlyCheckin = z.infer<typeof insertMonthlyCheckinSchema>;
