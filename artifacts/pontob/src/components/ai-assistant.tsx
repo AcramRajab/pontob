@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, Send, X, Loader2, RotateCcw, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-
+import { AiAssistantContext } from "./ai-assistant-context";
 
 interface Message {
   role: "user" | "assistant";
@@ -207,16 +207,6 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-interface AiAssistantContextType {
-  openAssistant: () => void;
-}
-
-const AiAssistantContext = createContext<AiAssistantContextType>({ openAssistant: () => {} });
-
-export function useAiAssistant() {
-  return useContext(AiAssistantContext);
-}
-
 export function AiAssistantProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
@@ -224,6 +214,15 @@ export function AiAssistantProvider({ children }: { children: React.ReactNode })
     <AiAssistantContext.Provider value={{ openAssistant: () => setOpen(true) }}>
       {children}
       {open && <AssistantPanel onClose={() => setOpen(false)} />}
+      {!open && (
+        <button
+          onClick={() => setOpen(true)}
+          title="Assistente IA"
+          className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+        >
+          <MessageCircle className="h-5 w-5" />
+        </button>
+      )}
     </AiAssistantContext.Provider>
   );
 }

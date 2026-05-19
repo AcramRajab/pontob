@@ -6,24 +6,11 @@ import {
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
   TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle,
-  Sparkles, MessageCircle,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAiAssistant } from "./ai-assistant";
 import { useTour } from "./tour-guide";
 
-const SHORTCUTS = [
-  { label: "ChatGPT",            url: "https://chatgpt.com",                abbr: "GP", color: "#10a37f" },
-  { label: "Gemini",             url: "https://gemini.google.com",           abbr: "Ge", color: "#4285F4" },
-  { label: "Perplexity",         url: "https://perplexity.ai",               abbr: "Pp", color: "#20808D" },
-  { label: "Copilot",            url: "https://copilot.microsoft.com",       abbr: "Co", color: "#0078D4" },
-  { label: "Gmail",              url: "https://mail.google.com",             abbr: "GM", color: "#EA4335" },
-  { label: "Google Calendar",    url: "https://calendar.google.com",         abbr: "GC", color: "#1967D2" },
-  { label: "WhatsApp Web",       url: "https://web.whatsapp.com",            abbr: "WA", color: "#25D366" },
-  { label: "Canva",              url: "https://canva.com",                   abbr: "Cv", color: "#7D2AE8" },
-  { label: "Google Drive",       url: "https://drive.google.com",            abbr: "GD", color: "#FBBC04" },
-  { label: "Meta Business",      url: "https://business.facebook.com",       abbr: "MB", color: "#1877F2" },
-];
 
 function NavItem({
   href,
@@ -40,13 +27,13 @@ function NavItem({
     <Link href={href}>
       <div
         className={cn(
-          "flex items-center gap-2.5 mx-2 px-2.5 py-[6px] rounded-md text-[13px] font-medium transition-colors cursor-pointer select-none",
+          "flex items-center gap-2.5 mx-2 px-2.5 py-[7px] rounded-md text-[14px] font-medium transition-colors cursor-pointer select-none",
           active
-            ? "bg-white/[0.10] text-white"
-            : "text-white/50 hover:text-white/85 hover:bg-white/[0.05]"
+            ? "bg-white/[0.12] text-white"
+            : "text-white/70 hover:text-white hover:bg-white/[0.07]"
         )}
       >
-        <Icon className={cn("h-[15px] w-[15px] shrink-0", active ? "text-white" : "text-white/45")} strokeWidth={active ? 2.2 : 1.8} />
+        <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-white/60")} strokeWidth={active ? 2.2 : 1.8} />
         <span className="truncate">{label}</span>
       </div>
     </Link>
@@ -56,7 +43,7 @@ function NavItem({
 function NavSection({ label }: { label: string }) {
   return (
     <div className="px-4 pt-5 pb-1">
-      <span className="text-[10px] font-semibold tracking-widest uppercase text-white/25">
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-white/40">
         {label}
       </span>
     </div>
@@ -71,7 +58,6 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { startTour } = useTour();
-  const { openAssistant } = useAiAssistant();
 
   if (!user) return null;
 
@@ -173,35 +159,9 @@ export function AppSidebar() {
 
       {/* ── FOOTER ── */}
       <div className="border-t border-white/[0.06] shrink-0">
-        {/* External shortcuts */}
-        <div className="px-3 py-2.5 border-b border-white/[0.06]">
-          <p className="text-[9px] font-semibold tracking-widest uppercase text-white/20 mb-2">Atalhos</p>
-          <div className="flex flex-wrap gap-1.5">
-            {SHORTCUTS.map(s => (
-              <a
-                key={s.label}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={s.label}
-                className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white transition-opacity opacity-75 hover:opacity-100 select-none shrink-0"
-                style={{ backgroundColor: s.color }}
-              >
-                {s.abbr}
-              </a>
-            ))}
-          </div>
-        </div>
 
         {/* Quick actions */}
         <div className="px-2 py-2 space-y-0.5">
-          <button
-            onClick={openAssistant}
-            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/50 hover:text-white/85 hover:bg-white/[0.05] transition-colors"
-          >
-            <MessageCircle className="h-[15px] w-[15px] shrink-0 text-white/40" strokeWidth={1.8} />
-            <span>Assistente IA</span>
-          </button>
           <button
             onClick={startTour}
             className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/50 hover:text-white/85 hover:bg-white/[0.05] transition-colors"

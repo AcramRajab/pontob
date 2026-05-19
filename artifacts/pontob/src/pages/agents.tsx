@@ -136,6 +136,23 @@ export default function Agents() {
         </p>
       </div>
 
+      {/* Ferramentas externas */}
+      <div className="mb-8 p-5 rounded-2xl border border-border bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Ranking RE/MAX SC</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Dashboard oficial com o ranking de performance das franquias RE/MAX SC.</p>
+        </div>
+        <a
+          href="https://datastudio.google.com/u/0/reporting/b1c7fc2d-78f7-4957-a30d-f5320f991593/page/p_65ekbv19ad"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#C8102E] text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Abrir Ranking
+        </a>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {AGENTS.map((agent) => {
           const Icon = agent.icon;
