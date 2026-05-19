@@ -16,6 +16,7 @@ import notificationsRouter from "./notifications";
 import plannerRouter from "./planner";
 import visaoRouter from "./visao";
 import auditRouter from "./audit";
+import invitesRouter from "./invites";
 
 const router: IRouter = Router();
 
@@ -23,6 +24,7 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(franchisesRouter);
 router.use(usersRouter);
+router.use(invitesRouter);
 router.use(catalogRouter);
 router.use(goalsRouter);
 router.use(checkinsRouter);

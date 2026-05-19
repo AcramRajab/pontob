@@ -10,7 +10,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && !user && location !== "/login") {
+    if (!isLoading && !user && location !== "/login" && !location.startsWith("/convite/")) {
       setLocation("/login");
     }
   }, [user, isLoading, location, setLocation]);

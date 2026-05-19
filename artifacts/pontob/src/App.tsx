@@ -40,6 +40,7 @@ import PlannerRegistro from "@/pages/planner-registro";
 import PlannerHistorico from "@/pages/planner-historico";
 import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
+import Convite from "@/pages/convite";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +55,7 @@ function Router() {
   return (
     <Layout>
       <Switch>
+        <Route path="/convite/:token" component={Convite} />
         <Route path="/login" component={Login} />
         <Route path="/today" component={Today} />
         <Route path="/dashboard" component={Dashboard} />

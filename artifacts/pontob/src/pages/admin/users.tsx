@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check } from "lucide-react";
 import { useState } from "react";
 
 const roleLabel: Record<string, string> = {
@@ -38,6 +38,17 @@ interface UserForm {
   franchiseId: string;
 }
 
+interface InviteForm {
+  franchiseId: string;
+  role: string;
+}
+
+interface GeneratedInvite {
+  link: string;
+  franchiseName: string;
+  role: string;
+}
+
 function InviteStatusBadge({ user }: { user: any }) {
   if (!INVITATION_ROLES.includes(user.role)) return null;
   if (user.lastLoginAt) {
@@ -53,6 +64,146 @@ function InviteStatusBadge({ user }: { user: any }) {
       <Clock className="h-3 w-3" />
       Aguardando
     </Badge>
+  );
+}
+
+function InviteLinkDialog({ franchises }: { franchises: any[] }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [generated, setGenerated] = useState<GeneratedInvite | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [inviteRole, setInviteRole] = useState("franqueado");
+  const [inviteFranchise, setInviteFranchise] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const handleOpen = (v: boolean) => {
+    setOpen(v);
+    if (!v) {
+      setGenerated(null);
+      setCopied(false);
+      setInviteRole("franqueado");
+      setInviteFranchise("");
+    }
+  };
+
+  const generate = async () => {
+    if (!inviteFranchise) {
+      toast({ title: "Selecione uma franquia", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/invites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ franchiseId: parseInt(inviteFranchise), role: inviteRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao gerar convite");
+      setGenerated({ link: data.link, franchiseName: data.franchiseName, role: data.role });
+    } catch (err: any) {
+      toast({ title: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!generated) return;
+    navigator.clipboard.writeText(generated.link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleWhatsApp = () => {
+    if (!generated) return;
+    const text = `Olá! Você foi convidado para acessar a plataforma Método Ponto B.\n\nFranquia: ${generated.franchiseName}\nAcesso: ${roleLabel[generated.role] ?? generated.role}\n\nClique no link abaixo para criar sua conta:\n${generated.link}\n\nO link é válido por 30 dias.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" data-testid="button-generate-invite">
+          <Link2 className="h-4 w-4 mr-1.5" /> Gerar link de convite
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Gerar link de convite</DialogTitle>
+        </DialogHeader>
+        {!generated ? (
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-muted-foreground">
+              Gere um link único para que um responsável ou franqueado crie sua própria conta. O link expira em 30 dias.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Franquia *</Label>
+              <Select value={inviteFranchise} onValueChange={setInviteFranchise}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a franquia" />
+                </SelectTrigger>
+                <SelectContent>
+                  {franchises.map((f: any) => (
+                    <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de acesso *</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="franqueado">Franqueado — acesso completo (pode editar)</SelectItem>
+                  <SelectItem value="responsavel_interno">Responsável Interno — somente visualização</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => handleOpen(false)}>Cancelar</Button>
+              <Button onClick={generate} disabled={loading || !inviteFranchise}>
+                {loading ? "Gerando..." : "Gerar link"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 mt-2">
+            <div className="rounded-lg bg-green-50 border border-green-200 p-3 space-y-1">
+              <p className="text-sm font-medium text-green-800">Link gerado com sucesso!</p>
+              <p className="text-xs text-green-700">
+                Franquia: <strong>{generated.franchiseName}</strong> · Acesso: <strong>{roleLabel[generated.role] ?? generated.role}</strong>
+              </p>
+              <p className="text-xs text-green-600">Válido por 30 dias · Uso único</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Link de cadastro</Label>
+              <div className="flex gap-2">
+                <Input value={generated.link} readOnly className="text-xs font-mono" />
+                <Button size="icon" variant="outline" onClick={handleCopy} title="Copiar link">
+                  {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={handleCopy}>
+                {copied ? <><Check className="h-4 w-4 mr-1.5 text-green-600" /> Copiado!</> : <><Copy className="h-4 w-4 mr-1.5" /> Copiar link</>}
+              </Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleWhatsApp}>
+                WhatsApp
+              </Button>
+            </div>
+            <Button variant="ghost" className="w-full text-sm" onClick={() => { setGenerated(null); setCopied(false); }}>
+              Gerar novo link
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -172,123 +323,126 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
           <p className="text-muted-foreground mt-1">Gestão de usuários e permissões</p>
         </div>
-        <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
-          <DialogTrigger asChild>
-            <Button size="sm" data-testid="button-new-user" onClick={() => { reset({ role: "responsavel_interno", franchiseId: "none" }); setEditId(null); setOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1.5" /> Novo Usuário
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
-              <div className="space-y-1.5">
-                <Label>Nome completo *</Label>
-                <Input
-                  {...register("name", { required: "Campo obrigatório" })}
-                  placeholder="Ex: João Silva"
-                  data-testid="input-name"
-                />
-                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>E-mail *</Label>
-                <Input
-                  type="email"
-                  {...register("email", { required: "Campo obrigatório" })}
-                  placeholder="joao@exemplo.com.br"
-                  data-testid="input-email"
-                />
-                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>{editId ? "Nova Senha" : "Senha *"}</Label>
-                <div className="relative">
+        <div className="flex gap-2 flex-wrap">
+          <InviteLinkDialog franchises={franchises} />
+          <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
+            <DialogTrigger asChild>
+              <Button size="sm" data-testid="button-new-user" onClick={() => { reset({ role: "responsavel_interno", franchiseId: "none" }); setEditId(null); setOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1.5" /> Novo Usuário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
+                <div className="space-y-1.5">
+                  <Label>Nome completo *</Label>
                   <Input
-                    type={showPass ? "text" : "password"}
-                    {...register("password", {
-                      required: editId ? false : "Campo obrigatório",
-                      minLength: { value: 6, message: "Mínimo 6 caracteres" },
-                    })}
-                    placeholder={editId ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"}
-                    data-testid="input-password"
-                    className="pr-10"
+                    {...register("name", { required: "Campo obrigatório" })}
+                    placeholder="Ex: João Silva"
+                    data-testid="input-name"
                   />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPass(p => !p)}
-                    tabIndex={-1}
-                  >
-                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                 </div>
-                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                {editId ? (
-                  <p className="text-xs text-muted-foreground">Preencha somente se quiser redefinir a senha deste usuário.</p>
-                ) : null}
-              </div>
 
-              <div className="space-y-1.5">
-                <Label>Perfil *</Label>
-                <Controller
-                  name="role"
-                  control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger data-testid="select-role">
-                        <SelectValue placeholder="Selecione o perfil" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(roleLabel).map(([v, l]) => (
-                          <SelectItem key={v} value={v}>{l}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.role && <p className="text-xs text-destructive">Campo obrigatório</p>}
-              </div>
+                <div className="space-y-1.5">
+                  <Label>E-mail *</Label>
+                  <Input
+                    type="email"
+                    {...register("email", { required: "Campo obrigatório" })}
+                    placeholder="joao@exemplo.com.br"
+                    data-testid="input-email"
+                  />
+                  {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                </div>
 
-              <div className="space-y-1.5">
-                <Label>Franquia</Label>
-                <Controller
-                  name="franchiseId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value || "none"} onValueChange={field.onChange}>
-                      <SelectTrigger data-testid="select-franchise">
-                        <SelectValue placeholder="Sem franquia" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sem franquia</SelectItem>
-                        {franchises.map((f: any) => (
-                          <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <Label>{editId ? "Nova Senha" : "Senha *"}</Label>
+                  <div className="relative">
+                    <Input
+                      type={showPass ? "text" : "password"}
+                      {...register("password", {
+                        required: editId ? false : "Campo obrigatório",
+                        minLength: { value: 6, message: "Mínimo 6 caracteres" },
+                      })}
+                      placeholder={editId ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"}
+                      data-testid="input-password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setShowPass(p => !p)}
+                      tabIndex={-1}
+                    >
+                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                  {editId ? (
+                    <p className="text-xs text-muted-foreground">Preencha somente se quiser redefinir a senha deste usuário.</p>
+                  ) : null}
+                </div>
 
-              <div className="flex gap-2 justify-end pt-1">
-                <Button variant="outline" type="button" onClick={closeDialog}>Cancelar</Button>
-                <Button type="submit" disabled={create.isPending || update.isPending} data-testid="button-save">
-                  {create.isPending || update.isPending ? "Salvando..." : editId ? "Salvar alterações" : "Criar usuário"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-1.5">
+                  <Label>Perfil *</Label>
+                  <Controller
+                    name="role"
+                    control={control}
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-role">
+                          <SelectValue placeholder="Selecione o perfil" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(roleLabel).map(([v, l]) => (
+                            <SelectItem key={v} value={v}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.role && <p className="text-xs text-destructive">Campo obrigatório</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Franquia</Label>
+                  <Controller
+                    name="franchiseId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value || "none"} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-franchise">
+                          <SelectValue placeholder="Sem franquia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem franquia</SelectItem>
+                          {franchises.map((f: any) => (
+                            <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                <div className="flex gap-2 justify-end pt-1">
+                  <Button variant="outline" type="button" onClick={closeDialog}>Cancelar</Button>
+                  <Button type="submit" disabled={create.isPending || update.isPending} data-testid="button-save">
+                    {create.isPending || update.isPending ? "Salvando..." : editId ? "Salvar alterações" : "Criar usuário"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {isLoading ? (
