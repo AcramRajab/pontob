@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
+import { ShortcutsPanel } from "./shortcuts-panel";
 
 
 function NavItem({
@@ -162,11 +163,12 @@ export function AppSidebar() {
 
         {/* Quick actions */}
         <div className="px-2 py-2 space-y-0.5">
+          <ShortcutsPanel />
           <button
             onClick={startTour}
-            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/50 hover:text-white/85 hover:bg-white/[0.05] transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/70 hover:text-white hover:bg-white/[0.07] transition-colors"
           >
-            <Sparkles className="h-[15px] w-[15px] shrink-0 text-white/40" strokeWidth={1.8} />
+            <Sparkles className="h-[15px] w-[15px] shrink-0 text-white/60" strokeWidth={1.8} />
             <span>Tutorial</span>
           </button>
         </div>
