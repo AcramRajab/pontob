@@ -1,42 +1,38 @@
+import remaxScLogo from "@assets/WhatsApp_Image_2026-05-18_at_18.44.45_1779162530724.jpeg";
+
 export default function Capa() {
   return (
-    <div className="relative w-screen h-screen overflow-hidden" style={{ background: "#0d0d0d" }}>
-      {/* Red diagonal accent */}
-      <div className="absolute" style={{ top: 0, right: 0, width: "38vw", height: "100vh", background: "linear-gradient(135deg, transparent 40%, #DC1C2E22 100%)" }} />
-      <div className="absolute" style={{ top: 0, right: 0, width: "6px", height: "100vh", background: "#DC1C2E" }} />
+    <div className="relative w-screen h-screen overflow-hidden" style={{ background: "#00237D" }}>
+      {/* Background subtle arcs matching the logo aesthetic */}
+      <div className="absolute" style={{ right: "-8vw", top: "-8vh", width: "55vw", height: "55vw", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)" }} />
+      <div className="absolute" style={{ right: "-14vw", top: "-14vh", width: "70vw", height: "70vw", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.05)" }} />
+      <div className="absolute" style={{ left: "-5vw", bottom: "-10vh", width: "30vw", height: "30vw", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.06)" }} />
 
-      {/* RE/MAX badge top right */}
-      <div className="absolute" style={{ top: "5vh", right: "6vw" }}>
-        <div style={{ fontFamily: "Barlow Condensed", fontSize: "2.2vw", fontWeight: 900, color: "#DC1C2E", letterSpacing: "0.05em" }}>RE/MAX</div>
-        <div style={{ fontFamily: "Barlow", fontSize: "1.4vw", fontWeight: 400, color: "#9CA3AF", letterSpacing: "0.2em", textTransform: "uppercase" }}>Santa Catarina</div>
+      {/* Main logo — hero element */}
+      <div className="absolute flex items-center justify-center" style={{ top: "18vh", left: "5vw", right: "5vw", height: "42vh" }}>
+        <img
+          src={remaxScLogo}
+          crossOrigin="anonymous"
+          alt="RE/MAX Santa Catarina"
+          style={{ maxWidth: "80vw", maxHeight: "42vh", objectFit: "contain" }}
+        />
       </div>
 
-      {/* Main content */}
-      <div className="absolute flex flex-col justify-center" style={{ left: "8vw", top: "18vh", width: "56vw" }}>
-        <div style={{ fontFamily: "Barlow Condensed", fontSize: "2vw", fontWeight: 600, color: "#DC1C2E", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: "2vh" }}>
-          Método Ponto B
+      {/* Tagline below logo */}
+      <div className="absolute flex flex-col items-center" style={{ bottom: "16vh", left: "5vw", right: "5vw", textAlign: "center" }}>
+        <div style={{ width: "8vw", height: "3px", background: "#DC1C2E", marginBottom: "3vh" }} />
+        <div style={{ fontFamily: "Barlow Condensed", fontSize: "3.8vw", fontWeight: 900, color: "#ffffff", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Carreira de Sucesso
         </div>
-        <div style={{ fontFamily: "Barlow Condensed", fontSize: "8.5vw", fontWeight: 900, color: "#F5F5F5", lineHeight: 0.88, letterSpacing: "-0.02em", textWrap: "balance" }}>
-          CARREIRA
-        </div>
-        <div style={{ fontFamily: "Barlow Condensed", fontSize: "8.5vw", fontWeight: 900, color: "#DC1C2E", lineHeight: 0.88, letterSpacing: "-0.02em", marginBottom: "3vh" }}>
-          DE SUCESSO
-        </div>
-        <div style={{ fontFamily: "Barlow Condensed", fontSize: "4vw", fontWeight: 700, color: "#F5F5F5", letterSpacing: "0.05em", opacity: 0.75 }}>
-          NO SETOR IMOBILIÁRIO
-        </div>
-
-        <div style={{ marginTop: "5vh", width: "12vw", height: "3px", background: "#DC1C2E" }} />
-
-        <div style={{ marginTop: "2.5vh", fontFamily: "Barlow", fontSize: "2vw", fontWeight: 400, color: "#9CA3AF" }}>
+        <div style={{ fontFamily: "Barlow", fontSize: "2vw", fontWeight: 400, color: "rgba(255,255,255,0.7)", marginTop: "1.2vh", letterSpacing: "0.15em", textTransform: "uppercase" }}>
           Do Licenciado ao Líder do Setor
         </div>
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between" style={{ padding: "2vh 6vw", borderTop: "1px solid #1f1f1f" }}>
-        <span style={{ fontFamily: "Barlow", fontSize: "1.6vw", color: "#6B7280" }}>@acramrajab</span>
-        <span style={{ fontFamily: "Barlow", fontSize: "1.6vw", color: "#6B7280" }}>RE/MAX Santa Catarina</span>
+      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between" style={{ padding: "2vh 6vw", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <span style={{ fontFamily: "Barlow", fontSize: "1.6vw", color: "rgba(255,255,255,0.45)" }}>@acramrajab</span>
+        <span style={{ fontFamily: "Barlow", fontSize: "1.6vw", color: "rgba(255,255,255,0.45)" }}>Método Ponto B</span>
       </div>
     </div>
   );
