@@ -25,11 +25,14 @@ export default function Login() {
   const [forgotSent, setForgotSent] = useState(false);
   const [loginError, setLoginError] = useState<{ type: "invalid" | "pending" | "generic"; message?: string } | null>(null);
 
+  const rawRedirect = new URLSearchParams(window.location.search).get("redirect") ?? "";
+  const redirectTo = rawRedirect.startsWith("/") ? rawRedirect : "/today";
+
   useEffect(() => {
     if (user) {
-      setLocation("/today");
+      setLocation(redirectTo);
     }
-  }, [user, setLocation]);
+  }, [user, setLocation, redirectTo]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

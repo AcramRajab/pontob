@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-provider";
 import { Layout } from "@/components/layout";
+import { ProtectedRoute } from "@/components/protected-route";
 import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
@@ -42,6 +43,11 @@ import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
 import Convite from "@/pages/convite";
 
+function RootRedirect() {
+  window.location.replace("/today");
+  return null;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -57,44 +63,111 @@ function Router() {
       <Switch>
         <Route path="/convite/:token" component={Convite} />
         <Route path="/login" component={Login} />
-        <Route path="/today" component={Today} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/goals/new" component={GoalNew} />
-        <Route path="/goals/:id/edit" component={GoalEdit} />
-        <Route path="/goals/:id/kpis/new" component={KpisNew} />
-        <Route path="/goals/:goalId/initiatives/:initiativeId/edit" component={InitiativesEdit} />
-        <Route path="/goals/:id/initiatives/new" component={InitiativesNew} />
-        <Route path="/goals/:id" component={GoalDetail} />
-        <Route path="/goals" component={Goals} />
-        <Route path="/initiatives" component={Initiatives} />
-        <Route path="/checkin/daily" component={DailyCheckin} />
-        <Route path="/checkin/weekly" component={WeeklyCheckin} />
-        <Route path="/checkin/monthly" component={MonthlyCheckin} />
-        <Route path="/history" component={History} />
-        <Route path="/alerts" component={Alerts} />
-        <Route path="/help" component={Help} />
-        <Route path="/catalog" component={Catalog} />
-        <Route path="/ranking" component={Ranking} />
-        <Route path="/regional/franchise/:id" component={RegionalFranchise} />
-        <Route path="/regional" component={Regional} />
-        <Route path="/admin/franchises" component={AdminFranchises} />
-        <Route path="/admin/users" component={AdminUsers} />
-        <Route path="/admin/history" component={AdminHistory} />
-        <Route path="/my-team" component={MyTeam} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/recrutamento/secretaria" component={Secretaria} />
-        <Route path="/recrutamento/vagas/new" component={VagaNew} />
-        <Route path="/recrutamento/vagas/:id" component={VagaDetail} />
-        <Route path="/recrutamento" component={Recrutamento} />
-        <Route path="/planner/historico" component={PlannerHistorico} />
-        <Route path="/planner/registro" component={PlannerRegistro} />
-        <Route path="/planner" component={Planner} />
-        <Route path="/visao" component={Visao} />
-        <Route path="/" component={() => {
-          window.location.replace("/today");
-          return null;
-        }} />
-        <Route component={NotFound} />
+        <Route path="/today">
+          <ProtectedRoute><Today /></ProtectedRoute>
+        </Route>
+        <Route path="/dashboard">
+          <ProtectedRoute><Dashboard /></ProtectedRoute>
+        </Route>
+        <Route path="/goals/new">
+          <ProtectedRoute><GoalNew /></ProtectedRoute>
+        </Route>
+        <Route path="/goals/:id/edit">
+          {() => <ProtectedRoute><GoalEdit /></ProtectedRoute>}
+        </Route>
+        <Route path="/goals/:id/kpis/new">
+          {() => <ProtectedRoute><KpisNew /></ProtectedRoute>}
+        </Route>
+        <Route path="/goals/:goalId/initiatives/:initiativeId/edit">
+          {() => <ProtectedRoute><InitiativesEdit /></ProtectedRoute>}
+        </Route>
+        <Route path="/goals/:id/initiatives/new">
+          {() => <ProtectedRoute><InitiativesNew /></ProtectedRoute>}
+        </Route>
+        <Route path="/goals/:id">
+          {() => <ProtectedRoute><GoalDetail /></ProtectedRoute>}
+        </Route>
+        <Route path="/goals">
+          <ProtectedRoute><Goals /></ProtectedRoute>
+        </Route>
+        <Route path="/initiatives">
+          <ProtectedRoute><Initiatives /></ProtectedRoute>
+        </Route>
+        <Route path="/checkin/daily">
+          <ProtectedRoute><DailyCheckin /></ProtectedRoute>
+        </Route>
+        <Route path="/checkin/weekly">
+          <ProtectedRoute><WeeklyCheckin /></ProtectedRoute>
+        </Route>
+        <Route path="/checkin/monthly">
+          <ProtectedRoute><MonthlyCheckin /></ProtectedRoute>
+        </Route>
+        <Route path="/history">
+          <ProtectedRoute><History /></ProtectedRoute>
+        </Route>
+        <Route path="/alerts">
+          <ProtectedRoute><Alerts /></ProtectedRoute>
+        </Route>
+        <Route path="/help">
+          <ProtectedRoute><Help /></ProtectedRoute>
+        </Route>
+        <Route path="/catalog">
+          <ProtectedRoute><Catalog /></ProtectedRoute>
+        </Route>
+        <Route path="/ranking">
+          <ProtectedRoute><Ranking /></ProtectedRoute>
+        </Route>
+        <Route path="/regional/franchise/:id">
+          {() => <ProtectedRoute><RegionalFranchise /></ProtectedRoute>}
+        </Route>
+        <Route path="/regional">
+          <ProtectedRoute><Regional /></ProtectedRoute>
+        </Route>
+        <Route path="/admin/franchises">
+          <ProtectedRoute><AdminFranchises /></ProtectedRoute>
+        </Route>
+        <Route path="/admin/users">
+          <ProtectedRoute><AdminUsers /></ProtectedRoute>
+        </Route>
+        <Route path="/admin/history">
+          <ProtectedRoute><AdminHistory /></ProtectedRoute>
+        </Route>
+        <Route path="/my-team">
+          <ProtectedRoute><MyTeam /></ProtectedRoute>
+        </Route>
+        <Route path="/settings">
+          <ProtectedRoute><Settings /></ProtectedRoute>
+        </Route>
+        <Route path="/recrutamento/secretaria">
+          <ProtectedRoute><Secretaria /></ProtectedRoute>
+        </Route>
+        <Route path="/recrutamento/vagas/new">
+          <ProtectedRoute><VagaNew /></ProtectedRoute>
+        </Route>
+        <Route path="/recrutamento/vagas/:id">
+          {() => <ProtectedRoute><VagaDetail /></ProtectedRoute>}
+        </Route>
+        <Route path="/recrutamento">
+          <ProtectedRoute><Recrutamento /></ProtectedRoute>
+        </Route>
+        <Route path="/planner/historico">
+          <ProtectedRoute><PlannerHistorico /></ProtectedRoute>
+        </Route>
+        <Route path="/planner/registro">
+          <ProtectedRoute><PlannerRegistro /></ProtectedRoute>
+        </Route>
+        <Route path="/planner">
+          <ProtectedRoute><Planner /></ProtectedRoute>
+        </Route>
+        <Route path="/visao">
+          <ProtectedRoute><Visao /></ProtectedRoute>
+        </Route>
+        <Route path="/">
+          <ProtectedRoute><RootRedirect /></ProtectedRoute>
+        </Route>
+        <Route>
+          <ProtectedRoute><NotFound /></ProtectedRoute>
+        </Route>
       </Switch>
     </Layout>
   );

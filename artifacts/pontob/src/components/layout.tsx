@@ -1,20 +1,11 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./sidebar";
 import { useAuth } from "@/lib/auth";
-import { useLocation } from "wouter";
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { TourProvider } from "./tour-guide";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!isLoading && !user && location !== "/login" && !location.startsWith("/convite/")) {
-      setLocation("/login");
-    }
-  }, [user, isLoading, location, setLocation]);
 
   if (isLoading) {
     return (

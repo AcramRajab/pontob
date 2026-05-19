@@ -8,6 +8,7 @@ import { AuthContext } from "./auth-context";
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
   const { data: user, isLoading: isUserLoading, refetch } = useGetMe({
     query: {
       retry: false,
@@ -21,7 +22,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (data: LoginInput) => {
     await loginMutation.mutateAsync({ data });
     await refetch();
-    setLocation("/today");
   };
 
   const logout = async () => {
