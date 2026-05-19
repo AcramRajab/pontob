@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+const BROKERS_SDR_URL = "https://chatgpt.com/g/g-68be1c658e98819198dc349421011784-assitente-de-brokers-e-sdr-re-max";
 
 interface Message {
   role: "user" | "assistant";
@@ -167,16 +169,33 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {messages.length === 1 && (
-        <div className="px-3 pb-2 flex flex-wrap gap-1.5 shrink-0">
-          {SUGGESTED.map(q => (
-            <button
-              key={q}
-              onClick={() => sendMessage(q)}
-              className="text-xs bg-muted hover:bg-muted/80 rounded-full px-3 py-1.5 text-foreground transition-colors text-left"
-            >
-              {q}
-            </button>
-          ))}
+        <div className="px-3 pb-2 space-y-2 shrink-0">
+          <a
+            href={BROKERS_SDR_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Agente Brokers &amp; SDR</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
+          <div className="flex flex-wrap gap-1.5">
+            {SUGGESTED.map(q => (
+              <button
+                key={q}
+                onClick={() => sendMessage(q)}
+                className="text-xs bg-muted hover:bg-muted/80 rounded-full px-3 py-1.5 text-foreground transition-colors text-left"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -210,15 +229,25 @@ export function AiAssistantButton() {
   return (
     <>
       {open && <AssistantPanel onClose={() => setOpen(false)} />}
-      {!open && (
+      <div className="space-y-1">
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setOpen(o => !o)}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
         >
           <MessageCircle className="h-4 w-4 shrink-0" />
           <span>Assistente IA</span>
         </button>
-      )}
+        <a
+          href={BROKERS_SDR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 transition-colors"
+        >
+          <Users className="h-4 w-4 shrink-0" />
+          <span>Agente Brokers &amp; SDR</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+      </div>
     </>
   );
 }
