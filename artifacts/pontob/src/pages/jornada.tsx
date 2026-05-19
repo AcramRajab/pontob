@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -88,7 +89,7 @@ function formatVal(v: number | null) { return v != null ? v.toLocaleString("pt-B
 /* ── component ────────────────────────────────────────────────────── */
 
 export default function Jornada() {
-  const { user } = useAuth();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const [year, setYear]   = useState(new Date().getFullYear());
   const [data, setData]   = useState<JourneyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,8 +103,6 @@ export default function Jornada() {
   const [expandedG, setExpandedG]  = useState<number | null>(null);
   const [showScience, setShowScience] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Record<number, string>>({});
-
-  const franchiseId = user?.franchiseId;
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
@@ -184,16 +183,6 @@ export default function Jornada() {
   }
 
   /* ── render ── */
-  if (loading) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
-      <Loader2 className="h-5 w-5 animate-spin" /><span>Carregando mapa de jornada…</span>
-    </div>
-  );
-
-  if (error) return (
-    <div className="p-6 text-red-600 text-sm">{error}</div>
-  );
-
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto">
 
@@ -202,7 +191,7 @@ export default function Jornada() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Mapa de Jornada</h1>
           <p className="text-sm text-slate-500 mt-1">
-            {data?.franchiseName ?? "Franquia"} · Do Ponto A ao Ponto Z
+            {data?.franchiseName ?? (franchiseId ? "Franquia" : "Selecione uma franquia")} · Do Ponto A ao Ponto Z
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -215,11 +204,40 @@ export default function Jornada() {
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
-          <Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={fetchData} disabled={!franchiseId} className="gap-1.5">
             <RefreshCw className="h-3.5 w-3.5" /> Atualizar
           </Button>
         </div>
       </div>
+
+      {/* ── Franchise picker (admin/staff only) ── */}
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
+
+      {/* ── No franchise selected (admin) ── */}
+      {!franchiseId && (
+        <AdminEmptyState message="Selecione uma franquia acima para visualizar o Mapa de Jornada." />
+      )}
+
+      {/* ── Loading ── */}
+      {franchiseId && loading && (
+        <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" /><span>Carregando mapa de jornada…</span>
+        </div>
+      )}
+
+      {/* ── Error ── */}
+      {franchiseId && !loading && error && (
+        <div className="p-6 text-red-600 text-sm">{error}</div>
+      )}
+
+      {/* ── Content (only when data loaded) ── */}
+      {franchiseId && !loading && !error && data && (<>
 
       {/* ── Stats bar ── */}
       <div className="grid grid-cols-4 gap-4">
@@ -570,6 +588,7 @@ export default function Jornada() {
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 }

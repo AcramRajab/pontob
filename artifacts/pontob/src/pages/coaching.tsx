@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, Send, BookOpen, RefreshCw, Target, TrendingUp, AlertCircle } from "lucide-react";
 
@@ -45,7 +46,7 @@ function formatContent(text: string) {
 }
 
 export default function Coaching() {
-  const { user } = useAuth();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -67,7 +68,7 @@ export default function Coaching() {
     setMessages(prev => [...prev, { role: "assistant", content: "" }]);
 
     try {
-      const body: Record<string, any> = { franchiseId: user?.franchiseId };
+      const body: Record<string, any> = { franchiseId };
       if (question) body.question = question;
 
       const resp = await fetch("/api/ai/coaching", {
@@ -158,7 +159,7 @@ export default function Coaching() {
             <Button
               size="sm"
               onClick={() => runStream()}
-              disabled={streaming || autoAnalyzing}
+              disabled={streaming || autoAnalyzing || !franchiseId}
               className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-xs"
             >
               {autoAnalyzing
@@ -168,6 +169,17 @@ export default function Coaching() {
             </Button>
           </div>
         </div>
+
+        {/* franchise picker (admin/staff only) */}
+        {isAdmin && (
+          <div className="mt-3">
+            <FranchisePicker
+              franchises={franchises}
+              value={adminFranchiseId}
+              onChange={(id) => { setAdminFranchiseId(id); setMessages([]); }}
+            />
+          </div>
+        )}
 
         {/* science badges */}
         <div className="flex flex-wrap gap-1.5 mt-3">
@@ -181,7 +193,10 @@ export default function Coaching() {
 
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        {isEmpty && (
+        {isAdmin && !franchiseId && (
+          <AdminEmptyState message="Selecione uma franquia acima para iniciar o coaching." />
+        )}
+        {(!isAdmin || franchiseId) && isEmpty && (
           <div className="space-y-6 pt-4">
             {/* intro cards */}
             <div className="grid grid-cols-3 gap-3">
