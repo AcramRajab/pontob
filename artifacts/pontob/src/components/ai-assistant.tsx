@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const CONSELHO_VIP_URL = "https://chatgpt.com/g/g-68bb3895e7f481918813f5a663bebf
 const NUTRICAO_LEADS_URL = "https://chatgpt.com/g/g-67c5970a28588191b56f153a9f761d52-nutricao-de-leads-por-e-mail";
 const WEB_BROWSER_URL = "https://chatgpt.com/g/g-3w1rEXGE0-web-browser";
 const POSICIONAMENTO_URL = "https://chatgpt.com/g/g-6829e22b89308191919f30a81b283ffd-do-posicionamento-ao-conteudo-de-atracao-alpha";
+const ESPECIALISTA_ALPHA_URL = "https://chatgpt.com/g/g-68274691b2b88191930ace957a50b146-especialista-alpha";
 
 interface Message {
   role: "user" | "assistant";
@@ -313,6 +314,21 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
           </a>
+          <a
+            href={ESPECIALISTA_ALPHA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <Zap className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Especialista Alpha</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(q => (
               <button
@@ -453,6 +469,16 @@ export function AiAssistantButton() {
         >
           <Megaphone className="h-4 w-4 shrink-0" />
           <span>Posicionamento &amp; Conteúdo</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+        <a
+          href={ESPECIALISTA_ALPHA_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 transition-colors"
+        >
+          <Zap className="h-4 w-4 shrink-0" />
+          <span>Especialista Alpha</span>
           <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
         </a>
       </div>
