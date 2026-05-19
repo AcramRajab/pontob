@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/remax-carreira/"
+title = "Carreira RE/MAX SC"
+version = "1.0.0"
+id = "artifacts/remax-carreira"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/remax-carreira/" ]
+localPort = 19295
+
+[services.development]
+run = "pnpm --filter @workspace/remax-carreira run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/remax-carreira", "run", "build" ]
+publicDir = "artifacts/remax-carreira/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19295"
+BASE_PATH = "/remax-carreira/"
