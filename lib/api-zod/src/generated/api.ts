@@ -245,6 +245,13 @@ export const DeleteUserParams = zod.object({
 /**
  * @summary List all dimensions
  */
+export const ListDimensionsQueryParams = zod.object({
+  includeInactive: zod.coerce
+    .boolean()
+    .optional()
+    .describe("Include inactive dimensions (admin\/staff only)"),
+});
+
 export const ListDimensionsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -258,6 +265,10 @@ export const ListDimensionsResponse = zod.array(ListDimensionsResponseItem);
  */
 export const ListKeyProcessesQueryParams = zod.object({
   dimensionId: zod.coerce.number().optional(),
+  includeInactive: zod.coerce
+    .boolean()
+    .optional()
+    .describe("Include inactive key processes (admin\/staff only)"),
 });
 
 export const ListKeyProcessesResponseItem = zod.object({
@@ -277,6 +288,10 @@ export const ListKeyProcessesResponse = zod.array(ListKeyProcessesResponseItem);
 export const ListStrategicInitiativesQueryParams = zod.object({
   dimensionId: zod.coerce.number().optional(),
   keyProcessId: zod.coerce.number().optional(),
+  includeInactive: zod.coerce
+    .boolean()
+    .optional()
+    .describe("Include inactive initiatives (admin\/staff only)"),
 });
 
 export const ListStrategicInitiativesResponseItem = zod.object({

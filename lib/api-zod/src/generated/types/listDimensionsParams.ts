@@ -6,11 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListStrategicInitiativesParams = {
-  dimensionId?: number;
-  keyProcessId?: number;
+export type ListDimensionsParams = {
   /**
-   * Include inactive initiatives (admin/staff only)
+   * Include inactive dimensions (admin/staff only)
    */
   includeInactive?: boolean;
 };

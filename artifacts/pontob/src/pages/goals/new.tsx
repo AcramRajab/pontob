@@ -83,7 +83,7 @@ export default function GoalNew() {
   const isAdmin = isAdminRole(user?.role);
 
   const dimKey = getListDimensionsQueryKey();
-  const { data: dimensions = [] } = useListDimensions({ query: { queryKey: dimKey } });
+  const { data: dimensions = [] } = useListDimensions({}, { query: { queryKey: dimKey } });
 
   const franchisesKey = getListFranchisesQueryKey();
   const { data: franchises = [] } = useListFranchises(

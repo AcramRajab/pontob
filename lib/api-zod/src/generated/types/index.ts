@@ -73,6 +73,7 @@ export * from "./kpiUpdate";
 export * from "./listAlertsParams";
 export * from "./listAllGoalInitiativesParams";
 export * from "./listDailyCheckinsParams";
+export * from "./listDimensionsParams";
 export * from "./listFranchiseKrisParams";
 export * from "./listGoalsParams";
 export * from "./listHelpRequestsParams";

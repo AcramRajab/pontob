@@ -1253,13 +1253,28 @@ export type ListUsersParams = {
   franchiseId?: number;
 };
 
+export type ListDimensionsParams = {
+  /**
+   * Include inactive dimensions (admin/staff only)
+   */
+  includeInactive?: boolean;
+};
+
 export type ListKeyProcessesParams = {
   dimensionId?: number;
+  /**
+   * Include inactive key processes (admin/staff only)
+   */
+  includeInactive?: boolean;
 };
 
 export type ListStrategicInitiativesParams = {
   dimensionId?: number;
   keyProcessId?: number;
+  /**
+   * Include inactive initiatives (admin/staff only)
+   */
+  includeInactive?: boolean;
 };
 
 export type ListGoalsParams = {

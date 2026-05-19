@@ -5,12 +5,18 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
 
+const isAdminOrStaff = (role: string) =>
+  role === "master_admin" || role === "staff_regional";
+
 router.get("/dimensions", requireAuth, async (req, res) => {
   try {
+    const includeInactive =
+      req.query.includeInactive === "true" &&
+      isAdminOrStaff(req.session.userRole ?? "");
     const rows = await db
       .select()
       .from(dimensionsTable)
-      .where(eq(dimensionsTable.active, true))
+      .where(includeInactive ? undefined : eq(dimensionsTable.active, true))
       .orderBy(dimensionsTable.id);
     res.json(rows.map(d => ({
       id: d.id, name: d.name, description: d.description, active: d.active,
@@ -24,37 +30,36 @@ router.get("/dimensions", requireAuth, async (req, res) => {
 router.get("/key-processes", requireAuth, async (req, res) => {
   try {
     const dimensionId = req.query.dimensionId ? parseInt(req.query.dimensionId as string) : undefined;
-    const rows = dimensionId
-      ? await db.select({
-          id: keyProcessesTable.id,
-          dimensionId: keyProcessesTable.dimensionId,
-          dimensionName: dimensionsTable.name,
-          name: keyProcessesTable.name,
-          description: keyProcessesTable.description,
-          orderIndex: keyProcessesTable.orderIndex,
-        })
-        .from(keyProcessesTable)
-        .leftJoin(dimensionsTable, eq(keyProcessesTable.dimensionId, dimensionsTable.id))
-        .where(and(
-          eq(keyProcessesTable.active, true),
-          eq(keyProcessesTable.dimensionId, dimensionId),
-        ))
-        .orderBy(keyProcessesTable.orderIndex)
-      : await db.select({
-          id: keyProcessesTable.id,
-          dimensionId: keyProcessesTable.dimensionId,
-          dimensionName: dimensionsTable.name,
-          name: keyProcessesTable.name,
-          description: keyProcessesTable.description,
-          orderIndex: keyProcessesTable.orderIndex,
-        })
-        .from(keyProcessesTable)
-        .leftJoin(dimensionsTable, eq(keyProcessesTable.dimensionId, dimensionsTable.id))
-        .where(eq(keyProcessesTable.active, true))
-        .orderBy(keyProcessesTable.orderIndex);
+    const includeInactive =
+      req.query.includeInactive === "true" &&
+      isAdminOrStaff(req.session.userRole ?? "");
+
+    const baseSelect = {
+      id: keyProcessesTable.id,
+      dimensionId: keyProcessesTable.dimensionId,
+      dimensionName: dimensionsTable.name,
+      name: keyProcessesTable.name,
+      description: keyProcessesTable.description,
+      orderIndex: keyProcessesTable.orderIndex,
+      active: keyProcessesTable.active,
+    };
+
+    const activeCondition = includeInactive ? undefined : eq(keyProcessesTable.active, true);
+    const dimCondition = dimensionId ? eq(keyProcessesTable.dimensionId, dimensionId) : undefined;
+    const whereClause = activeCondition && dimCondition
+      ? and(activeCondition, dimCondition)
+      : activeCondition ?? dimCondition;
+
+    const rows = await db
+      .select(baseSelect)
+      .from(keyProcessesTable)
+      .leftJoin(dimensionsTable, eq(keyProcessesTable.dimensionId, dimensionsTable.id))
+      .where(whereClause)
+      .orderBy(keyProcessesTable.orderIndex);
+
     res.json(rows.map(kp => ({
       id: kp.id, dimensionId: kp.dimensionId, dimensionName: kp.dimensionName,
-      name: kp.name, description: kp.description, orderIndex: kp.orderIndex,
+      name: kp.name, description: kp.description, orderIndex: kp.orderIndex, active: kp.active,
     })));
   } catch (err) {
     req.log.error(err);
@@ -66,8 +71,11 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
   try {
     const dimensionId = req.query.dimensionId ? parseInt(req.query.dimensionId as string) : undefined;
     const keyProcessId = req.query.keyProcessId ? parseInt(req.query.keyProcessId as string) : undefined;
+    const includeInactive =
+      req.query.includeInactive === "true" &&
+      isAdminOrStaff(req.session.userRole ?? "");
 
-    let q = db
+    const q = db
       .select({
         id: strategicInitiativesTable.id,
         dimensionId: strategicInitiativesTable.dimensionId,
@@ -78,28 +86,32 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
         kri: strategicInitiativesTable.kri,
         kpi: strategicInitiativesTable.kpi,
         description: strategicInitiativesTable.description,
+        active: strategicInitiativesTable.active,
       })
       .from(strategicInitiativesTable)
       .leftJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
       .leftJoin(keyProcessesTable, eq(strategicInitiativesTable.keyProcessId, keyProcessesTable.id));
 
-    const activeFilter = and(
-      eq(strategicInitiativesTable.active, true),
-      eq(keyProcessesTable.active, true),
-      eq(dimensionsTable.active, true),
-    );
-    const rows = await (dimensionId && keyProcessId
-      ? q.where(and(activeFilter, eq(strategicInitiativesTable.keyProcessId, keyProcessId)))
-      : dimensionId
-      ? q.where(and(activeFilter, eq(strategicInitiativesTable.dimensionId, dimensionId)))
-      : keyProcessId
-      ? q.where(and(activeFilter, eq(strategicInitiativesTable.keyProcessId, keyProcessId)))
-      : q.where(activeFilter));
+    const activeFilter = includeInactive
+      ? undefined
+      : and(
+          eq(strategicInitiativesTable.active, true),
+          eq(keyProcessesTable.active, true),
+          eq(dimensionsTable.active, true),
+        );
+
+    const dimFilter = dimensionId ? eq(strategicInitiativesTable.dimensionId, dimensionId) : undefined;
+    const kpFilter = keyProcessId ? eq(strategicInitiativesTable.keyProcessId, keyProcessId) : undefined;
+
+    const filters = [activeFilter, dimFilter, kpFilter].filter(Boolean);
+    const whereClause = filters.length > 1 ? and(...(filters as NonNullable<typeof filters[0]>[])) : filters[0];
+
+    const rows = await q.where(whereClause);
 
     res.json(rows.map(si => ({
       id: si.id, dimensionId: si.dimensionId, keyProcessId: si.keyProcessId,
       dimensionName: si.dimensionName, keyProcessName: si.keyProcessName,
-      name: si.name, kri: si.kri, kpi: si.kpi, description: si.description,
+      name: si.name, kri: si.kri, kpi: si.kpi, description: si.description, active: si.active,
     })));
   } catch (err) {
     req.log.error(err);

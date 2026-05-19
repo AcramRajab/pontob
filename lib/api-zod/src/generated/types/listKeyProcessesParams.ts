@@ -8,4 +8,8 @@
 
 export type ListKeyProcessesParams = {
   dimensionId?: number;
+  /**
+   * Include inactive key processes (admin/staff only)
+   */
+  includeInactive?: boolean;
 };

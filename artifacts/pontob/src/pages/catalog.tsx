@@ -1,18 +1,38 @@
-import { useListDimensions, useListKeyProcesses, useListStrategicInitiatives, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey } from "@workspace/api-client-react";
+import {
+  useListDimensions,
+  useListKeyProcesses,
+  useListStrategicInitiatives,
+  useToggleDimensionActive,
+  useToggleKeyProcessActive,
+  useToggleStrategicInitiativeActive,
+  getListDimensionsQueryKey,
+  getListKeyProcessesQueryKey,
+  getListStrategicInitiativesQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useState } from "react";
-import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff } from "lucide-react";
 import { PLANNER_KPI_TEMPLATES, PLANNER_SECTIONS, templatesBySection } from "@/lib/kpi-templates";
+import { useAuth } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Catalog() {
   const [dimensionId, setDimensionId] = useState<string>("");
   const [keyProcessId, setKeyProcessId] = useState<string>("");
+  const { user, isLoading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: dimensions = [], isLoading: dimsLoading } = useListDimensions();
+  const isAdmin = !authLoading && (user?.role === "master_admin" || user?.role === "staff_regional");
+
+  const { data: dimensions = [], isLoading: dimsLoading } = useListDimensions(
+    {},
+    { query: { queryKey: getListDimensionsQueryKey({}) } }
+  );
   const kpParams = { dimensionId: dimensionId ? parseInt(dimensionId) : undefined };
   const { data: keyProcesses = [], isLoading: kpsLoading } = useListKeyProcesses(
     kpParams,
@@ -27,7 +47,52 @@ export default function Catalog() {
     { query: { enabled: true, queryKey: getListStrategicInitiativesQueryKey(initParams) } }
   );
 
+  // Admin management queries — include inactive items
+  const adminDimsParams = { includeInactive: true };
+  const { data: adminDimensions = [], isLoading: adminDimsLoading } = useListDimensions(
+    adminDimsParams,
+    { query: { enabled: isAdmin, queryKey: getListDimensionsQueryKey(adminDimsParams) } }
+  );
+  const adminKpParams = { includeInactive: true };
+  const { data: adminKeyProcesses = [], isLoading: adminKpsLoading } = useListKeyProcesses(
+    adminKpParams,
+    { query: { enabled: isAdmin, queryKey: getListKeyProcessesQueryKey(adminKpParams) } }
+  );
+  const adminInitParams = { includeInactive: true };
+  const { data: adminInitiatives = [], isLoading: adminInitsLoading } = useListStrategicInitiatives(
+    adminInitParams,
+    { query: { enabled: isAdmin, queryKey: getListStrategicInitiativesQueryKey(adminInitParams) } }
+  );
+
+  const toggleDim = useToggleDimensionActive({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/dimensions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/key-processes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+      },
+    },
+  });
+
+  const toggleKp = useToggleKeyProcessActive({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/key-processes"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+      },
+    },
+  });
+
+  const toggleInit = useToggleStrategicInitiativeActive({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+      },
+    },
+  });
+
   const isLoading = dimsLoading || initsLoading;
+  const adminIsLoading = adminDimsLoading || adminKpsLoading || adminInitsLoading;
 
   const dimensionColor = (name: string) =>
     name === "Pessoas" ? "bg-primary/10 text-primary border-primary/30" : "bg-destructive/10 text-destructive border-destructive/30";
@@ -36,6 +101,14 @@ export default function Catalog() {
     if (dir === "diminuir") return <TrendingDown className="h-3 w-3 text-red-500" />;
     if (dir === "manter") return <Minus className="h-3 w-3 text-amber-500" />;
     return <TrendingUp className="h-3 w-3 text-green-500" />;
+  }
+
+  function InactiveLabel() {
+    return (
+      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+        Inativo
+      </Badge>
+    );
   }
 
   return (
@@ -55,6 +128,12 @@ export default function Catalog() {
             <ClipboardList className="h-4 w-4" />
             KPIs do Planner Semanal
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="management" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Gestão do Catálogo
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* ── Strategic Initiatives Tab ── */}
@@ -190,6 +269,142 @@ export default function Catalog() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Catalog Management Tab (admin only) ── */}
+        {isAdmin && (
+          <TabsContent value="management" className="mt-6 space-y-8">
+            <div className="rounded-lg border bg-amber-50 border-amber-200 p-4 text-sm text-amber-800">
+              Aqui você pode ver todos os itens do catálogo, incluindo os inativos, e reativar qualquer item desativado por engano.
+            </div>
+
+            {adminIsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}
+              </div>
+            ) : (
+              <>
+                {/* Dimensions */}
+                <section>
+                  <h2 className="text-base font-semibold mb-3">Dimensões</h2>
+                  <div className="rounded-lg border divide-y overflow-hidden">
+                    {adminDimensions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-4">Nenhuma dimensão encontrada.</p>
+                    ) : adminDimensions.map((d: any) => (
+                      <div
+                        key={d.id}
+                        data-testid={`mgmt-dimension-${d.id}`}
+                        className={`flex items-center justify-between px-4 py-3 gap-3 ${!d.active ? "bg-muted/40" : ""}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`text-sm font-medium truncate ${!d.active ? "line-through text-muted-foreground" : ""}`}>
+                            {d.name}
+                          </span>
+                          {!d.active && <InactiveLabel />}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={d.active ? "outline" : "default"}
+                          className="shrink-0 gap-1.5"
+                          disabled={toggleDim.isPending}
+                          onClick={() => toggleDim.mutate({ id: d.id })}
+                          data-testid={`toggle-dimension-${d.id}`}
+                        >
+                          {d.active ? (
+                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                          ) : (
+                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Key Processes */}
+                <section>
+                  <h2 className="text-base font-semibold mb-3">Processos-chave</h2>
+                  <div className="rounded-lg border divide-y overflow-hidden">
+                    {adminKeyProcesses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-4">Nenhum processo encontrado.</p>
+                    ) : adminKeyProcesses.map((kp: any) => (
+                      <div
+                        key={kp.id}
+                        data-testid={`mgmt-key-process-${kp.id}`}
+                        className={`flex items-center justify-between px-4 py-3 gap-3 ${!kp.active ? "bg-muted/40" : ""}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="min-w-0">
+                            <span className={`text-sm font-medium block truncate ${!kp.active ? "line-through text-muted-foreground" : ""}`}>
+                              {kp.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{kp.dimensionName}</span>
+                          </div>
+                          {!kp.active && <InactiveLabel />}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={kp.active ? "outline" : "default"}
+                          className="shrink-0 gap-1.5"
+                          disabled={toggleKp.isPending}
+                          onClick={() => toggleKp.mutate({ id: kp.id })}
+                          data-testid={`toggle-key-process-${kp.id}`}
+                        >
+                          {kp.active ? (
+                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                          ) : (
+                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Strategic Initiatives */}
+                <section>
+                  <h2 className="text-base font-semibold mb-3">Iniciativas Estratégicas</h2>
+                  <div className="rounded-lg border divide-y overflow-hidden">
+                    {adminInitiatives.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-4">Nenhuma iniciativa encontrada.</p>
+                    ) : adminInitiatives.map((init: any) => (
+                      <div
+                        key={init.id}
+                        data-testid={`mgmt-initiative-${init.id}`}
+                        className={`flex items-center justify-between px-4 py-3 gap-3 ${!init.active ? "bg-muted/40" : ""}`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="min-w-0 flex-1">
+                            <span className={`text-sm font-medium block ${!init.active ? "line-through text-muted-foreground" : ""}`}>
+                              {init.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {init.dimensionName} › {init.keyProcessName}
+                            </span>
+                          </div>
+                          {!init.active && <InactiveLabel />}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={init.active ? "outline" : "default"}
+                          className="shrink-0 gap-1.5"
+                          disabled={toggleInit.isPending}
+                          onClick={() => toggleInit.mutate({ id: init.id })}
+                          data-testid={`toggle-initiative-${init.id}`}
+                        >
+                          {init.active ? (
+                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                          ) : (
+                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

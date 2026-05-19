@@ -264,6 +264,12 @@ paths:
       operationId: listDimensions
       tags: [dimensions]
       summary: List all dimensions
+      parameters:
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+          description: Include inactive dimensions (admin/staff only)
       responses:
         "200":
           description: List of dimensions
@@ -284,6 +290,11 @@ paths:
           in: query
           schema:
             type: integer
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+          description: Include inactive key processes (admin/staff only)
       responses:
         "200":
           description: List of key processes
@@ -308,6 +319,11 @@ paths:
           in: query
           schema:
             type: integer
+        - name: includeInactive
+          in: query
+          schema:
+            type: boolean
+          description: Include inactive initiatives (admin/staff only)
       responses:
         "200":
           description: List of strategic initiatives

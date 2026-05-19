@@ -59,6 +59,7 @@ import type {
   ListAlertsParams,
   ListAllGoalInitiativesParams,
   ListDailyCheckinsParams,
+  ListDimensionsParams,
   ListFranchiseKrisParams,
   ListGoalsParams,
   ListHelpRequestsParams,
@@ -1166,41 +1167,57 @@ export const useDeleteUser = <
 /**
  * @summary List all dimensions
  */
-export const getListDimensionsUrl = () => {
-  return `/api/dimensions`;
+export const getListDimensionsUrl = (params?: ListDimensionsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/dimensions?${stringifiedParams}`
+    : `/api/dimensions`;
 };
 
 export const listDimensions = async (
+  params?: ListDimensionsParams,
   options?: RequestInit,
 ): Promise<Dimension[]> => {
-  return customFetch<Dimension[]>(getListDimensionsUrl(), {
+  return customFetch<Dimension[]>(getListDimensionsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getListDimensionsQueryKey = () => {
-  return [`/api/dimensions`] as const;
+export const getListDimensionsQueryKey = (params?: ListDimensionsParams) => {
+  return [`/api/dimensions`, ...(params ? [params] : [])] as const;
 };
 
 export const getListDimensionsQueryOptions = <
   TData = Awaited<ReturnType<typeof listDimensions>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listDimensions>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ListDimensionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDimensions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListDimensionsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListDimensionsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listDimensions>>> = ({
     signal,
-  }) => listDimensions({ signal, ...requestOptions });
+  }) => listDimensions(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listDimensions>>,
@@ -1221,15 +1238,18 @@ export type ListDimensionsQueryError = ErrorType<unknown>;
 export function useListDimensions<
   TData = Awaited<ReturnType<typeof listDimensions>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listDimensions>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListDimensionsQueryOptions(options);
+>(
+  params?: ListDimensionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDimensions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDimensionsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
