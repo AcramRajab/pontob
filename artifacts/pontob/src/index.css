@@ -78,36 +78,36 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 20% 98%;
-  --foreground: 220 15% 15%;
-  --border: 220 13% 88%;
+  --background: 0 0% 98%;
+  --foreground: 224 20% 12%;
+  --border: 220 13% 90%;
   --card: 0 0% 100%;
-  --card-foreground: 220 15% 15%;
-  --card-border: 220 13% 90%;
-  --sidebar: 220 25% 16%;
-  --sidebar-foreground: 0 0% 92%;
-  --sidebar-border: 220 20% 22%;
-  --sidebar-primary: 213 100% 60%;
+  --card-foreground: 224 20% 12%;
+  --card-border: 220 13% 91%;
+  --sidebar: 224 22% 7%;
+  --sidebar-foreground: 0 0% 78%;
+  --sidebar-border: 224 16% 12%;
+  --sidebar-primary: 213 95% 62%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 20% 22%;
-  --sidebar-accent-foreground: 0 0% 92%;
-  --sidebar-ring: 213 100% 60%;
+  --sidebar-accent: 224 16% 13%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-ring: 213 95% 62%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 15% 15%;
-  --popover-border: 220 13% 88%;
-  --primary: 220 91% 32%;
+  --popover-foreground: 224 20% 12%;
+  --popover-border: 220 13% 90%;
+  --primary: 222 72% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 14% 94%;
-  --secondary-foreground: 220 15% 25%;
-  --muted: 220 14% 94%;
-  --muted-foreground: 220 10% 46%;
-  --accent: 220 14% 94%;
-  --accent-foreground: 220 15% 15%;
+  --secondary: 220 14% 95%;
+  --secondary-foreground: 224 20% 22%;
+  --muted: 220 14% 95%;
+  --muted-foreground: 220 10% 50%;
+  --accent: 220 14% 95%;
+  --accent-foreground: 224 20% 12%;
   --destructive: 348 88% 47%;
   --destructive-foreground: 0 0% 100%;
-  --input: 220 13% 88%;
-  --ring: 220 91% 32%;
-  --chart-1: 220 91% 32%;
+  --input: 220 13% 90%;
+  --ring: 222 72% 50%;
+  --chart-1: 222 72% 50%;
   --chart-2: 348 88% 47%;
   --chart-3: 142 71% 45%;
   --chart-4: 38 92% 50%;
@@ -116,7 +116,7 @@
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
+  --radius: .375rem; /* 6px */
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00); /*replace with H S L */
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);

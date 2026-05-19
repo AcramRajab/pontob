@@ -27,12 +27,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex h-screen w-full bg-background">
             <AppSidebar />
             <div className="flex flex-col flex-1 min-w-0">
-              <header className="h-14 lg:hidden border-b flex items-center px-4 shrink-0 bg-card">
+              <header className="h-12 lg:hidden border-b border-border/60 flex items-center px-4 shrink-0 bg-background/95 backdrop-blur-sm">
                 <SidebarTrigger />
-                <div className="font-bold text-lg ml-4 text-primary">Ponto B</div>
+                <span className="text-sm font-semibold ml-3 text-foreground/80 tracking-tight">Ponto B</span>
               </header>
-              <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                <div className="mx-auto max-w-6xl">
+              <main className="flex-1 overflow-y-auto">
+                <div className="mx-auto max-w-5xl px-5 py-6 md:px-8 md:py-8">
                   {children}
                 </div>
               </main>

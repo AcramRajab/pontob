@@ -1,15 +1,58 @@
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { Link, useLocation } from "wouter";
 import {
   Target, CheckSquare, LayoutDashboard, History, Trophy, Map,
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
-  TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle, Sparkles, MessageCircle,
+  TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle,
+  Sparkles, MessageCircle,
 } from "lucide-react";
-import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 import { useAiAssistant } from "./ai-assistant";
 import { useTour } from "./tour-guide";
+
+function NavItem({
+  href,
+  icon: Icon,
+  label,
+  active,
+}: {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link href={href}>
+      <div
+        className={cn(
+          "flex items-center gap-2.5 mx-2 px-2.5 py-[6px] rounded-md text-[13px] font-medium transition-colors cursor-pointer select-none",
+          active
+            ? "bg-white/[0.10] text-white"
+            : "text-white/50 hover:text-white/85 hover:bg-white/[0.05]"
+        )}
+      >
+        <Icon className={cn("h-[15px] w-[15px] shrink-0", active ? "text-white" : "text-white/45")} strokeWidth={active ? 2.2 : 1.8} />
+        <span className="truncate">{label}</span>
+      </div>
+    </Link>
+  );
+}
+
+function NavSection({ label }: { label: string }) {
+  return (
+    <div className="px-4 pt-5 pb-1">
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-white/25">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function NavDivider() {
+  return <div className="mx-4 my-2 border-t border-white/[0.06]" />;
+}
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
@@ -24,327 +67,135 @@ export function AppSidebar() {
   const isStaffRegional = role === "staff_regional";
   const isFranqueado = role === "franqueado";
 
-  const isActive = (path: string) => location === path;
-  const isActivePrefix = (prefix: string) => location.startsWith(prefix);
+  const at = (path: string) => location === path;
+  const startsWith = (prefix: string) => location.startsWith(prefix);
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-border/10 p-4">
-        <div className="flex flex-col gap-1.5">
-          <img
-            src="/remax-sc-logo.jpg"
-            alt="RE/MAX Santa Catarina"
-            className="w-full h-auto object-contain rounded-md"
-          />
-          <span className="text-xs font-semibold tracking-widest text-sidebar-primary/60 uppercase">Método Ponto B</span>
-        </div>
+    <Sidebar className="border-r-0" style={{ "--sidebar-width": "220px" } as React.CSSProperties}>
+      {/* ── LOGO ── */}
+      <SidebarHeader className="px-4 py-4 border-b border-white/[0.06]">
+        <img
+          src="/remax-sc-logo.jpg"
+          alt="RE/MAX SC"
+          className="w-full h-auto object-contain rounded-md"
+        />
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mt-2">
+          Método Ponto B
+        </p>
       </SidebarHeader>
 
-      <SidebarContent>
-        {/* ── ROTINA DIÁRIA ── */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Rotina Diária</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/today")}>
-                  <Link href="/today">
-                    <CheckSquare />
-                    <span>Hoje</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/checkin/daily")}>
-                  <Link href="/checkin/daily">
-                    <CalendarCheck />
-                    <span>Check-in Diário</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/planner/registro")}>
-                  <Link href="/planner/registro">
-                    <PlusCircle />
-                    <span>Registro de Eventos</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      {/* ── NAV ── */}
+      <SidebarContent className="py-2 overflow-y-auto flex-1">
 
-        {/* ── SEMANA ── */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Semana</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/planner")}>
-                  <Link href="/planner">
-                    <TableIcon />
-                    <span>Planner Semanal</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/checkin/weekly")}>
-                  <Link href="/checkin/weekly">
-                    <CalendarDays />
-                    <span>Check-in Semanal</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Rotina Diária */}
+        <NavSection label="Rotina" />
+        <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
+        <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
+        <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
 
-        {/* ── METAS & EXECUÇÃO ── */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Metas &amp; Execução</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActivePrefix("/goals")}>
-                    <Link href="/goals">
-                      <Target />
-                      <span>Metas</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActivePrefix("/initiatives")}>
-                  <Link href="/initiatives">
-                    <ArrowRightCircle />
-                    <span>Iniciativas</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/checkin/monthly")}>
-                  <Link href="/checkin/monthly">
-                    <CalendarRange />
-                    <span>Check-in Mensal</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Semana */}
+        <NavSection label="Semana" />
+        <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
+        <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
 
-        {/* ── ACOMPANHAMENTO ── */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Acompanhamento</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
-                    <Link href="/dashboard">
-                      <LayoutDashboard />
-                      <span>Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/visao")}>
-                  <Link href="/visao">
-                    <Eye />
-                    <span>Visão Anual</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/planner/historico")}>
-                  <Link href="/planner/historico">
-                    <LineChart />
-                    <span>Histórico Planner</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/history")}>
-                  <Link href="/history">
-                    <History />
-                    <span>Histórico</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Metas */}
+        <NavSection label="Metas" />
+        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
+          <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
+        )}
+        <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
+        <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
 
-        {/* ── REGIONAL ── (staff/admin only) */}
+        {/* Acompanhamento */}
+        <NavSection label="Acompanhamento" />
+        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
+          <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
+        )}
+        <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
+        <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
+        <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
+
+        {/* Regional */}
         {(isMasterAdmin || isStaffRegional) && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Regional</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/ranking")}>
-                    <Link href="/ranking">
-                      <Trophy />
-                      <span>Ranking</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/regional")}>
-                    <Link href="/regional">
-                      <Map />
-                      <span>Regional Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            <NavSection label="Regional" />
+            <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
+            <NavItem href="/regional" icon={Map} label="Regional" active={at("/regional")} />
+          </>
         )}
 
-        {/* ── PESSOAS ── */}
+        {/* Pessoas */}
         {(isFranqueado || isMasterAdmin || isStaffRegional) && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Pessoas</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/recrutamento") || isActivePrefix("/recrutamento/vagas")}>
-                    <Link href="/recrutamento">
-                      <Briefcase />
-                      <span>Recrutamento</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActivePrefix("/recrutamento/secretaria")}>
-                    <Link href="/recrutamento/secretaria">
-                      <Bot />
-                      <span>Secretária IA</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            <NavSection label="Pessoas" />
+            <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
+            <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
+          </>
         )}
 
-        {/* ── MINHA FRANQUIA ── (franqueado only) */}
+        {/* Minha Franquia */}
         {isFranqueado && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Minha Franquia</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/my-team")}>
-                    <Link href="/my-team">
-                      <UserCog />
-                      <span>Minha Equipe</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            <NavSection label="Franquia" />
+            <NavItem href="/my-team" icon={UserCog} label="Minha Equipe" active={at("/my-team")} />
+          </>
         )}
 
-        {/* ── SUPORTE ── */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Suporte &amp; Ferramentas</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/agents")}>
-                  <Link href="/agents">
-                    <Bot />
-                    <span>Agentes IA</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/catalog")}>
-                  <Link href="/catalog">
-                    <BookOpen />
-                    <span>Catálogo</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/help")}>
-                  <Link href="/help">
-                    <HelpCircle />
-                    <span>Ajuda</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Suporte */}
+        <NavDivider />
+        <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
+        <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
+        <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
 
-        {/* ── ADMINISTRAÇÃO ── (master_admin only) */}
+        {/* Admin */}
         {isMasterAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Administração</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/franchises")}>
-                    <Link href="/admin/franchises">
-                      <Building />
-                      <span>Franquias</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/users")}>
-                    <Link href="/admin/users">
-                      <Users />
-                      <span>Usuários</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/history")}>
-                    <Link href="/admin/history">
-                      <ClipboardList />
-                      <span>Histórico de Alterações</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <>
+            <NavSection label="Administração" />
+            <NavItem href="/admin/franchises" icon={Building} label="Franquias" active={at("/admin/franchises")} />
+            <NavItem href="/admin/users" icon={Users} label="Usuários" active={at("/admin/users")} />
+            <NavItem href="/admin/history" icon={ClipboardList} label="Histórico Alt." active={at("/admin/history")} />
+          </>
         )}
       </SidebarContent>
 
       {/* ── FOOTER ── */}
-      <div className="mt-auto border-t border-border/10">
-        <div className="p-3 space-y-1.5">
+      <div className="border-t border-white/[0.06] shrink-0">
+        {/* Quick actions */}
+        <div className="px-2 py-2 space-y-0.5">
           <button
             onClick={openAssistant}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/50 hover:text-white/85 hover:bg-white/[0.05] transition-colors"
           >
-            <MessageCircle className="h-4 w-4 shrink-0" />
+            <MessageCircle className="h-[15px] w-[15px] shrink-0 text-white/40" strokeWidth={1.8} />
             <span>Assistente IA</span>
           </button>
           <button
             onClick={startTour}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="w-full flex items-center gap-2.5 px-2.5 py-[6px] rounded-md text-[13px] font-medium text-white/50 hover:text-white/85 hover:bg-white/[0.05] transition-colors"
           >
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span>Tutorial de uso</span>
+            <Sparkles className="h-[15px] w-[15px] shrink-0 text-white/40" strokeWidth={1.8} />
+            <span>Tutorial</span>
           </button>
         </div>
-        <div className="px-4 py-3 border-t border-border/10 flex items-center justify-between">
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium truncate">{user.name}</span>
-            <span className="text-xs text-muted-foreground truncate">{user.franchiseName || user.role}</span>
+
+        {/* User row */}
+        <div className="px-3 py-3 border-t border-white/[0.06] flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+            <span className="text-[11px] font-semibold text-white/80">
+              {user.name?.charAt(0).toUpperCase()}
+            </span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => logout()} className="shrink-0">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-medium text-white/80 truncate">{user.name}</p>
+            <p className="text-[10px] text-white/35 truncate">{user.franchiseName || user.role}</p>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="h-6 w-6 flex items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
+            title="Sair"
+          >
+            <LogOut className="h-3.5 w-3.5" strokeWidth={1.8} />
+          </button>
         </div>
       </div>
     </Sidebar>
