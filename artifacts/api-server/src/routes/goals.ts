@@ -12,6 +12,31 @@ function canAccessFranchise(req: any, franchiseId: number) {
   return req.session.franchiseId === franchiseId;
 }
 
+async function getGoalFranchiseId(goalId: number): Promise<number | null> {
+  const [row] = await db.select({ franchiseId: goalsTable.franchiseId }).from(goalsTable).where(eq(goalsTable.id, goalId)).limit(1);
+  return row?.franchiseId ?? null;
+}
+
+async function getInitiativeFranchiseId(initiativeId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ franchiseId: goalsTable.franchiseId })
+    .from(goalInitiativesTable)
+    .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+    .where(eq(goalInitiativesTable.id, initiativeId))
+    .limit(1);
+  return row?.franchiseId ?? null;
+}
+
+async function getKpiFranchiseId(kpiId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ franchiseId: goalsTable.franchiseId })
+    .from(kpisTable)
+    .innerJoin(goalsTable, eq(kpisTable.goalId, goalsTable.id))
+    .where(eq(kpisTable.id, kpiId))
+    .limit(1);
+  return row?.franchiseId ?? null;
+}
+
 function calcProgress(currentValue: number | null | undefined, targetValue: number | null | undefined): number {
   if (currentValue == null || targetValue == null || targetValue <= 0) return 0;
   return Math.min(100, Math.round((currentValue / targetValue) * 100));
@@ -294,6 +319,9 @@ router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => 
 router.get("/goals/:id/kpis", requireAuth, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
+    const franchiseId = await getGoalFranchiseId(goalId);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const rows = await db.select().from(kpisTable).where(eq(kpisTable.goalId, goalId)).orderBy(kpisTable.createdAt);
     res.json(rows.map(k => ({ ...k, createdAt: k.createdAt.toISOString() })));
   } catch (err) {
@@ -305,6 +333,9 @@ router.get("/goals/:id/kpis", requireAuth, async (req, res) => {
 router.post("/goals/:id/kpis", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
+    const franchiseId = await getGoalFranchiseId(goalId);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const existing = await db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(kpisTable).where(eq(kpisTable.goalId, goalId));
     if ((existing[0]?.count ?? 0) >= 3) {
       res.status(400).json({ error: "Maximum 3 KPIs per goal" });
@@ -322,6 +353,9 @@ router.post("/goals/:id/kpis", requireAuth, requireWriteAccess, async (req, res)
 router.patch("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const franchiseId = await getKpiFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const fields = ["name", "currentValue", "targetValue", "unit", "frequency", "indicatorType", "desiredDirection", "notes"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
@@ -354,6 +388,9 @@ router.delete("/goals/:id", requireAuth, requireWriteAccess, async (req, res) =>
 router.delete("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const franchiseId = await getKpiFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     await db.delete(kpisTable).where(eq(kpisTable.id, id));
     res.status(204).send();
   } catch (err) {
@@ -428,6 +465,9 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
 router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
+    const franchiseId = await getGoalFranchiseId(goalId);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const rows = await db
       .select({
         id: goalInitiativesTable.id,
@@ -476,6 +516,9 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
 router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const goalId = parseInt(req.params.id);
+    const franchiseId = await getGoalFranchiseId(goalId);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const activeCount = await db
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(goalInitiativesTable)
@@ -511,6 +554,9 @@ router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (re
 router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const franchiseId = await getInitiativeFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const rows = await db
       .select({
         id: goalInitiativesTable.id,
@@ -561,6 +607,9 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
 router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const franchiseId = await getInitiativeFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const fields = ["customName", "desiredResult", "actualResult", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
@@ -595,6 +644,9 @@ router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (re
 router.delete("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const franchiseId = await getInitiativeFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     const [deleted] = await db.delete(goalInitiativesTable).where(eq(goalInitiativesTable.id, id)).returning({ id: goalInitiativesTable.id });
     if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
     res.status(204).end();
