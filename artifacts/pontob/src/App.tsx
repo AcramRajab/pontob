@@ -42,6 +42,7 @@ import PlannerHistorico from "@/pages/planner-historico";
 import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
 import Convite from "@/pages/convite";
+import Agents from "@/pages/agents";
 
 function RootRedirect() {
   window.location.replace("/today");
@@ -161,6 +162,9 @@ function Router() {
         </Route>
         <Route path="/visao">
           <ProtectedRoute><Visao /></ProtectedRoute>
+        </Route>
+        <Route path="/agents">
+          <ProtectedRoute><Agents /></ProtectedRoute>
         </Route>
         <Route path="/">
           <ProtectedRoute><RootRedirect /></ProtectedRoute>

@@ -5,16 +5,17 @@ import {
   Target, CheckSquare, LayoutDashboard, History, Trophy, Map,
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
-  TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle, Sparkles,
+  TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle, Sparkles, MessageCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { AiAssistantButton } from "./ai-assistant";
+import { useAiAssistant } from "./ai-assistant";
 import { useTour } from "./tour-guide";
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { startTour } = useTour();
+  const { openAssistant } = useAiAssistant();
 
   if (!user) return null;
 
@@ -251,9 +252,17 @@ export function AppSidebar() {
 
         {/* ── SUPORTE ── */}
         <SidebarGroup>
-          <SidebarGroupLabel>Suporte</SidebarGroupLabel>
+          <SidebarGroupLabel>Suporte &amp; Ferramentas</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/agents")}>
+                  <Link href="/agents">
+                    <Bot />
+                    <span>Agentes IA</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/catalog")}>
                   <Link href="/catalog">
@@ -313,7 +322,13 @@ export function AppSidebar() {
       {/* ── FOOTER ── */}
       <div className="mt-auto border-t border-border/10">
         <div className="p-3 space-y-1.5">
-          <AiAssistantButton />
+          <button
+            onClick={openAssistant}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            <span>Assistente IA</span>
+          </button>
           <button
             onClick={startTour}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

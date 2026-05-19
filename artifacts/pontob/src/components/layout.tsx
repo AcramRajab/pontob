@@ -3,6 +3,7 @@ import { AppSidebar } from "./sidebar";
 import { useAuth } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 import { TourProvider } from "./tour-guide";
+import { AiAssistantProvider } from "./ai-assistant";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -21,22 +22,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <TourProvider>
-      <SidebarProvider>
-        <div className="flex h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0">
-            <header className="h-14 lg:hidden border-b flex items-center px-4 shrink-0 bg-card">
-              <SidebarTrigger />
-              <div className="font-bold text-lg ml-4 text-primary">Ponto B</div>
-            </header>
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-              <div className="mx-auto max-w-6xl">
-                {children}
-              </div>
-            </main>
+      <AiAssistantProvider>
+        <SidebarProvider>
+          <div className="flex h-screen w-full bg-background">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 min-w-0">
+              <header className="h-14 lg:hidden border-b flex items-center px-4 shrink-0 bg-card">
+                <SidebarTrigger />
+                <div className="font-bold text-lg ml-4 text-primary">Ponto B</div>
+              </header>
+              <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                <div className="mx-auto max-w-6xl">
+                  {children}
+                </div>
+              </main>
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
+        </SidebarProvider>
+      </AiAssistantProvider>
     </TourProvider>
   );
 }

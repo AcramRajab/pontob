@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, createContext, useContext } from "react";
 import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -383,131 +383,23 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function AiAssistantButton() {
+interface AiAssistantContextType {
+  openAssistant: () => void;
+}
+
+const AiAssistantContext = createContext<AiAssistantContextType>({ openAssistant: () => {} });
+
+export function useAiAssistant() {
+  return useContext(AiAssistantContext);
+}
+
+export function AiAssistantProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <AiAssistantContext.Provider value={{ openAssistant: () => setOpen(true) }}>
+      {children}
       {open && <AssistantPanel onClose={() => setOpen(false)} />}
-      <div className="space-y-1">
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-        >
-          <MessageCircle className="h-4 w-4 shrink-0" />
-          <span>Assistente IA</span>
-        </button>
-        <a
-          href={BROKERS_SDR_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 transition-colors"
-        >
-          <Users className="h-4 w-4 shrink-0" />
-          <span>Agente Brokers &amp; SDR</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={CURRICULOS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 transition-colors"
-        >
-          <FileText className="h-4 w-4 shrink-0" />
-          <span>Analisador de Currículos</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={BANT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 transition-colors"
-        >
-          <PhoneCall className="h-4 w-4 shrink-0" />
-          <span>Construtor BANT &amp; Script</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={SPIN_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-violet-600/10 hover:bg-violet-600/20 text-violet-700 transition-colors"
-        >
-          <TrendingUp className="h-4 w-4 shrink-0" />
-          <span>Construtor SPIN Selling</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={CONSELHO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 transition-colors"
-        >
-          <Lightbulb className="h-4 w-4 shrink-0" />
-          <span>Conselho Templum Evolutto</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={CONSELHO_VIP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-rose-600/10 hover:bg-rose-600/20 text-rose-700 transition-colors"
-        >
-          <Star className="h-4 w-4 shrink-0" />
-          <span>Conselho VIP Franqueados</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={NUTRICAO_LEADS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-teal-600/10 hover:bg-teal-600/20 text-teal-700 transition-colors"
-        >
-          <Mail className="h-4 w-4 shrink-0" />
-          <span>Nutrição de Leads por E-mail</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={WEB_BROWSER_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 transition-colors"
-        >
-          <Globe className="h-4 w-4 shrink-0" />
-          <span>Web Browser</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={POSICIONAMENTO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-pink-600/10 hover:bg-pink-600/20 text-pink-700 transition-colors"
-        >
-          <Megaphone className="h-4 w-4 shrink-0" />
-          <span>Posicionamento &amp; Conteúdo</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={ESPECIALISTA_ALPHA_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-700 transition-colors"
-        >
-          <Zap className="h-4 w-4 shrink-0" />
-          <span>Especialista Alpha</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-        <a
-          href={ANALIZADOR_VENDAS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-700 transition-colors"
-        >
-          <BarChart2 className="h-4 w-4 shrink-0" />
-          <span>Analizador de Vendas 2.0</span>
-          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
-        </a>
-      </div>
-    </>
+    </AiAssistantContext.Provider>
   );
 }
