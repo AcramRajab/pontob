@@ -33,7 +33,7 @@ export function AppSidebar() {
           <img
             src="/remax-sc-logo.jpg"
             alt="RE/MAX Santa Catarina"
-            className="h-9 w-auto object-contain"
+            className="w-full h-auto object-contain rounded-md"
           />
           <span className="text-xs font-semibold tracking-widest text-sidebar-primary/60 uppercase">Método Ponto B</span>
         </div>
