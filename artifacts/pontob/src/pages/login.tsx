@@ -53,9 +53,9 @@ export default function Login() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
           <img
-            src="/remax-sc-logo.png"
+            src="/remax-sc-logo.jpg"
             alt="RE/MAX Santa Catarina"
-            className="mx-auto h-14 w-auto"
+            className="mx-auto h-20 w-auto"
           />
           <div className="space-y-1">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Método Ponto B</h1>
