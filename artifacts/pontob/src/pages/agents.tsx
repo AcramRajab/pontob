@@ -197,18 +197,10 @@ export default function Agents() {
                       href={agent.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-all border hover:text-white group/btn"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80"
                       style={{
+                        backgroundColor: agent.accent + "12",
                         color: agent.accent,
-                        borderColor: agent.accent + "40",
-                      }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = agent.accent;
-                        (e.currentTarget as HTMLElement).style.borderColor = agent.accent;
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-                        (e.currentTarget as HTMLElement).style.borderColor = agent.accent + "40";
                       }}
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" />
