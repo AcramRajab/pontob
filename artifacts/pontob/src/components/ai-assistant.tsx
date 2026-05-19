@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 const BROKERS_SDR_URL = "https://chatgpt.com/g/g-68be1c658e98819198dc349421011784-assitente-de-brokers-e-sdr-re-max";
+const CURRICULOS_URL = "https://chatgpt.com/g/g-6829f77aa8a48191a9decf10f23409f8-templum-analizador-de-curriculos";
 
 interface Message {
   role: "user" | "assistant";
@@ -185,6 +186,21 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
           </a>
+          <a
+            href={CURRICULOS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <FileText className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Analisador de Currículos</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(q => (
               <button
@@ -245,6 +261,16 @@ export function AiAssistantButton() {
         >
           <Users className="h-4 w-4 shrink-0" />
           <span>Agente Brokers &amp; SDR</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+        <a
+          href={CURRICULOS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 transition-colors"
+        >
+          <FileText className="h-4 w-4 shrink-0" />
+          <span>Analisador de Currículos</span>
           <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
         </a>
       </div>
