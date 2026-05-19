@@ -1,5 +1,5 @@
 import { db } from "./index.js";
-import { sql, eq, and } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   franchisesTable,
   usersTable,
@@ -44,14 +44,18 @@ async function seed() {
   ];
 
   for (const f of franchiseData) {
-    const existing = await db
-      .select({ id: franchisesTable.id })
-      .from(franchisesTable)
-      .where(eq(franchisesTable.name, f.name))
-      .limit(1);
-    if (existing.length === 0) {
-      await db.insert(franchisesTable).values(f);
-    }
+    await db
+      .insert(franchisesTable)
+      .values(f)
+      .onConflictDoUpdate({
+        target: franchisesTable.name,
+        set: {
+          city:            f.city,
+          state:           f.state,
+          brokerOwnerName: f.brokerOwnerName,
+          active:          f.active,
+        },
+      });
   }
 
   const franchises = await db.select().from(franchisesTable).orderBy(franchisesTable.id);
@@ -96,14 +100,16 @@ async function seed() {
   ];
 
   for (const d of dimensionData) {
-    const existing = await db
-      .select({ id: dimensionsTable.id })
-      .from(dimensionsTable)
-      .where(eq(dimensionsTable.name, d.name))
-      .limit(1);
-    if (existing.length === 0) {
-      await db.insert(dimensionsTable).values(d);
-    }
+    await db
+      .insert(dimensionsTable)
+      .values(d)
+      .onConflictDoUpdate({
+        target: dimensionsTable.name,
+        set: {
+          description: d.description,
+          active:      d.active,
+        },
+      });
   }
 
   const dims = await db.select().from(dimensionsTable).orderBy(dimensionsTable.id);
@@ -115,19 +121,16 @@ async function seed() {
   type KPRow = { dimensionId: number; name: string; description: string; orderIndex: number };
 
   async function upsertKeyProcess(row: KPRow) {
-    const existing = await db
-      .select({ id: keyProcessesTable.id })
-      .from(keyProcessesTable)
-      .where(
-        and(
-          eq(keyProcessesTable.dimensionId, row.dimensionId),
-          eq(keyProcessesTable.name, row.name)
-        )
-      )
-      .limit(1);
-    if (existing.length === 0) {
-      await db.insert(keyProcessesTable).values(row);
-    }
+    await db
+      .insert(keyProcessesTable)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [keyProcessesTable.dimensionId, keyProcessesTable.name],
+        set: {
+          description: row.description,
+          orderIndex:  row.orderIndex,
+        },
+      });
   }
 
   const pessoasKPs: KPRow[] = [
@@ -166,19 +169,19 @@ async function seed() {
   type InitRow = { dimensionId: number; keyProcessId: number; name: string; kri: string; kpi: string; description: string; active: boolean };
 
   async function upsertInitiative(row: InitRow) {
-    const existing = await db
-      .select({ id: strategicInitiativesTable.id })
-      .from(strategicInitiativesTable)
-      .where(
-        and(
-          eq(strategicInitiativesTable.keyProcessId, row.keyProcessId),
-          eq(strategicInitiativesTable.name, row.name)
-        )
-      )
-      .limit(1);
-    if (existing.length === 0) {
-      await db.insert(strategicInitiativesTable).values(row);
-    }
+    await db
+      .insert(strategicInitiativesTable)
+      .values(row)
+      .onConflictDoUpdate({
+        target: [strategicInitiativesTable.keyProcessId, strategicInitiativesTable.name],
+        set: {
+          dimensionId:  row.dimensionId,
+          kri:          row.kri,
+          kpi:          row.kpi,
+          description:  row.description,
+          active:       row.active,
+        },
+      });
   }
 
   // Pessoas initiatives: [kpIndex, name, kri, kpi]

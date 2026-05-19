@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,7 +9,9 @@ export const dimensionsTable = pgTable("dimensions", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  unique("dimensions_name_unique").on(t.name),
+]);
 
 export const insertDimensionSchema = createInsertSchema(dimensionsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDimension = z.infer<typeof insertDimensionSchema>;
@@ -24,7 +26,9 @@ export const keyProcessesTable = pgTable("key_processes", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  unique("key_processes_dimension_id_name_unique").on(t.dimensionId, t.name),
+]);
 
 export const insertKeyProcessSchema = createInsertSchema(keyProcessesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertKeyProcess = z.infer<typeof insertKeyProcessSchema>;
@@ -42,7 +46,9 @@ export const strategicInitiativesTable = pgTable("strategic_initiatives", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  unique("strategic_initiatives_key_process_id_name_unique").on(t.keyProcessId, t.name),
+]);
 
 export const insertStrategicInitiativeSchema = createInsertSchema(strategicInitiativesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertStrategicInitiative = z.infer<typeof insertStrategicInitiativeSchema>;

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -14,7 +14,9 @@ export const franchisesTable = pgTable("franchises", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  unique("franchises_name_unique").on(t.name),
+]);
 
 export const insertFranchiseSchema = createInsertSchema(franchisesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertFranchise = z.infer<typeof insertFranchiseSchema>;
