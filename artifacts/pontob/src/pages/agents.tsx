@@ -1,5 +1,4 @@
 import { ExternalLink, Bot, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap, BarChart2, MessageCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useAiAssistant } from "@/components/ai-assistant";
 
 const AGENTS = [
