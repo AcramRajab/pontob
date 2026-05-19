@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap } from "lucide-react";
+import { Bot, Send, X, Loader2, RotateCcw, MessageCircle, ExternalLink, Users, FileText, PhoneCall, TrendingUp, Lightbulb, Star, Mail, Globe, Megaphone, Zap, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const NUTRICAO_LEADS_URL = "https://chatgpt.com/g/g-67c5970a28588191b56f153a9f76
 const WEB_BROWSER_URL = "https://chatgpt.com/g/g-3w1rEXGE0-web-browser";
 const POSICIONAMENTO_URL = "https://chatgpt.com/g/g-6829e22b89308191919f30a81b283ffd-do-posicionamento-ao-conteudo-de-atracao-alpha";
 const ESPECIALISTA_ALPHA_URL = "https://chatgpt.com/g/g-68274691b2b88191930ace957a50b146-especialista-alpha";
+const ANALIZADOR_VENDAS_URL = "https://chatgpt.com/g/g-682276bc44f48191a79a8fec9a96eabb-analizador-de-vendas-2-0";
 
 interface Message {
   role: "user" | "assistant";
@@ -329,6 +330,21 @@ function AssistantPanel({ onClose }: { onClose: () => void }) {
             </div>
             <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
           </a>
+          <a
+            href={ANALIZADOR_VENDAS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white transition-all group"
+          >
+            <div className="h-8 w-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+              <BarChart2 className="h-4 w-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold leading-tight">Analizador de Vendas 2.0</p>
+              <p className="text-xs opacity-70 leading-tight mt-0.5">Abrir no ChatGPT →</p>
+            </div>
+            <ExternalLink className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 shrink-0" />
+          </a>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(q => (
               <button
@@ -479,6 +495,16 @@ export function AiAssistantButton() {
         >
           <Zap className="h-4 w-4 shrink-0" />
           <span>Especialista Alpha</span>
+          <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
+        </a>
+        <a
+          href={ANALIZADOR_VENDAS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-700 transition-colors"
+        >
+          <BarChart2 className="h-4 w-4 shrink-0" />
+          <span>Analizador de Vendas 2.0</span>
           <ExternalLink className="h-3 w-3 ml-auto opacity-60" />
         </a>
       </div>
