@@ -12,6 +12,19 @@ import { cn } from "@/lib/utils";
 import { useAiAssistant } from "./ai-assistant";
 import { useTour } from "./tour-guide";
 
+const SHORTCUTS = [
+  { label: "ChatGPT",            url: "https://chatgpt.com",                abbr: "GP", color: "#10a37f" },
+  { label: "Gemini",             url: "https://gemini.google.com",           abbr: "Ge", color: "#4285F4" },
+  { label: "Perplexity",         url: "https://perplexity.ai",               abbr: "Pp", color: "#20808D" },
+  { label: "Copilot",            url: "https://copilot.microsoft.com",       abbr: "Co", color: "#0078D4" },
+  { label: "Gmail",              url: "https://mail.google.com",             abbr: "GM", color: "#EA4335" },
+  { label: "Google Calendar",    url: "https://calendar.google.com",         abbr: "GC", color: "#1967D2" },
+  { label: "WhatsApp Web",       url: "https://web.whatsapp.com",            abbr: "WA", color: "#25D366" },
+  { label: "Canva",              url: "https://canva.com",                   abbr: "Cv", color: "#7D2AE8" },
+  { label: "Google Drive",       url: "https://drive.google.com",            abbr: "GD", color: "#FBBC04" },
+  { label: "Meta Business",      url: "https://business.facebook.com",       abbr: "MB", color: "#1877F2" },
+];
+
 function NavItem({
   href,
   icon: Icon,
@@ -160,6 +173,26 @@ export function AppSidebar() {
 
       {/* ── FOOTER ── */}
       <div className="border-t border-white/[0.06] shrink-0">
+        {/* External shortcuts */}
+        <div className="px-3 py-2.5 border-b border-white/[0.06]">
+          <p className="text-[9px] font-semibold tracking-widest uppercase text-white/20 mb-2">Atalhos</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SHORTCUTS.map(s => (
+              <a
+                key={s.label}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={s.label}
+                className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white transition-opacity opacity-75 hover:opacity-100 select-none shrink-0"
+                style={{ backgroundColor: s.color }}
+              >
+                {s.abbr}
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* Quick actions */}
         <div className="px-2 py-2 space-y-0.5">
           <button
