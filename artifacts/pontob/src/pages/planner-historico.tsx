@@ -62,8 +62,8 @@ const SECTIONS = [
     border: "border-emerald-200",
     dot: "bg-emerald-500",
     indicators: [
-      { key: "venda_assinada",  label: "Venda assinada (R$)",  color: "#10b981", isNegative: false },
-      { key: "venda_realizada", label: "Venda realizada (R$)", color: "#34d399", isNegative: false },
+      { key: "venda_assinada",  label: "VGV (R$)",                       color: "#10b981", isNegative: false },
+      { key: "venda_realizada", label: "VGC Recebido e reportado (R$)", color: "#34d399", isNegative: false },
     ],
   },
 ];

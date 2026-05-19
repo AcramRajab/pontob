@@ -22,8 +22,8 @@ export const PLANNER_KPI_TEMPLATES: KpiTemplate[] = [
   { name: "Contratos cancelados", unit: "contratos", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "diminuir", section: "Operação" },
   { name: "Contratos vendidos", unit: "contratos", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "aumentar", section: "Operação" },
   // 3. Vendas
-  { name: "Venda assinada", unit: "R$", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "aumentar", section: "Vendas" },
-  { name: "Venda realizada", unit: "R$", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "aumentar", section: "Vendas" },
+  { name: "VGV", unit: "R$", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "aumentar", section: "Vendas" },
+  { name: "VGC Recebido e reportado", unit: "R$", frequency: "semanal", indicatorType: "numero_absoluto", desiredDirection: "aumentar", section: "Vendas" },
 ];
 
 export const PLANNER_SECTIONS: { key: PlannerSection; color: string; bg: string; border: string }[] = [

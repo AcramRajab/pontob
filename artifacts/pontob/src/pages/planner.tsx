@@ -58,8 +58,8 @@ const SECTIONS = [
     dot: "bg-emerald-500",
     bar: "bg-emerald-400",
     indicators: [
-      { key: "venda_assinada", label: "Venda assinada (R$)" },
-      { key: "venda_realizada", label: "Venda realizada (R$)" },
+      { key: "venda_assinada", label: "VGV (R$)" },
+      { key: "venda_realizada", label: "VGC Recebido e reportado (R$)" },
     ],
   },
 ];

@@ -80,8 +80,8 @@ const SECTIONS = [
     activeBg: "bg-emerald-600",
     activeHover: "hover:bg-emerald-700",
     indicators: [
-      { key: "venda_assinada",  label: "Venda assinada",  isMonetary: true,  isNegative: false },
-      { key: "venda_realizada", label: "Venda realizada", isMonetary: true,  isNegative: false },
+      { key: "venda_assinada",  label: "VGV",                        isMonetary: true,  isNegative: false },
+      { key: "venda_realizada", label: "VGC Recebido e reportado",   isMonetary: true,  isNegative: false },
     ],
   },
 ];
