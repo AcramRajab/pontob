@@ -170,8 +170,20 @@ export default function GoalNew() {
       toast({ title: "Meta criada com sucesso!" });
       qc.invalidateQueries({ queryKey: ["goals"] });
       navigate(`/goals/${goal.id}`);
-    } catch {
-      toast({ title: "Erro ao criar meta", variant: "destructive" });
+    } catch (err: any) {
+      if (err?.status === 409) {
+        const existingId = err?.data?.existingGoalId;
+        toast({
+          title: "Meta duplicada",
+          description: err?.data?.error ?? "Já existe uma meta para este processo-chave neste período.",
+          variant: "destructive",
+        });
+        if (existingId) {
+          navigate(`/goals/${existingId}`);
+        }
+      } else {
+        toast({ title: "Erro ao criar meta", variant: "destructive" });
+      }
     }
   }
 

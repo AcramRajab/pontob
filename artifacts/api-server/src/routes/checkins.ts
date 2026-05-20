@@ -61,24 +61,21 @@ router.post("/daily-checkins", requireAuth, requireWriteAccess, async (req, res)
   try {
     const { goalId, goalInitiativeId, franchiseId, date, executedToday, progressToday, timeSpent, blocker, nextStep, needsHelp, notes } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const [existing] = await db
+      .select()
+      .from(dailyCheckinsTable)
+      .where(and(eq(dailyCheckinsTable.franchiseId, franchiseId), eq(dailyCheckinsTable.date, date)))
+      .limit(1);
+    if (existing) {
+      res.status(200).json({ ...existing, goalTitle: null, userName: null, createdAt: existing.createdAt.toISOString(), conflict: true });
+      return;
+    }
+
     const [c] = await db.insert(dailyCheckinsTable).values({
       goalId, goalInitiativeId, franchiseId, userId: req.session.userId!,
       date, executedToday, progressToday, timeSpent, blocker, nextStep,
       needsHelp: needsHelp ?? false, notes,
-    }).onConflictDoUpdate({
-      target: [dailyCheckinsTable.franchiseId, dailyCheckinsTable.date],
-      set: {
-        goalId: sql`excluded.goal_id`,
-        goalInitiativeId: sql`excluded.goal_initiative_id`,
-        userId: sql`excluded.user_id`,
-        executedToday: sql`excluded.executed_today`,
-        progressToday: sql`excluded.progress_today`,
-        timeSpent: sql`excluded.time_spent`,
-        blocker: sql`excluded.blocker`,
-        nextStep: sql`excluded.next_step`,
-        needsHelp: sql`excluded.needs_help`,
-        notes: sql`excluded.notes`,
-      },
     }).returning();
     res.status(201).json({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() });
   } catch (err) {
@@ -139,28 +136,22 @@ router.post("/weekly-checkins", requireAuth, requireWriteAccess, async (req, res
   try {
     const { goalId, franchiseId, weekStartDate, weekEndDate, planned, executed, progressSummary, blockers, adjustments, nextWeekPriority, needsRegionalSupport, initiativeDecision, executionPercentage, checkinDaysCount } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const [existing] = await db
+      .select()
+      .from(weeklyCheckinsTable)
+      .where(and(eq(weeklyCheckinsTable.franchiseId, franchiseId), eq(weeklyCheckinsTable.weekStartDate, weekStartDate)))
+      .limit(1);
+    if (existing) {
+      res.status(200).json({ ...existing, goalTitle: null, userName: null, createdAt: existing.createdAt.toISOString(), conflict: true });
+      return;
+    }
+
     const [c] = await db.insert(weeklyCheckinsTable).values({
       goalId, franchiseId, userId: req.session.userId!,
       weekStartDate, weekEndDate, planned, executed, progressSummary,
       blockers, adjustments, nextWeekPriority, needsRegionalSupport: needsRegionalSupport ?? false,
       initiativeDecision, executionPercentage, checkinDaysCount,
-    }).onConflictDoUpdate({
-      target: [weeklyCheckinsTable.franchiseId, weeklyCheckinsTable.weekStartDate],
-      set: {
-        goalId: sql`excluded.goal_id`,
-        userId: sql`excluded.user_id`,
-        weekEndDate: sql`excluded.week_end_date`,
-        planned: sql`excluded.planned`,
-        executed: sql`excluded.executed`,
-        progressSummary: sql`excluded.progress_summary`,
-        blockers: sql`excluded.blockers`,
-        adjustments: sql`excluded.adjustments`,
-        nextWeekPriority: sql`excluded.next_week_priority`,
-        needsRegionalSupport: sql`excluded.needs_regional_support`,
-        initiativeDecision: sql`excluded.initiative_decision`,
-        executionPercentage: sql`excluded.execution_percentage`,
-        checkinDaysCount: sql`excluded.checkin_days_count`,
-      },
     }).returning();
     res.status(201).json({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() });
   } catch (err) {
@@ -220,26 +211,26 @@ router.post("/monthly-checkins", requireAuth, requireWriteAccess, async (req, re
   try {
     const { goalId, franchiseId, month, year, kriProgress, improvedKpis, worsenedKpis, initiativesThatWorked, initiativesThatDidNotWork, continueDoing, stopDoing, startDoing, nextMonthFocus } = req.body;
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const [existing] = await db
+      .select()
+      .from(monthlyCheckinsTable)
+      .where(and(
+        eq(monthlyCheckinsTable.franchiseId, franchiseId),
+        eq(monthlyCheckinsTable.month, month),
+        eq(monthlyCheckinsTable.year, year),
+      ))
+      .limit(1);
+    if (existing) {
+      res.status(200).json({ ...existing, goalTitle: null, userName: null, createdAt: existing.createdAt.toISOString(), conflict: true });
+      return;
+    }
+
     const [c] = await db.insert(monthlyCheckinsTable).values({
       goalId, franchiseId, userId: req.session.userId!,
       month, year, kriProgress, improvedKpis, worsenedKpis,
       initiativesThatWorked, initiativesThatDidNotWork,
       continueDoing, stopDoing, startDoing, nextMonthFocus,
-    }).onConflictDoUpdate({
-      target: [monthlyCheckinsTable.franchiseId, monthlyCheckinsTable.month, monthlyCheckinsTable.year],
-      set: {
-        goalId: sql`excluded.goal_id`,
-        userId: sql`excluded.user_id`,
-        kriProgress: sql`excluded.kri_progress`,
-        improvedKpis: sql`excluded.improved_kpis`,
-        worsenedKpis: sql`excluded.worsened_kpis`,
-        initiativesThatWorked: sql`excluded.initiatives_that_worked`,
-        initiativesThatDidNotWork: sql`excluded.initiatives_that_did_not_work`,
-        continueDoing: sql`excluded.continue_doing`,
-        stopDoing: sql`excluded.stop_doing`,
-        startDoing: sql`excluded.start_doing`,
-        nextMonthFocus: sql`excluded.next_month_focus`,
-      },
     }).returning();
     res.status(201).json({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() });
   } catch (err) {

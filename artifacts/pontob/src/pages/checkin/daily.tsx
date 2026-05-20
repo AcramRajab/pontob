@@ -58,7 +58,7 @@ export default function DailyCheckin() {
     if (!franchiseId) return;
     const today = new Date().toISOString().split("T")[0];
     try {
-      await create.mutateAsync({
+      const result = await create.mutateAsync({
         data: {
           goalId: parseInt(data.goalId),
           franchiseId,
@@ -74,7 +74,11 @@ export default function DailyCheckin() {
       });
       qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
       setSubmitted(true);
-      toast({ title: "Check-in registrado", description: "Seu progresso de hoje foi salvo." });
+      if ((result as any).conflict) {
+        toast({ title: "Check-in já registrado", description: "Você já fez o check-in de hoje. O registro anterior foi mantido." });
+      } else {
+        toast({ title: "Check-in registrado", description: "Seu progresso de hoje foi salvo." });
+      }
     } catch {
       toast({ title: "Erro ao registrar", description: "Tente novamente.", variant: "destructive" });
     }

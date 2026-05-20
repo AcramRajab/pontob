@@ -63,7 +63,7 @@ export default function WeeklyCheckin() {
   const onSubmit = async (data: WeeklyForm) => {
     if (!franchiseId) return;
     try {
-      await create.mutateAsync({
+      const result = await create.mutateAsync({
         data: {
           goalId: parseInt(data.goalId),
           franchiseId,
@@ -81,7 +81,11 @@ export default function WeeklyCheckin() {
       });
       qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
       setSubmitted(true);
-      toast({ title: "Check-in semanal registrado" });
+      if ((result as any).conflict) {
+        toast({ title: "Check-in já registrado", description: "Você já fez o check-in desta semana. O registro anterior foi mantido." });
+      } else {
+        toast({ title: "Check-in semanal registrado" });
+      }
     } catch {
       toast({ title: "Erro ao registrar", variant: "destructive" });
     }

@@ -45,7 +45,7 @@ export default function MonthlyCheckin() {
   const onSubmit = async (data: MonthlyForm) => {
     if (!franchiseId) return;
     try {
-      await create.mutateAsync({
+      const result = await create.mutateAsync({
         data: {
           goalId: parseInt(data.goalId),
           franchiseId,
@@ -64,7 +64,11 @@ export default function MonthlyCheckin() {
       });
       qc.invalidateQueries({ queryKey: getListMonthlyCheckinsQueryKey({}) });
       setSubmitted(true);
-      toast({ title: "Check-in mensal registrado" });
+      if ((result as any).conflict) {
+        toast({ title: "Check-in já registrado", description: "Você já fez o check-in deste mês. O registro anterior foi mantido." });
+      } else {
+        toast({ title: "Check-in mensal registrado" });
+      }
     } catch {
       toast({ title: "Erro ao registrar", variant: "destructive" });
     }

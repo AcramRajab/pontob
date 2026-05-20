@@ -162,25 +162,31 @@ router.post("/goals", requireAuth, requireWriteAccess, async (req, res) => {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
+
+    if (startDate) {
+      const [existing] = await db
+        .select({ id: goalsTable.id, title: goalsTable.title })
+        .from(goalsTable)
+        .where(and(
+          eq(goalsTable.franchiseId, franchiseId),
+          eq(goalsTable.keyProcessId, keyProcessId),
+          eq(goalsTable.startDate, startDate),
+        ))
+        .limit(1);
+      if (existing) {
+        res.status(409).json({
+          error: "Já existe uma meta para este processo-chave neste período.",
+          existingGoalId: existing.id,
+        });
+        return;
+      }
+    }
+
     const [g] = await db.insert(goalsTable).values({
       franchiseId, dimensionId, keyProcessId, title,
       kriDescription, currentValue, targetValue, unit,
       startDate, endDate, ownerUserId, frequency,
       status: "em_andamento",
-    }).onConflictDoUpdate({
-      target: [goalsTable.franchiseId, goalsTable.keyProcessId, goalsTable.startDate],
-      targetWhere: sql`start_date IS NOT NULL`,
-      set: {
-        dimensionId: sql`excluded.dimension_id`,
-        title: sql`excluded.title`,
-        kriDescription: sql`excluded.kri_description`,
-        currentValue: sql`excluded.current_value`,
-        targetValue: sql`excluded.target_value`,
-        unit: sql`excluded.unit`,
-        endDate: sql`excluded.end_date`,
-        ownerUserId: sql`excluded.owner_user_id`,
-        frequency: sql`excluded.frequency`,
-      },
     }).returning();
     const enriched = await enrichGoal({ ...g, franchiseName: null, dimensionName: null, keyProcessName: null, ownerName: null });
     res.status(201).json(enriched);
