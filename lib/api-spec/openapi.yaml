@@ -1819,6 +1819,8 @@ components:
           type: ["string", "null"]
         initiativeName:
           type: ["string", "null"]
+        catalogActive:
+          type: ["boolean", "null"]
         dimensionName:
           type: ["string", "null"]
         keyProcessName:

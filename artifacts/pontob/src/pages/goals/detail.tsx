@@ -481,7 +481,10 @@ export default function GoalDetail() {
                           href={`/goals/${id}/initiatives/${initiative.id}/edit`}
                           className="font-medium text-sm leading-tight truncate hover:text-primary hover:underline cursor-pointer"
                         >
-                          {initiative.initiativeName || "Iniciativa"}
+                          {initiative.initiativeName || initiative.customName || "Iniciativa"}
+                          {initiative.strategicInitiativeId && initiative.catalogActive === false && (
+                            <span className="ml-1.5 text-xs font-normal text-muted-foreground">(inativo)</span>
+                          )}
                         </Link>
                         {initiative.keyProcessName && (
                           <p className="text-xs text-muted-foreground mt-0.5">{initiative.keyProcessName}</p>

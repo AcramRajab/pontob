@@ -237,6 +237,7 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
         goalId: goalInitiativesTable.goalId,
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
         initiativeName: strategicInitiativesTable.name,
+        catalogActive: strategicInitiativesTable.active,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
@@ -435,6 +436,7 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
         customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
+        catalogActive: strategicInitiativesTable.active,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
@@ -489,6 +491,7 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
         customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
+        catalogActive: strategicInitiativesTable.active,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
@@ -550,6 +553,22 @@ router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (re
       return;
     }
 
+    if (strategicInitiativeId) {
+      const [catalogItem] = await db
+        .select({ active: strategicInitiativesTable.active })
+        .from(strategicInitiativesTable)
+        .where(eq(strategicInitiativesTable.id, strategicInitiativeId))
+        .limit(1);
+      if (!catalogItem) {
+        res.status(400).json({ error: "Strategic initiative not found." });
+        return;
+      }
+      if (!catalogItem.active) {
+        res.status(400).json({ error: "Cannot link a deactivated strategic initiative to a goal." });
+        return;
+      }
+    }
+
     const [initiative] = await db.insert(goalInitiativesTable).values({
       goalId, strategicInitiativeId: strategicInitiativeId || null, customName: customName || null,
       desiredResult, mainKpiId, ownerUserId,
@@ -578,6 +597,7 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
         strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
         customName: goalInitiativesTable.customName,
         initiativeName: strategicInitiativesTable.name,
+        catalogActive: strategicInitiativesTable.active,
         dimensionName: dimensionsTable.name,
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,

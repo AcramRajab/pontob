@@ -19,6 +19,8 @@ export interface GoalInitiative {
   /** @nullable */
   initiativeName?: string | null;
   /** @nullable */
+  catalogActive?: boolean | null;
+  /** @nullable */
   dimensionName?: string | null;
   /** @nullable */
   keyProcessName?: string | null;
