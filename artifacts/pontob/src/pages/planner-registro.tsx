@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -188,12 +190,12 @@ function MonetaryForm({
 
 export default function PlannerRegistro() {
   const { user } = useAuth();
+  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [monetaryOpen, setMonetaryOpen] = useState<string | null>(null);
   const [confirmReopen, setConfirmReopen] = useState(false);
-  const franchiseId = user?.franchiseId;
   const canWrite = user?.role !== "responsavel_interno";
 
   const today = new Date();
@@ -310,16 +312,19 @@ export default function PlannerRegistro() {
   });
 
   function handleIncrement(indicatorKey: string) {
+    if (!franchiseId) return;
     logMutation.mutate({ indicatorKey, delta: 1 });
   }
 
   function handleDecrement(indicatorKey: string) {
+    if (!franchiseId) return;
     const current = dayTotals[indicatorKey] ?? 0;
     if (current <= 0) return;
     logMutation.mutate({ indicatorKey, delta: -1 });
   }
 
   function handleMonetary(indicatorKey: string, delta: number, note: string) {
+    if (!franchiseId) return;
     logMutation.mutate({ indicatorKey, delta, note }, {
       onSuccess: () => setMonetaryOpen(null),
     });
@@ -374,7 +379,19 @@ export default function PlannerRegistro() {
         </div>
       </div>
 
-      {isSubmitted && canWrite && (
+      {isAdmin && (
+        <FranchisePicker
+          franchises={franchises}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
+        />
+      )}
+
+      {isAdmin && !franchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia acima para registrar eventos." />
+      ) : null}
+
+      {(!isAdmin || franchiseId) && isSubmitted && canWrite && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm text-amber-700">
             Esta semana foi finalizada. Para registrar novos eventos, reabra a semana primeiro.
@@ -403,8 +420,8 @@ export default function PlannerRegistro() {
         />
       )}
 
-      {/* Indicator cards */}
-      <div className="space-y-6">
+      {/* Indicator cards — only when franchiseId is known */}
+      <div className="space-y-6" style={{ display: (!isAdmin || franchiseId) ? undefined : "none" }}>
         {SECTIONS.map(section => {
           const SectionIcon = section.icon;
           return (
