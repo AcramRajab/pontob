@@ -80,7 +80,9 @@ export const goalInitiativesTable = pgTable("goal_initiatives", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("goal_initiatives_goal_initiative_uniq").on(t.goalId, t.strategicInitiativeId).where(sql`strategic_initiative_id IS NOT NULL`),
+]);
 
 export const insertGoalInitiativeSchema = createInsertSchema(goalInitiativesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertGoalInitiative = z.infer<typeof insertGoalInitiativeSchema>;

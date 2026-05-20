@@ -567,16 +567,36 @@ router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (re
         res.status(400).json({ error: "Cannot link a deactivated strategic initiative to a goal." });
         return;
       }
+
+      const [existing] = await db
+        .select({ id: goalInitiativesTable.id })
+        .from(goalInitiativesTable)
+        .where(and(eq(goalInitiativesTable.goalId, goalId), eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativeId)))
+        .limit(1);
+      if (existing) {
+        res.status(409).json({ error: "This strategic initiative is already linked to this goal." });
+        return;
+      }
     }
 
-    const [initiative] = await db.insert(goalInitiativesTable).values({
-      goalId, strategicInitiativeId: strategicInitiativeId || null, customName: customName || null,
-      desiredResult, mainKpiId, ownerUserId,
-      startDate, endDate, frequency, executionDay, executionTime, estimatedTime,
-      whatWillBeDone, whyItMatters, whoIsResponsible, whereItWillBeDone,
-      howItWillBeDone, investmentOrEffort, notes, status: "ativa",
-    }).returning();
+    let insertedRows: (typeof goalInitiativesTable.$inferSelect)[];
+    try {
+      insertedRows = await db.insert(goalInitiativesTable).values({
+        goalId, strategicInitiativeId: strategicInitiativeId || null, customName: customName || null,
+        desiredResult, mainKpiId, ownerUserId,
+        startDate, endDate, frequency, executionDay, executionTime, estimatedTime,
+        whatWillBeDone, whyItMatters, whoIsResponsible, whereItWillBeDone,
+        howItWillBeDone, investmentOrEffort, notes, status: "ativa",
+      }).returning();
+    } catch (insertErr: any) {
+      if (insertErr?.code === "23505") {
+        res.status(409).json({ error: "This strategic initiative is already linked to this goal." });
+        return;
+      }
+      throw insertErr;
+    }
 
+    const initiative = insertedRows[0];
     res.status(201).json({ ...initiative, createdAt: initiative.createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);
