@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable, weeklyPlannerEntriesTable, PLANNER_INDICATORS } from "@workspace/db";
-import { eq, and, sql, desc, gte, lte, ne, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lte, ne, inArray, notInArray } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
 const router = Router();
@@ -55,7 +55,10 @@ router.get("/dashboard/today", requireAuth, async (req, res) => {
     const today = new Date().toISOString().split("T")[0];
 
     const activeGoals = await db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(goalsTable)
-      .where(and(eq(goalsTable.franchiseId, franchiseId), eq(goalsTable.status, "em_andamento")));
+      .where(and(
+        eq(goalsTable.franchiseId, franchiseId),
+        notInArray(goalsTable.status, ["concluida", "cancelada"]),
+      ));
 
     const initiativesForToday = await db.select({
       id: goalInitiativesTable.id,
