@@ -4,7 +4,7 @@ import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -191,6 +191,7 @@ function MonetaryForm({
 export default function PlannerRegistro() {
   const { user } = useAuth();
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
@@ -311,20 +312,29 @@ export default function PlannerRegistro() {
     onError: () => toast({ title: "Erro ao remover evento", variant: "destructive" }),
   });
 
+  function requireSession() {
+    if (!franchiseId) {
+      toast({ title: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+      setLocation("/login");
+      return false;
+    }
+    return true;
+  }
+
   function handleIncrement(indicatorKey: string) {
-    if (!franchiseId) return;
+    if (!requireSession()) return;
     logMutation.mutate({ indicatorKey, delta: 1 });
   }
 
   function handleDecrement(indicatorKey: string) {
-    if (!franchiseId) return;
+    if (!requireSession()) return;
     const current = dayTotals[indicatorKey] ?? 0;
     if (current <= 0) return;
     logMutation.mutate({ indicatorKey, delta: -1 });
   }
 
   function handleMonetary(indicatorKey: string, delta: number, note: string) {
-    if (!franchiseId) return;
+    if (!requireSession()) return;
     logMutation.mutate({ indicatorKey, delta, note }, {
       onSuccess: () => setMonetaryOpen(null),
     });

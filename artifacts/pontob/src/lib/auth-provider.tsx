@@ -1,20 +1,27 @@
 import React from "react";
-import { useGetMe, useLogin, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
-import type { LoginInput } from "@workspace/api-client-react";
+import { useLogin, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
+import type { LoginInput, AuthUser } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading: isUserLoading, refetch } = useGetMe({
-    query: {
-      retry: false,
-      staleTime: 0,
-      queryKey: getGetMeQueryKey(),
+  // Custom queryFn: returns null on 401 instead of throwing so TanStack Query
+  // clears `data` (rather than keeping stale cache), which lets ProtectedRoute
+  // detect the expired session and redirect to /login.
+  const { data: user, isLoading: isUserLoading, refetch } = useQuery<AuthUser | null>({
+    queryKey: getGetMeQueryKey(),
+    queryFn: async () => {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to fetch user");
+      return res.json() as Promise<AuthUser>;
     },
+    retry: false,
+    staleTime: 0,
   });
 
   const loginMutation = useLogin();
@@ -31,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Session may already be gone — proceed with client-side cleanup
     }
-    queryClient.setQueryData(getGetMeQueryKey(), undefined);
+    queryClient.setQueryData(getGetMeQueryKey(), null);
     queryClient.clear();
     setLocation("/login");
   };
@@ -39,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user || null,
+        user: user ?? null,
         isLoading: isUserLoading,
         login,
         logout,
