@@ -1,5 +1,5 @@
 import { db } from "./index.js";
-import { sql, notInArray } from "drizzle-orm";
+import { sql, notInArray, inArray } from "drizzle-orm";
 import {
   franchisesTable,
   usersTable,
@@ -10,6 +10,14 @@ import {
 import bcrypt from "bcryptjs";
 
 const RESET = process.argv.includes("--reset");
+
+// These accounts were replaced by real production accounts. They must never be
+// re-activated, even if an old or modified seed script tries to insert them.
+// The post-upsert guard below enforces this after every seed run.
+const PERMANENTLY_DEACTIVATED_EMAILS = [
+  "admin@remaxsc.com.br",
+  "regional@remaxsc.com.br",
+];
 
 const SEED_FRANCHISE_NAMES = ["RE/MAX Franquia Teste", "RE/MAX Capital", "RE/MAX Excellence"];
 const SEED_USER_EMAILS = [
@@ -97,6 +105,14 @@ async function seed() {
       });
   }
   console.log("Users seeded");
+
+  // Guard: ensure permanently-deactivated placeholder accounts can never be
+  // re-activated by a future seed run, regardless of what userData contains.
+  await db
+    .update(usersTable)
+    .set({ active: false })
+    .where(inArray(usersTable.email, PERMANENTLY_DEACTIVATED_EMAILS));
+  console.log("Placeholder accounts enforced as inactive");
 
   // ── Dimensions ──────────────────────────────────────────────────────────────
   const dimensionData = [
