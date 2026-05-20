@@ -257,6 +257,16 @@ export default function PlannerRegistro() {
     return (eventsData?.events ?? []).filter(e => e.eventDate === selectedStr);
   }, [eventsData, selectedStr]);
 
+  // Helper: check response for 401 and handle session expiry
+  function handleFetchError(status: number, fallbackMsg: string) {
+    if (status === 401) {
+      toast({ title: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+      setLocation("/login");
+      return;
+    }
+    toast({ title: fallbackMsg, variant: "destructive" });
+  }
+
   // Log event mutation
   const logMutation = useMutation({
     mutationFn: async ({ indicatorKey, delta, note }: { indicatorKey: string; delta: number; note?: string }) => {
@@ -266,14 +276,18 @@ export default function PlannerRegistro() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ franchiseId, indicatorKey, delta, note: note || null, eventDate: selectedStr }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const err = Object.assign(new Error("Failed"), { status: res.status });
+        throw err;
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner-events", franchiseId, weekStartDate] });
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartDate] });
     },
-    onError: () => toast({ title: "Erro ao registrar evento", variant: "destructive" }),
+    onError: (err: Error & { status?: number }) =>
+      handleFetchError(err.status ?? 0, "Erro ao registrar evento"),
   });
 
   // Reopen week mutation
@@ -285,14 +299,18 @@ export default function PlannerRegistro() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ franchiseId, weekStartDate }),
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const err = Object.assign(new Error("Failed"), { status: res.status });
+        throw err;
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartDate] });
       toast({ title: "Semana reaberta", description: "Agora você pode registrar novos eventos. A equipe regional foi notificada." });
     },
-    onError: () => toast({ title: "Erro ao reabrir semana", variant: "destructive" }),
+    onError: (err: Error & { status?: number }) =>
+      handleFetchError(err.status ?? 0, "Erro ao reabrir semana"),
   });
 
   // Delete event mutation
@@ -301,7 +319,10 @@ export default function PlannerRegistro() {
       const res = await fetch(`/api/planner/events/${eventId}`, {
         method: "DELETE", credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) {
+        const err = Object.assign(new Error("Failed"), { status: res.status });
+        throw err;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -309,7 +330,8 @@ export default function PlannerRegistro() {
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartDate] });
       toast({ title: "Evento removido" });
     },
-    onError: () => toast({ title: "Erro ao remover evento", variant: "destructive" }),
+    onError: (err: Error & { status?: number }) =>
+      handleFetchError(err.status ?? 0, "Erro ao remover evento"),
   });
 
   function requireSession() {
