@@ -9,8 +9,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Target } from "lucide-react";
 import { useState } from "react";
+import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
@@ -107,6 +108,19 @@ export default function DailyCheckin() {
 
       {isAdmin && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in." />
+      ) : goals.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
+            <Target className="h-7 w-7 text-slate-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800">Nenhuma meta cadastrada</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-xs">Crie uma meta antes de fazer check-in para acompanhar seu progresso.</p>
+          </div>
+          <Link href="/metas/nova">
+            <Button className="mt-1">+ Nova Meta</Button>
+          </Link>
+        </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Card>
