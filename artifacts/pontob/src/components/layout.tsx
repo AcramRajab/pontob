@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Loader2 } from "lucide-react";
 import { TourProvider } from "./tour-guide";
 import { AiAssistantProvider } from "./ai-assistant";
+import { CheckinGate } from "./checkin-gate";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -23,22 +24,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <TourProvider>
       <AiAssistantProvider>
-        <SidebarProvider>
-          <div className="flex h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 min-w-0">
-              <header className="h-12 lg:hidden border-b border-border/60 flex items-center px-4 shrink-0 bg-background/95 backdrop-blur-sm">
-                <SidebarTrigger />
-                <span className="text-sm font-semibold ml-3 text-foreground/80 tracking-tight">Ponto B</span>
-              </header>
-              <main className="flex-1 overflow-y-auto">
-                <div className="mx-auto max-w-5xl px-5 py-6 md:px-8 md:py-8">
-                  {children}
-                </div>
-              </main>
+        <CheckinGate>
+          <SidebarProvider>
+            <div className="flex h-screen w-full bg-background">
+              <AppSidebar />
+              <div className="flex flex-col flex-1 min-w-0">
+                <header className="h-12 lg:hidden border-b border-border/60 flex items-center px-4 shrink-0 bg-background/95 backdrop-blur-sm">
+                  <SidebarTrigger />
+                  <span className="text-sm font-semibold ml-3 text-foreground/80 tracking-tight">Ponto B</span>
+                </header>
+                <main className="flex-1 overflow-y-auto">
+                  <div className="mx-auto max-w-5xl px-5 py-6 md:px-8 md:py-8">
+                    {children}
+                  </div>
+                </main>
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
+          </SidebarProvider>
+        </CheckinGate>
       </AiAssistantProvider>
     </TourProvider>
   );

@@ -663,4 +663,70 @@ router.get("/dashboard/regional/franchise/:id", requireAuth, requireAdminOrStaff
   }
 });
 
+// GET /dashboard/initiative-score — catalog execution rate per dimension
+router.get("/dashboard/initiative-score", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+    const franchiseId = (role === "master_admin" || role === "staff_regional")
+      ? (paramFranchiseId ?? req.session.franchiseId)
+      : req.session.franchiseId;
+
+    if (!franchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+
+    // Total active catalog initiatives per dimension
+    const catalogTotals = await db
+      .select({
+        dimensionId: dimensionsTable.id,
+        dimensionName: dimensionsTable.name,
+        total: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(strategicInitiativesTable)
+      .innerJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
+      .where(eq(strategicInitiativesTable.active, true))
+      .groupBy(dimensionsTable.id, dimensionsTable.name);
+
+    // Distinct catalog initiatives completed (status=concluida) by this franchise, per dimension
+    const completedByDimension = await db
+      .select({
+        dimensionId: dimensionsTable.id,
+        completedCount: sql<number>`count(distinct ${goalInitiativesTable.strategicInitiativeId})`.mapWith(Number),
+      })
+      .from(goalInitiativesTable)
+      .innerJoin(goalsTable, and(
+        eq(goalInitiativesTable.goalId, goalsTable.id),
+        eq(goalsTable.franchiseId, franchiseId),
+      ))
+      .innerJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+      .innerJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
+      .where(and(
+        eq(goalInitiativesTable.status, "concluida"),
+        isNull(goalInitiativesTable.deletedAt),
+      ))
+      .groupBy(dimensionsTable.id);
+
+    const completedMap = new Map(completedByDimension.map(r => [r.dimensionId, r.completedCount]));
+    const totalCatalog = catalogTotals.reduce((s, r) => s + r.total, 0);
+    const totalCompleted = completedByDimension.reduce((s, r) => s + r.completedCount, 0);
+
+    const dimensions = catalogTotals.map(r => ({
+      dimensionId: r.dimensionId,
+      dimensionName: r.dimensionName,
+      total: r.total,
+      completed: completedMap.get(r.dimensionId) ?? 0,
+      pct: Math.round(((completedMap.get(r.dimensionId) ?? 0) / r.total) * 100),
+    }));
+
+    res.json({
+      totalCatalog,
+      totalCompleted,
+      overallPct: totalCatalog > 0 ? Math.round((totalCompleted / totalCatalog) * 100) : 0,
+      dimensions,
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -322,4 +322,95 @@ router.patch("/monthly-checkins/:id", requireAuth, requireWriteAccess, async (re
   }
 });
 
+// GET /checkins/pending-gate — tells the client whether the current user has an overdue check-in
+// Only applies to franqueado / responsavel_interno roles
+router.get("/checkins/pending-gate", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    if (role === "master_admin" || role === "staff_regional" || role === "socio") {
+      res.json({ overdue: false });
+      return;
+    }
+
+    const franchiseId = req.session.franchiseId;
+    if (!franchiseId) { res.json({ overdue: false }); return; }
+
+    // Only gate franchises that have at least one goal (skip brand-new franchises with no setup)
+    const [goalCheck] = await db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(goalsTable)
+      .where(eq(goalsTable.franchiseId, franchiseId));
+    if ((goalCheck?.count ?? 0) === 0) { res.json({ overdue: false }); return; }
+
+    const now = new Date();
+    const todayDay = now.getDate();
+    const todayDow = now.getDay(); // 0=Sun … 6=Sat
+
+    // ── Monthly gate ──────────────────────────────────────────────────────────
+    // Grace: until the 5th of the new month. After that, last month's check-in is required.
+    if (todayDay >= 5) {
+      const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth(); // 1-based
+      const prevYear  = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+
+      const [found] = await db
+        .select({ id: monthlyCheckinsTable.id })
+        .from(monthlyCheckinsTable)
+        .where(and(
+          eq(monthlyCheckinsTable.franchiseId, franchiseId),
+          eq(monthlyCheckinsTable.month, prevMonth),
+          eq(monthlyCheckinsTable.year, prevYear),
+        ))
+        .limit(1);
+
+      if (!found) {
+        const label = new Date(prevYear, prevMonth - 1, 1)
+          .toLocaleString("pt-BR", { month: "long", year: "numeric" });
+        res.json({ overdue: true, type: "monthly", periodLabel: label, month: prevMonth, year: prevYear });
+        return;
+      }
+    }
+
+    // ── Weekly gate ───────────────────────────────────────────────────────────
+    // Grace: submit last week's check-in up to Tuesday of the current week.
+    // Wednesday (dow=3) and beyond → last week is overdue.
+    if (todayDow >= 3) {
+      const daysToLastMonday = todayDow === 0 ? 6 : todayDow - 1;
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() - daysToLastMonday);
+
+      const prevWeekMonday = new Date(lastMonday);
+      prevWeekMonday.setDate(lastMonday.getDate() - 7);
+      const prevWeekSunday = new Date(prevWeekMonday);
+      prevWeekSunday.setDate(prevWeekMonday.getDate() + 6);
+
+      const prevWeekMondayStr = prevWeekMonday.toISOString().split("T")[0];
+
+      const [found] = await db
+        .select({ id: weeklyCheckinsTable.id })
+        .from(weeklyCheckinsTable)
+        .where(and(
+          eq(weeklyCheckinsTable.franchiseId, franchiseId),
+          eq(weeklyCheckinsTable.weekStartDate, prevWeekMondayStr),
+        ))
+        .limit(1);
+
+      if (!found) {
+        const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+        res.json({
+          overdue: true,
+          type: "weekly",
+          periodLabel: `semana de ${fmt(prevWeekMonday)} a ${fmt(prevWeekSunday)}`,
+          weekStartDate: prevWeekMondayStr,
+        });
+        return;
+      }
+    }
+
+    res.json({ overdue: false });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

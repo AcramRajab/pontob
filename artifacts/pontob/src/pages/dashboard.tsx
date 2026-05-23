@@ -11,15 +11,95 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign, TrendingUp } from "lucide-react";
+import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign, TrendingUp, BookOpen } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Cell } from "recharts";
 import { useForm } from "react-hook-form";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { progressColorHex } from "@/lib/progress-color";
+
+interface InitiativeScoreData {
+  totalCatalog: number;
+  totalCompleted: number;
+  overallPct: number;
+  dimensions: { dimensionId: number; dimensionName: string; total: number; completed: number; pct: number }[];
+}
+
+async function fetchInitiativeScore(franchiseId: number): Promise<InitiativeScoreData> {
+  const res = await fetch(`/api/dashboard/initiative-score?franchiseId=${franchiseId}`, { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch initiative score");
+  return res.json();
+}
+
+function InitiativeScorePanel({ franchiseId }: { franchiseId: number }) {
+  const { data, isLoading } = useQuery<InitiativeScoreData>({
+    queryKey: ["initiative-score", franchiseId],
+    queryFn: () => fetchInitiativeScore(franchiseId),
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return (
+    <Card>
+      <CardContent className="flex h-32 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </CardContent>
+    </Card>
+  );
+
+  const pct = data?.overallPct ?? 0;
+  const pctColor = pct >= 70 ? "#16a34a" : pct >= 40 ? "#d97706" : "#dc2626";
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-violet-500" />
+            Execução do Cardápio
+          </CardTitle>
+          <CardDescription>
+            Iniciativas do catálogo concluídas com resultado documentado
+          </CardDescription>
+        </div>
+        <div className="text-right">
+          <div className="text-3xl font-bold" style={{ color: pctColor }}>{pct}%</div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {data?.totalCompleted ?? 0} de {data?.totalCatalog ?? 0} iniciativas
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {(data?.dimensions ?? []).map(dim => (
+          <div key={dim.dimensionId} className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{dim.dimensionName}</span>
+              <span className="font-medium" style={{ color: dim.pct >= 70 ? "#16a34a" : dim.pct >= 40 ? "#d97706" : "#dc2626" }}>
+                {dim.completed}/{dim.total} · {dim.pct}%
+              </span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${dim.pct}%`,
+                  backgroundColor: dim.pct >= 70 ? "#16a34a" : dim.pct >= 40 ? "#d97706" : "#dc2626",
+                }}
+              />
+            </div>
+          </div>
+        ))}
+        {(data?.totalCompleted ?? 0) === 0 && (
+          <p className="text-xs text-muted-foreground text-center pt-1">
+            Conclua iniciativas com resultado documentado para subir sua pontuação neste painel.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTH_NAMES_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -324,6 +404,8 @@ export default function Dashboard() {
               )}
             </CardContent>
           </Card>
+
+          <InitiativeScorePanel franchiseId={franchiseId!} />
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
