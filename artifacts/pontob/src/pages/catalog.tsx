@@ -28,7 +28,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useState } from "react";
-import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff } from "lucide-react";
+import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { PLANNER_KPI_TEMPLATES, PLANNER_SECTIONS, templatesBySection } from "@/lib/kpi-templates";
 import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,6 +51,8 @@ export default function Catalog() {
 
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
   const [impactCheckingId, setImpactCheckingId] = useState<string | null>(null);
+  const [mgmtSearch, setMgmtSearch] = useState("");
+  const [mgmtInactiveOnly, setMgmtInactiveOnly] = useState(false);
 
   const isAdmin = !authLoading && (user?.role === "master_admin" || user?.role === "staff_regional");
 
@@ -154,6 +159,23 @@ export default function Catalog() {
 
   const isLoading = dimsLoading || initsLoading;
   const adminIsLoading = adminDimsLoading || adminKpsLoading || adminInitsLoading;
+
+  const mgmtSearchLower = mgmtSearch.toLowerCase();
+  const filteredAdminDimensions = adminDimensions.filter((d: any) => {
+    if (mgmtInactiveOnly && d.active) return false;
+    if (mgmtSearchLower && !d.name.toLowerCase().includes(mgmtSearchLower)) return false;
+    return true;
+  });
+  const filteredAdminKeyProcesses = adminKeyProcesses.filter((kp: any) => {
+    if (mgmtInactiveOnly && kp.active) return false;
+    if (mgmtSearchLower && !kp.name.toLowerCase().includes(mgmtSearchLower) && !(kp.dimensionName ?? "").toLowerCase().includes(mgmtSearchLower)) return false;
+    return true;
+  });
+  const filteredAdminInitiatives = adminInitiatives.filter((init: any) => {
+    if (mgmtInactiveOnly && init.active) return false;
+    if (mgmtSearchLower && !init.name.toLowerCase().includes(mgmtSearchLower) && !(init.dimensionName ?? "").toLowerCase().includes(mgmtSearchLower) && !(init.keyProcessName ?? "").toLowerCase().includes(mgmtSearchLower)) return false;
+    return true;
+  });
 
   const dimensionColor = (name: string) =>
     name === "Pessoas" ? "bg-primary/10 text-primary border-primary/30" : "bg-destructive/10 text-destructive border-destructive/30";
@@ -359,9 +381,33 @@ export default function Catalog() {
 
         {/* ── Catalog Management Tab (admin only) ── */}
         {isAdmin && (
-          <TabsContent value="management" className="mt-6 space-y-8">
+          <TabsContent value="management" className="mt-6 space-y-6">
             <div className="rounded-lg border bg-amber-50 border-amber-200 p-4 text-sm text-amber-800">
               Aqui você pode ver todos os itens do catálogo, incluindo os inativos, e reativar qualquer item desativado por engano.
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  data-testid="mgmt-search"
+                  placeholder="Buscar por nome..."
+                  value={mgmtSearch}
+                  onChange={e => setMgmtSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="mgmt-inactive-only"
+                  data-testid="mgmt-inactive-only"
+                  checked={mgmtInactiveOnly}
+                  onCheckedChange={v => setMgmtInactiveOnly(!!v)}
+                />
+                <Label htmlFor="mgmt-inactive-only" className="text-sm cursor-pointer select-none">
+                  Mostrar apenas inativos
+                </Label>
+              </div>
             </div>
 
             {adminIsLoading ? (
@@ -374,9 +420,9 @@ export default function Catalog() {
                 <section>
                   <h2 className="text-base font-semibold mb-3">Dimensões</h2>
                   <div className="rounded-lg border divide-y overflow-hidden">
-                    {adminDimensions.length === 0 ? (
+                    {filteredAdminDimensions.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhuma dimensão encontrada.</p>
-                    ) : adminDimensions.map((d: any) => (
+                    ) : filteredAdminDimensions.map((d: any) => (
                       <div
                         key={d.id}
                         data-testid={`mgmt-dimension-${d.id}`}
@@ -411,9 +457,9 @@ export default function Catalog() {
                 <section>
                   <h2 className="text-base font-semibold mb-3">Processos-chave</h2>
                   <div className="rounded-lg border divide-y overflow-hidden">
-                    {adminKeyProcesses.length === 0 ? (
+                    {filteredAdminKeyProcesses.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhum processo encontrado.</p>
-                    ) : adminKeyProcesses.map((kp: any) => (
+                    ) : filteredAdminKeyProcesses.map((kp: any) => (
                       <div
                         key={kp.id}
                         data-testid={`mgmt-key-process-${kp.id}`}
@@ -451,9 +497,9 @@ export default function Catalog() {
                 <section>
                   <h2 className="text-base font-semibold mb-3">Iniciativas Estratégicas</h2>
                   <div className="rounded-lg border divide-y overflow-hidden">
-                    {adminInitiatives.length === 0 ? (
+                    {filteredAdminInitiatives.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhuma iniciativa encontrada.</p>
-                    ) : adminInitiatives.map((init: any) => (
+                    ) : filteredAdminInitiatives.map((init: any) => (
                       <div
                         key={init.id}
                         data-testid={`mgmt-initiative-${init.id}`}
