@@ -41,7 +41,7 @@ function ExecutionIcon({ v }: { v: string }) {
 
 export default function HistoryPage() {
   const [tab, setTab] = useState("all");
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const fid = franchiseId ?? undefined;
   const enabled = !!franchiseId;
@@ -84,11 +84,11 @@ export default function HistoryPage() {
         <p className="text-muted-foreground mt-1">Registro de check-ins e atualizações de progresso</p>
       </div>
 
-      {isAdmin && (
-        <FranchisePicker franchises={franchises} value={adminFranchiseId} onChange={setAdminFranchiseId} />
+      {(isAdmin || isSocio) && (
+        <FranchisePicker franchises={franchises} value={isSocio ? socioFranchiseId : adminFranchiseId} onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId} />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar o histórico." />
       ) : isLoading ? (
         <div className="space-y-3">

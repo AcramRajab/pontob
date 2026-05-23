@@ -267,7 +267,7 @@ function MonetaryForm({
 
 export default function PlannerRegistro() {
   const { user } = useAuth();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -488,7 +488,7 @@ export default function PlannerRegistro() {
         </div>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -496,7 +496,7 @@ export default function PlannerRegistro() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar eventos." />
       ) : null}
 

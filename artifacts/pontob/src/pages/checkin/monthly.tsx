@@ -103,7 +103,7 @@ export default function MonthlyCheckin() {
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
   const monthLabel = `${MONTHS[now.getMonth()]} ${currentYear}`;
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
@@ -237,7 +237,7 @@ export default function MonthlyCheckin() {
         <p className="text-muted-foreground mt-1">{monthLabel}</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -245,7 +245,7 @@ export default function MonthlyCheckin() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in mensal." />
       ) : isLoadingCheckins ? (
         <div className="space-y-4">

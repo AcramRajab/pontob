@@ -48,7 +48,7 @@ function calcProjected(
 
 export default function Goals() {
   const { user } = useAuth();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const { toast } = useToast();
   const qc = useQueryClient();
   const deleteGoal = useDeleteGoal();
@@ -94,7 +94,7 @@ export default function Goals() {
         )}
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -102,7 +102,7 @@ export default function Goals() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar as metas." />
       ) : isLoading ? (
         <div className="flex h-64 items-center justify-center">

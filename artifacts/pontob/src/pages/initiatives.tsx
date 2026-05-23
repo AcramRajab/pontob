@@ -46,7 +46,7 @@ export default function Initiatives() {
   const [confirmDeleteName, setConfirmDeleteName] = useState("");
   const [, navigate] = useLocation();
   const { user } = useAuth();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const canWrite = user?.role !== "responsavel_interno";
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -111,7 +111,7 @@ export default function Initiatives() {
         )}
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -119,7 +119,7 @@ export default function Initiatives() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar as iniciativas." />
       ) : (
         <>

@@ -21,6 +21,7 @@ export const AuthUserRole = {
   staff_regional: "staff_regional",
   franqueado: "franqueado",
   responsavel_interno: "responsavel_interno",
+  socio: "socio",
 } as const;
 
 export interface AuthUser {
@@ -32,6 +33,8 @@ export interface AuthUser {
   franchiseId?: number | null;
   /** @nullable */
   franchiseName?: string | null;
+  /** Only present for role=socio — list of franchises this user is linked to */
+  linkedFranchises?: Array<{ id: number; name: string }>;
 }
 
 export interface Franchise {

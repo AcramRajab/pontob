@@ -140,7 +140,7 @@ export default function DailyCheckin() {
   const qc = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -266,7 +266,7 @@ export default function DailyCheckin() {
         <p className="text-muted-foreground mt-1">Dois minutos para não perder a semana.</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -274,7 +274,7 @@ export default function DailyCheckin() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in." />
       ) : isLoadingCheckins ? (
         <div className="space-y-4">

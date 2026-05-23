@@ -114,7 +114,7 @@ export default function WeeklyCheckin() {
   const [submitted, setSubmitted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const week = getWeekDates();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
@@ -245,7 +245,7 @@ export default function WeeklyCheckin() {
         <p className="text-muted-foreground mt-1">Semana {week.start} — {week.end}</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -253,7 +253,7 @@ export default function WeeklyCheckin() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in semanal." />
       ) : isLoadingCheckins ? (
         <div className="space-y-4">

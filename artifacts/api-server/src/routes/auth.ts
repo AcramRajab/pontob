@@ -1,10 +1,19 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, franchisesTable } from "@workspace/db";
+import { db, usersTable, franchisesTable, userFranchisesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
+
+async function getSocioFranchises(userId: number) {
+  const rows = await db
+    .select({ id: franchisesTable.id, name: franchisesTable.name })
+    .from(userFranchisesTable)
+    .innerJoin(franchisesTable, eq(userFranchisesTable.franchiseId, franchisesTable.id))
+    .where(eq(userFranchisesTable.userId, userId));
+  return rows.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+}
 
 router.post("/auth/login", async (req, res) => {
   try {
@@ -56,7 +65,11 @@ router.post("/auth/login", async (req, res) => {
       .catch(err => req.log.error({ err }, "Failed to update lastLoginAt"));
 
     let franchiseName: string | null = null;
-    if (user.franchiseId) {
+    let linkedFranchises: Array<{ id: number; name: string }> | undefined;
+
+    if (user.role === "socio") {
+      linkedFranchises = await getSocioFranchises(user.id);
+    } else if (user.franchiseId) {
       const franchise = await db
         .select({ name: franchisesTable.name })
         .from(franchisesTable)
@@ -72,6 +85,7 @@ router.post("/auth/login", async (req, res) => {
       role: user.role,
       franchiseId: user.franchiseId,
       franchiseName,
+      linkedFranchises,
     });
   } catch (err) {
     req.log.error(err);
@@ -138,7 +152,11 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     }
 
     let franchiseName: string | null = null;
-    if (user.franchiseId) {
+    let linkedFranchises: Array<{ id: number; name: string }> | undefined;
+
+    if (user.role === "socio") {
+      linkedFranchises = await getSocioFranchises(user.id);
+    } else if (user.franchiseId) {
       const franchise = await db
         .select({ name: franchisesTable.name })
         .from(franchisesTable)
@@ -154,6 +172,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       role: user.role,
       franchiseId: user.franchiseId,
       franchiseName,
+      linkedFranchises,
     });
   } catch (err) {
     req.log.error(err);

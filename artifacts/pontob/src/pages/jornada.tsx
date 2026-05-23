@@ -89,7 +89,7 @@ function formatVal(v: number | null) { return v != null ? v.toLocaleString("pt-B
 /* ── component ────────────────────────────────────────────────────── */
 
 export default function Jornada() {
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const [year, setYear]   = useState(new Date().getFullYear());
   const [data, setData]   = useState<JourneyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -211,7 +211,7 @@ export default function Jornada() {
       </div>
 
       {/* ── Franchise picker (admin/staff only) ── */}
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}

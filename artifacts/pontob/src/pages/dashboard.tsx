@@ -64,7 +64,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -166,7 +166,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-2">Bata o olho e saiba onde avançar.</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -174,7 +174,7 @@ export default function Dashboard() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar o dashboard." />
       ) : isLoading ? (
         <div className="flex h-64 items-center justify-center">

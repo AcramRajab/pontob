@@ -46,7 +46,7 @@ function formatContent(text: string) {
 }
 
 export default function Coaching() {
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -171,7 +171,7 @@ export default function Coaching() {
         </div>
 
         {/* franchise picker (admin/staff only) */}
-        {isAdmin && (
+        {(isAdmin || isSocio) && (
           <div className="mt-3">
             <FranchisePicker
               franchises={franchises}
@@ -193,7 +193,7 @@ export default function Coaching() {
 
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-        {isAdmin && !franchiseId && (
+        {(isAdmin || isSocio) && !franchiseId && (
           <AdminEmptyState message="Selecione uma franquia acima para iniciar o coaching." />
         )}
         {(!isAdmin || franchiseId) && isEmpty && (

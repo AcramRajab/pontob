@@ -31,7 +31,7 @@ const stageLabel: Record<string, string> = {
 };
 
 export default function Recrutamento() {
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const params = franchiseId ? { franchiseId } : {};
   const { data: vagas = [], isLoading } = useListVagas(params, {
@@ -58,7 +58,7 @@ export default function Recrutamento() {
         )}
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -66,7 +66,7 @@ export default function Recrutamento() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia para ver as vagas de recrutamento." />
       ) : isLoading ? (
         <div className="flex h-48 items-center justify-center">

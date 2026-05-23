@@ -45,7 +45,7 @@ function progressColor(status: string, pct: number) {
 }
 
 export default function Today() {
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const { user } = useAuth();
   const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -154,11 +154,11 @@ export default function Today() {
         )}
       </div>
 
-      {isAdmin && (
-        <FranchisePicker franchises={franchises} value={adminFranchiseId} onChange={setAdminFranchiseId} />
+      {(isAdmin || isSocio) && (
+        <FranchisePicker franchises={franchises} value={isSocio ? socioFranchiseId : adminFranchiseId} onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId} />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar o painel de hoje." />
       ) : isLoading ? (
         <div className="flex h-64 items-center justify-center">

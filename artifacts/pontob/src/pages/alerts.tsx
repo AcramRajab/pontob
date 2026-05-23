@@ -73,7 +73,7 @@ export default function Alerts() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const [filter, setFilter] = useState("open");
   const [generating, setGenerating] = useState(false);
 
@@ -156,7 +156,7 @@ export default function Alerts() {
         </Button>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -164,7 +164,7 @@ export default function Alerts() {
         />
       )}
 
-      {isAdmin && !effectiveFranchiseId ? (
+      {(isAdmin || isSocio) && !effectiveFranchiseId ? (
         <AdminEmptyState message="Selecione uma franquia para ver os alertas." />
       ) : (
         <>

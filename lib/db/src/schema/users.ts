@@ -39,3 +39,15 @@ export const usersTable = pgTable("users", {
 export const insertUserSchema = createInsertSchema(usersTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
+
+// Many-to-many: sócio users linked to multiple franchises
+export const userFranchisesTable = pgTable("user_franchises", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  franchiseId: integer("franchise_id").notNull().references(() => franchisesTable.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique("user_franchises_unique").on(t.userId, t.franchiseId),
+]);
+
+export type UserFranchise = typeof userFranchisesTable.$inferSelect;

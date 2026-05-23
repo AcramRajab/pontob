@@ -22,7 +22,7 @@ const TYPE_META: Record<string, { label: string; icon: React.ElementType; color:
 };
 
 export default function Trash() {
-  const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [restoringId, setRestoringId] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export default function Trash() {
         </p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
           value={adminFranchiseId}
@@ -78,7 +78,7 @@ export default function Trash() {
         />
       )}
 
-      {isAdmin && !franchiseId ? (
+      {(isAdmin || isSocio) && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia para ver a lixeira." />
       ) : isLoading ? (
         <div className="flex justify-center py-16">
