@@ -11,12 +11,40 @@ import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker"
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { progressColorClass } from "@/lib/progress-color";
 import { ProgressLegend } from "@/components/progress-legend";
+
+function formatGoalValue(v: number | null | undefined, unit?: string | null): string {
+  if (v == null) return "—";
+  const u = unit?.toLowerCase() ?? "";
+  if (u === "r$" || u.includes("financeiro") || u.includes("honorário")) {
+    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+    if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`;
+    return `R$ ${v.toLocaleString("pt-BR")}`;
+  }
+  if (u === "%") return `${v.toLocaleString("pt-BR")}%`;
+  const suffix = unit ? ` ${unit}` : "";
+  return `${v.toLocaleString("pt-BR")}${suffix}`;
+}
+
+function calcProjected(
+  target: number | null | undefined,
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+): number | null {
+  if (target == null || !startDate || !endDate) return null;
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  if (end <= start) return null;
+  const ratio = Math.max(0, Math.min((now - start) / (end - start), 1));
+  return Math.round(target * ratio);
+}
 
 export default function Goals() {
   const { user } = useAuth();
@@ -83,61 +111,106 @@ export default function Goals() {
       ) : (
         <div className="grid gap-4">
           {goals?.length ? (
-            goals.map(goal => (
-              <Card key={goal.id} className="hover:bg-muted/50 transition-colors">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between">
-                    <div className="flex-1 space-y-3 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Target className="h-5 w-5 text-primary shrink-0" />
-                        <Link href={`/goals/${goal.id}`} className="font-semibold text-lg hover:underline">
-                          {goal.title}
-                        </Link>
-                        <Badge variant={goal.riskStatus === 'atrasado' ? 'destructive' : 'default'}>
-                          {goal.status}
-                        </Badge>
+            goals.map(goal => {
+              const projected = calcProjected(goal.targetValue, goal.startDate, goal.endDate);
+              const hasValues = goal.targetValue != null || goal.currentValue != null;
+              const pct = goal.progressPercentage ?? 0;
+
+              return (
+                <Card key={goal.id} className="hover:bg-muted/50 transition-colors">
+                  <CardContent className="p-5">
+                    <div className="flex flex-col gap-4">
+
+                      {/* Top row: title + meta + badge + actions */}
+                      <div className="flex items-start gap-3 justify-between">
+                        <div className="flex items-center gap-2.5 flex-wrap flex-1 min-w-0">
+                          <Target className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                          <Link href={`/goals/${goal.id}`} className="font-semibold text-base hover:underline leading-snug">
+                            {goal.title}
+                          </Link>
+                          <Badge
+                            variant={goal.riskStatus === "atrasado" ? "destructive" : "default"}
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {goal.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex flex-col items-end">
+                            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">Score</span>
+                            <span className="text-xl font-bold leading-none tabular-nums">{goal.score}</span>
+                          </div>
+                          {canWrite && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              onClick={e => {
+                                e.preventDefault();
+                                setConfirmDeleteTitle(goal.title);
+                                setConfirmDeleteId(goal.id);
+                              }}
+                              data-testid={`button-delete-goal-${goal.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
+
+                      {/* Subtitle: dimension • key process */}
+                      <p className="text-xs text-muted-foreground -mt-2">
                         {goal.dimensionName} • {goal.keyProcessName}
                         {isAdmin && goal.franchiseName && (
                           <span className="ml-2 text-primary/70">— {goal.franchiseName}</span>
                         )}
+                      </p>
+
+                      {/* Progress section */}
+                      <div className="space-y-2">
+                        {/* Numbers row: Realizado | Projetado | Meta */}
+                        {hasValues && (
+                          <div className="flex items-end gap-6">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">Realizado</span>
+                              <span className={cn(
+                                "text-base font-bold tabular-nums leading-none",
+                                goal.currentValue != null ? progressColorClass(pct) : "text-muted-foreground/30",
+                              )}>
+                                {formatGoalValue(goal.currentValue, goal.unit)}
+                              </span>
+                            </div>
+                            {projected != null && (
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">Projetado</span>
+                                <span className="text-base font-semibold tabular-nums leading-none text-muted-foreground">
+                                  {formatGoalValue(projected, goal.unit)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex flex-col ml-auto items-end">
+                              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">Meta</span>
+                              <span className="text-base font-semibold tabular-nums leading-none text-primary">
+                                {formatGoalValue(goal.targetValue, goal.unit)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bar + percentage */}
+                        <div className="flex items-center gap-3">
+                          <Progress value={pct} className="h-1.5 flex-1" />
+                          <span className={cn("text-xs font-semibold tabular-nums w-9 text-right shrink-0", progressColorClass(pct))}>
+                            {pct}%
+                          </span>
+                        </div>
                       </div>
+
                     </div>
-                    <div className="w-full md:w-64 space-y-2 shrink-0">
-                      <div className="flex justify-between text-sm">
-                        <span>Progresso</span>
-                        <span className={`font-medium ${progressColorClass(goal.progressPercentage)}`}>
-                          {goal.progressPercentage}%
-                        </span>
-                      </div>
-                      <Progress value={goal.progressPercentage} className="h-2" />
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm text-muted-foreground">Score</span>
-                        <span className="text-2xl font-bold">{goal.score}</span>
-                      </div>
-                      {canWrite && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={e => {
-                            e.preventDefault();
-                            setConfirmDeleteTitle(goal.title);
-                            setConfirmDeleteId(goal.id);
-                          }}
-                          data-testid={`button-delete-goal-${goal.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-12 text-center">
