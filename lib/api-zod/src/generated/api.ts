@@ -995,6 +995,141 @@ export const DeleteGoalInitiativeParams = zod.object({
 });
 
 /**
+ * @summary List all soft-deleted items for a franchise
+ */
+export const ListTrashQueryParams = zod.object({
+  franchiseId: zod.coerce.number().optional(),
+});
+
+export const ListTrashResponseItem = zod.object({
+  entityType: zod.string(),
+  entityId: zod.number(),
+  entityName: zod.string(),
+  goalTitle: zod.string().nullish(),
+  goalId: zod.number().nullish(),
+  dimensionName: zod.string().nullish(),
+  keyProcessName: zod.string().nullish(),
+  deletedAt: zod.string(),
+  deletedByName: zod.string().nullish(),
+});
+export const ListTrashResponse = zod.array(ListTrashResponseItem);
+
+/**
+ * @summary Restore a soft-deleted goal and its KPIs/initiatives
+ */
+export const RestoreGoalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RestoreGoalResponse = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  dimensionId: zod.number(),
+  dimensionName: zod.string().nullish(),
+  keyProcessId: zod.number(),
+  keyProcessName: zod.string().nullish(),
+  title: zod.string(),
+  kriDescription: zod.string().nullish(),
+  currentValue: zod.number().nullish(),
+  targetValue: zod.number().nullish(),
+  unit: zod.string().nullish(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  ownerUserId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  frequency: zod.string().nullish(),
+  status: zod.enum([
+    "nao_iniciada",
+    "em_andamento",
+    "em_atencao",
+    "atrasada",
+    "concluida",
+    "pausada",
+  ]),
+  progressPercentage: zod.number(),
+  riskStatus: zod
+    .union([
+      zod.literal("atrasado"),
+      zod.literal("no_prazo"),
+      zod.literal("adiantado"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  score: zod.number(),
+  activeInitiativesCount: zod.number().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Restore a soft-deleted KPI
+ */
+export const RestoreKpiParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RestoreKpiResponse = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  name: zod.string(),
+  initialValue: zod.number().nullish(),
+  currentValue: zod.number().nullish(),
+  targetValue: zod.number().nullish(),
+  unit: zod.string().nullish(),
+  frequency: zod.string().nullish(),
+  indicatorType: zod.enum([
+    "numero_absoluto",
+    "percentual",
+    "valor_financeiro",
+    "quantidade",
+    "sim_nao",
+  ]),
+  desiredDirection: zod.enum(["aumentar", "reduzir", "manter"]),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Restore a soft-deleted goal initiative
+ */
+export const RestoreGoalInitiativeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RestoreGoalInitiativeResponse = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  strategicInitiativeId: zod.number().nullish(),
+  customName: zod.string().nullish(),
+  initiativeName: zod.string().nullish(),
+  catalogActive: zod.boolean().nullish(),
+  dimensionName: zod.string().nullish(),
+  keyProcessName: zod.string().nullish(),
+  desiredResult: zod.string().nullish(),
+  actualResult: zod.string().nullish(),
+  mainKpiId: zod.number().nullish(),
+  ownerUserId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  startDate: zod.string().nullish(),
+  endDate: zod.string().nullish(),
+  frequency: zod.string().nullish(),
+  executionDay: zod.string().nullish(),
+  executionTime: zod.string().nullish(),
+  estimatedTime: zod.string().nullish(),
+  whatWillBeDone: zod.string().nullish(),
+  whyItMatters: zod.string().nullish(),
+  whoIsResponsible: zod.string().nullish(),
+  whereItWillBeDone: zod.string().nullish(),
+  howItWillBeDone: zod.string().nullish(),
+  investmentOrEffort: zod.string().nullish(),
+  progressPercentage: zod.number(),
+  status: zod.enum(["ativa", "concluida", "pausada", "cancelada"]),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary List daily check-ins
  */
 export const ListDailyCheckinsQueryParams = zod.object({

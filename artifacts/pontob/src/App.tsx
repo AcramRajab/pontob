@@ -45,6 +45,7 @@ import Convite from "@/pages/convite";
 import Agents from "@/pages/agents";
 import Jornada from "@/pages/jornada";
 import Coaching from "@/pages/coaching";
+import Trash from "@/pages/trash";
 
 function RootRedirect() {
   window.location.replace("/today");
@@ -173,6 +174,9 @@ function Router() {
         </Route>
         <Route path="/coaching">
           <ProtectedRoute><Coaching /></ProtectedRoute>
+        </Route>
+        <Route path="/trash">
+          <ProtectedRoute><Trash /></ProtectedRoute>
         </Route>
         <Route path="/">
           <ProtectedRoute><RootRedirect /></ProtectedRoute>

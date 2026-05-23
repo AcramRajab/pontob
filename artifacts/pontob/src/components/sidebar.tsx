@@ -6,7 +6,7 @@ import {
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
   TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle,
-  Sparkles, Navigation, BrainCircuit,
+  Sparkles, Navigation, BrainCircuit, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
@@ -106,6 +106,9 @@ export function AppSidebar() {
         )}
         <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
         <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
+        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
+          <NavItem href="/trash" icon={Trash2} label="Lixeira" active={at("/trash")} />
+        )}
 
         {/* Acompanhamento */}
         <NavSection label="Acompanhamento" />

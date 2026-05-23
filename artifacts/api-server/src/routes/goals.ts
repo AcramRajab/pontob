@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, goalsTable, kpisTable, goalInitiativesTable, franchisesTable, usersTable, dimensionsTable, keyProcessesTable, strategicInitiativesTable, progressHistoryTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull, isNotNull } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 import { logAudit, shouldAudit } from "../services/audit";
 
@@ -69,7 +69,11 @@ async function enrichGoal(g: any) {
   const activeInitiatives = await db
     .select({ count: sql<number>`count(*)`.mapWith(Number) })
     .from(goalInitiativesTable)
-    .where(and(eq(goalInitiativesTable.goalId, g.id), eq(goalInitiativesTable.status, "ativa")));
+    .where(and(
+      eq(goalInitiativesTable.goalId, g.id),
+      eq(goalInitiativesTable.status, "ativa"),
+      isNull(goalInitiativesTable.deletedAt),
+    ));
 
   return {
     id: g.id,
@@ -138,14 +142,12 @@ router.get("/goals", requireAuth, async (req, res) => {
       .leftJoin(keyProcessesTable, eq(goalsTable.keyProcessId, keyProcessesTable.id))
       .leftJoin(usersTable, eq(goalsTable.ownerUserId, usersTable.id));
 
-    const conditions = [];
+    const conditions = [isNull(goalsTable.deletedAt)];
     if (effectiveFranchiseId) conditions.push(eq(goalsTable.franchiseId, effectiveFranchiseId));
     if (dimensionId) conditions.push(eq(goalsTable.dimensionId, parseInt(dimensionId as string)));
     if (status) conditions.push(eq(goalsTable.status, status as string));
 
-    const rows = conditions.length > 0
-      ? await baseQuery.where(and(...conditions)).orderBy(goalsTable.createdAt)
-      : await baseQuery.orderBy(goalsTable.createdAt);
+    const rows = await baseQuery.where(and(...conditions)).orderBy(goalsTable.createdAt);
 
     const enriched = await Promise.all(rows.map(enrichGoal));
     res.json(enriched);
@@ -198,7 +200,7 @@ router.post("/goals", requireAuth, requireWriteAccess, async (req, res) => {
 
 router.get("/goals/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const rows = await db
       .select({
         id: goalsTable.id,
@@ -236,7 +238,7 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
     const g = rows[0];
     if (!canAccessFranchise(req, g.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const kpis = await db.select().from(kpisTable).where(eq(kpisTable.goalId, id)).orderBy(kpisTable.createdAt);
+    const kpis = await db.select().from(kpisTable).where(and(eq(kpisTable.goalId, id), isNull(kpisTable.deletedAt))).orderBy(kpisTable.createdAt);
     const initiatives = await db
       .select({
         id: goalInitiativesTable.id,
@@ -273,7 +275,7 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
       .leftJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
       .leftJoin(keyProcessesTable, eq(strategicInitiativesTable.keyProcessId, keyProcessesTable.id))
       .leftJoin(usersTable, eq(goalInitiativesTable.ownerUserId, usersTable.id))
-      .where(eq(goalInitiativesTable.goalId, id))
+      .where(and(eq(goalInitiativesTable.goalId, id), isNull(goalInitiativesTable.deletedAt)))
       .orderBy(goalInitiativesTable.createdAt);
 
     const enriched = await enrichGoal(g);
@@ -296,7 +298,7 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
 
 router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const [existingGoal] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
     if (!existingGoal) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, existingGoal.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -339,11 +341,11 @@ router.patch("/goals/:id", requireAuth, requireWriteAccess, async (req, res) => 
 // KPIs
 router.get("/goals/:id/kpis", requireAuth, async (req, res) => {
   try {
-    const goalId = parseInt(req.params.id);
+    const goalId = parseInt(req.params.id as string);
     const franchiseId = await getGoalFranchiseId(goalId);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    const rows = await db.select().from(kpisTable).where(eq(kpisTable.goalId, goalId)).orderBy(kpisTable.createdAt);
+    const rows = await db.select().from(kpisTable).where(and(eq(kpisTable.goalId, goalId), isNull(kpisTable.deletedAt))).orderBy(kpisTable.createdAt);
     res.json(rows.map(k => ({ ...k, createdAt: k.createdAt.toISOString() })));
   } catch (err) {
     req.log.error(err);
@@ -353,11 +355,11 @@ router.get("/goals/:id/kpis", requireAuth, async (req, res) => {
 
 router.post("/goals/:id/kpis", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const goalId = parseInt(req.params.id);
+    const goalId = parseInt(req.params.id as string);
     const franchiseId = await getGoalFranchiseId(goalId);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    const existing = await db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(kpisTable).where(eq(kpisTable.goalId, goalId));
+    const existing = await db.select({ count: sql<number>`count(*)`.mapWith(Number) }).from(kpisTable).where(and(eq(kpisTable.goalId, goalId), isNull(kpisTable.deletedAt)));
     if ((existing[0]?.count ?? 0) >= 3) {
       res.status(400).json({ error: "Maximum 3 KPIs per goal" });
       return;
@@ -373,7 +375,7 @@ router.post("/goals/:id/kpis", requireAuth, requireWriteAccess, async (req, res)
 
 router.patch("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const franchiseId = await getKpiFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -395,10 +397,20 @@ router.delete("/goals/:id", requireAuth, requireWriteAccess, async (req, res) =>
     const [existingGoal] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
     if (!existingGoal) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, existingGoal.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    // Delete child records first (no CASCADE in schema)
-    await db.delete(kpisTable).where(eq(kpisTable.goalId, id));
-    await db.delete(goalInitiativesTable).where(eq(goalInitiativesTable.goalId, id));
-    await db.delete(goalsTable).where(eq(goalsTable.id, id));
+    const now = new Date();
+    const deletedByUserId = req.session.userId!;
+    const deletedByName = req.session.userName!;
+    // Soft delete child KPIs and initiatives
+    await db.update(kpisTable)
+      .set({ deletedAt: now, deletedByUserId, deletedByName })
+      .where(and(eq(kpisTable.goalId, id), isNull(kpisTable.deletedAt)));
+    await db.update(goalInitiativesTable)
+      .set({ deletedAt: now, deletedByUserId, deletedByName })
+      .where(and(eq(goalInitiativesTable.goalId, id), isNull(goalInitiativesTable.deletedAt)));
+    // Soft delete the goal itself
+    await db.update(goalsTable)
+      .set({ deletedAt: now, deletedByUserId, deletedByName })
+      .where(eq(goalsTable.id, id));
     res.status(204).send();
   } catch (err) {
     req.log.error(err);
@@ -408,11 +420,13 @@ router.delete("/goals/:id", requireAuth, requireWriteAccess, async (req, res) =>
 
 router.delete("/kpis/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const franchiseId = await getKpiFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    await db.delete(kpisTable).where(eq(kpisTable.id, id));
+    await db.update(kpisTable)
+      .set({ deletedAt: new Date(), deletedByUserId: req.session.userId!, deletedByName: req.session.userName! })
+      .where(eq(kpisTable.id, id));
     res.status(204).send();
   } catch (err) {
     req.log.error(err);
@@ -486,7 +500,7 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
 // Goal Initiatives
 router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
   try {
-    const goalId = parseInt(req.params.id);
+    const goalId = parseInt(req.params.id as string);
     const franchiseId = await getGoalFranchiseId(goalId);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -538,7 +552,7 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
 
 router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const goalId = parseInt(req.params.id);
+    const goalId = parseInt(req.params.id as string);
     const franchiseId = await getGoalFranchiseId(goalId);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -612,7 +626,7 @@ router.post("/goals/:id/initiatives", requireAuth, requireWriteAccess, async (re
 
 router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const franchiseId = await getInitiativeFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -666,7 +680,7 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
 
 router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const franchiseId = await getInitiativeFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -703,13 +717,190 @@ router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (re
 
 router.delete("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const franchiseId = await getInitiativeFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    const [deleted] = await db.delete(goalInitiativesTable).where(eq(goalInitiativesTable.id, id)).returning({ id: goalInitiativesTable.id });
-    if (!deleted) { res.status(404).json({ error: "Not found" }); return; }
+    await db.update(goalInitiativesTable)
+      .set({ deletedAt: new Date(), deletedByUserId: req.session.userId!, deletedByName: req.session.userName! })
+      .where(eq(goalInitiativesTable.id, id));
     res.status(204).end();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Restore routes ───────────────────────────────────────────────────────────
+
+router.post("/goals/:id/restore", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const [goal] = await db.select().from(goalsTable).where(eq(goalsTable.id, id)).limit(1);
+    if (!goal) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, goal.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const [restored] = await db.update(goalsTable)
+      .set({ deletedAt: null, deletedByUserId: null, deletedByName: null })
+      .where(eq(goalsTable.id, id))
+      .returning();
+    // Restore KPIs and initiatives deleted at the same time as the goal (within 5s)
+    if (goal.deletedAt) {
+      const deletedAt = new Date(goal.deletedAt);
+      const windowStart = new Date(deletedAt.getTime() - 5000);
+      const windowEnd = new Date(deletedAt.getTime() + 5000);
+      await db.update(kpisTable)
+        .set({ deletedAt: null, deletedByUserId: null, deletedByName: null })
+        .where(and(
+          eq(kpisTable.goalId, id),
+          isNotNull(kpisTable.deletedAt),
+          sql`${kpisTable.deletedAt} BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}`,
+        ));
+      await db.update(goalInitiativesTable)
+        .set({ deletedAt: null, deletedByUserId: null, deletedByName: null })
+        .where(and(
+          eq(goalInitiativesTable.goalId, id),
+          isNotNull(goalInitiativesTable.deletedAt),
+          sql`${goalInitiativesTable.deletedAt} BETWEEN ${windowStart.toISOString()} AND ${windowEnd.toISOString()}`,
+        ));
+    }
+    const enriched = await enrichGoal({ ...restored, franchiseName: null, dimensionName: null, keyProcessName: null, ownerName: null });
+    res.json(enriched);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/kpis/:id/restore", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const franchiseId = await getKpiFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const [k] = await db.update(kpisTable)
+      .set({ deletedAt: null, deletedByUserId: null, deletedByName: null })
+      .where(eq(kpisTable.id, id))
+      .returning();
+    res.json({ ...k, createdAt: k.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/goal-initiatives/:id/restore", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const franchiseId = await getInitiativeFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const [ini] = await db.update(goalInitiativesTable)
+      .set({ deletedAt: null, deletedByUserId: null, deletedByName: null })
+      .where(eq(goalInitiativesTable.id, id))
+      .returning();
+    res.json({ ...ini, createdAt: ini.createdAt instanceof Date ? ini.createdAt.toISOString() : ini.createdAt });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Trash (list soft-deleted items for a franchise) ─────────────────────────
+
+router.get("/trash", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+    const franchiseId = (role === "master_admin" || role === "staff_regional")
+      ? (paramFranchiseId ?? req.session.franchiseId)
+      : req.session.franchiseId;
+    if (!franchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+
+    const [deletedGoals, deletedKpis, deletedInitiatives] = await Promise.all([
+      db.select({
+        id: goalsTable.id,
+        title: goalsTable.title,
+        dimensionName: dimensionsTable.name,
+        keyProcessName: keyProcessesTable.name,
+        deletedAt: goalsTable.deletedAt,
+        deletedByName: goalsTable.deletedByName,
+      })
+        .from(goalsTable)
+        .leftJoin(dimensionsTable, eq(goalsTable.dimensionId, dimensionsTable.id))
+        .leftJoin(keyProcessesTable, eq(goalsTable.keyProcessId, keyProcessesTable.id))
+        .where(and(eq(goalsTable.franchiseId, franchiseId), isNotNull(goalsTable.deletedAt)))
+        .orderBy(goalsTable.deletedAt),
+
+      db.select({
+        id: kpisTable.id,
+        name: kpisTable.name,
+        goalId: kpisTable.goalId,
+        goalTitle: goalsTable.title,
+        deletedAt: kpisTable.deletedAt,
+        deletedByName: kpisTable.deletedByName,
+      })
+        .from(kpisTable)
+        .innerJoin(goalsTable, eq(kpisTable.goalId, goalsTable.id))
+        .where(and(eq(goalsTable.franchiseId, franchiseId), isNotNull(kpisTable.deletedAt)))
+        .orderBy(kpisTable.deletedAt),
+
+      db.select({
+        id: goalInitiativesTable.id,
+        customName: goalInitiativesTable.customName,
+        initiativeName: strategicInitiativesTable.name,
+        goalId: goalInitiativesTable.goalId,
+        goalTitle: goalsTable.title,
+        dimensionName: dimensionsTable.name,
+        keyProcessName: keyProcessesTable.name,
+        deletedAt: goalInitiativesTable.deletedAt,
+        deletedByName: goalInitiativesTable.deletedByName,
+      })
+        .from(goalInitiativesTable)
+        .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+        .leftJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+        .leftJoin(dimensionsTable, eq(goalsTable.dimensionId, dimensionsTable.id))
+        .leftJoin(keyProcessesTable, eq(goalsTable.keyProcessId, keyProcessesTable.id))
+        .where(and(eq(goalsTable.franchiseId, franchiseId), isNotNull(goalInitiativesTable.deletedAt)))
+        .orderBy(goalInitiativesTable.deletedAt),
+    ]);
+
+    const items = [
+      ...deletedGoals.map(g => ({
+        entityType: "goal",
+        entityId: g.id,
+        entityName: g.title,
+        goalId: null,
+        goalTitle: null,
+        dimensionName: g.dimensionName,
+        keyProcessName: g.keyProcessName,
+        deletedAt: g.deletedAt instanceof Date ? g.deletedAt.toISOString() : g.deletedAt,
+        deletedByName: g.deletedByName,
+      })),
+      ...deletedKpis.map(k => ({
+        entityType: "kpi",
+        entityId: k.id,
+        entityName: k.name,
+        goalId: k.goalId,
+        goalTitle: k.goalTitle,
+        dimensionName: null,
+        keyProcessName: null,
+        deletedAt: k.deletedAt instanceof Date ? k.deletedAt.toISOString() : k.deletedAt,
+        deletedByName: k.deletedByName,
+      })),
+      ...deletedInitiatives.map(i => ({
+        entityType: "goal_initiative",
+        entityId: i.id,
+        entityName: i.initiativeName || i.customName || "Iniciativa",
+        goalId: i.goalId,
+        goalTitle: i.goalTitle,
+        dimensionName: i.dimensionName,
+        keyProcessName: i.keyProcessName,
+        deletedAt: i.deletedAt instanceof Date ? i.deletedAt.toISOString() : i.deletedAt,
+        deletedByName: i.deletedByName,
+      })),
+    ].sort((a, b) => new Date(b.deletedAt!).getTime() - new Date(a.deletedAt!).getTime());
+
+    res.json(items);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

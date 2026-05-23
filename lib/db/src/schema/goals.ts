@@ -24,6 +24,9 @@ export const goalsTable = pgTable("goals", {
   progressPercentage: real("progress_percentage").notNull().default(0),
   riskStatus: text("risk_status"),
   score: real("score").notNull().default(0),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedByUserId: integer("deleted_by_user_id"),
+  deletedByName: text("deleted_by_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [
@@ -46,6 +49,9 @@ export const kpisTable = pgTable("kpis", {
   indicatorType: text("indicator_type").notNull().default("numero_absoluto"),
   desiredDirection: text("desired_direction").notNull().default("aumentar"),
   notes: text("notes"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedByUserId: integer("deleted_by_user_id"),
+  deletedByName: text("deleted_by_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -78,6 +84,9 @@ export const goalInitiativesTable = pgTable("goal_initiatives", {
   progressPercentage: real("progress_percentage").notNull().default(0),
   status: text("status").notNull().default("ativa"),
   notes: text("notes"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedByUserId: integer("deleted_by_user_id"),
+  deletedByName: text("deleted_by_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

@@ -843,6 +843,89 @@ paths:
         "204":
           description: Deleted
 
+  /trash:
+    get:
+      operationId: listTrash
+      tags: [goals]
+      summary: List all soft-deleted items for a franchise
+      parameters:
+        - name: franchiseId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of deleted items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrashItem"
+
+  /goals/{id}/restore:
+    post:
+      operationId: restoreGoal
+      tags: [goals]
+      summary: Restore a soft-deleted goal and its KPIs/initiatives
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "404":
+          description: Not found
+
+  /kpis/{id}/restore:
+    post:
+      operationId: restoreKpi
+      tags: [kpis]
+      summary: Restore a soft-deleted KPI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Kpi"
+        "404":
+          description: Not found
+
+  /goal-initiatives/{id}/restore:
+    post:
+      operationId: restoreGoalInitiative
+      tags: [goalInitiatives]
+      summary: Restore a soft-deleted goal initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalInitiative"
+        "404":
+          description: Not found
+
   /daily-checkins:
     get:
       operationId: listDailyCheckins
@@ -2935,6 +3018,29 @@ components:
           type: string
         updatedAt:
           type: string
+
+    TrashItem:
+      type: object
+      required: [entityType, entityId, entityName, deletedAt]
+      properties:
+        entityType:
+          type: string
+        entityId:
+          type: integer
+        entityName:
+          type: string
+        goalTitle:
+          type: ["string", "null"]
+        goalId:
+          type: ["integer", "null"]
+        dimensionName:
+          type: ["string", "null"]
+        keyProcessName:
+          type: ["string", "null"]
+        deletedAt:
+          type: string
+        deletedByName:
+          type: ["string", "null"]
 
     PlannerWeek:
       type: object

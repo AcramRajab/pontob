@@ -1252,6 +1252,23 @@ export interface PlannerEntry {
   updatedAt: string;
 }
 
+export interface TrashItem {
+  entityType: string;
+  entityId: number;
+  entityName: string;
+  /** @nullable */
+  goalTitle?: string | null;
+  /** @nullable */
+  goalId?: number | null;
+  /** @nullable */
+  dimensionName?: string | null;
+  /** @nullable */
+  keyProcessName?: string | null;
+  deletedAt: string;
+  /** @nullable */
+  deletedByName?: string | null;
+}
+
 export interface PlannerWeek {
   franchiseId: number;
   weekStartDate: string;
@@ -1344,6 +1361,10 @@ export type ListGoalsParams = {
 export type ListAllGoalInitiativesParams = {
   franchiseId?: number;
   status?: string;
+};
+
+export type ListTrashParams = {
+  franchiseId?: number;
 };
 
 export type ListDailyCheckinsParams = {

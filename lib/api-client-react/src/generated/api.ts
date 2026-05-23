@@ -70,6 +70,7 @@ import type {
   ListMonthlyCheckinsParams,
   ListProgressHistoryParams,
   ListStrategicInitiativesParams,
+  ListTrashParams,
   ListUsersParams,
   ListVagasParams,
   ListWeeklyCheckinsParams,
@@ -83,6 +84,7 @@ import type {
   RevokeInvite200,
   StrategicInitiative,
   TodayOverview,
+  TrashItem,
   User,
   UserInput,
   UserUpdate,
@@ -3540,6 +3542,352 @@ export const useDeleteGoalInitiative = <
   TContext
 > => {
   return useMutation(getDeleteGoalInitiativeMutationOptions(options));
+};
+
+/**
+ * @summary List all soft-deleted items for a franchise
+ */
+export const getListTrashUrl = (params?: ListTrashParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/trash?${stringifiedParams}`
+    : `/api/trash`;
+};
+
+export const listTrash = async (
+  params?: ListTrashParams,
+  options?: RequestInit,
+): Promise<TrashItem[]> => {
+  return customFetch<TrashItem[]>(getListTrashUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListTrashQueryKey = (params?: ListTrashParams) => {
+  return [`/api/trash`, ...(params ? [params] : [])] as const;
+};
+
+export const getListTrashQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTrash>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTrashParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTrash>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListTrashQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listTrash>>> = ({
+    signal,
+  }) => listTrash(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTrash>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTrashQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTrash>>
+>;
+export type ListTrashQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all soft-deleted items for a franchise
+ */
+
+export function useListTrash<
+  TData = Awaited<ReturnType<typeof listTrash>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListTrashParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTrash>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTrashQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Restore a soft-deleted goal and its KPIs/initiatives
+ */
+export const getRestoreGoalUrl = (id: number) => {
+  return `/api/goals/${id}/restore`;
+};
+
+export const restoreGoal = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Goal> => {
+  return customFetch<Goal>(getRestoreGoalUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreGoalMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreGoal>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreGoal>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["restoreGoal"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreGoal>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return restoreGoal(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreGoalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreGoal>>
+>;
+
+export type RestoreGoalMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a soft-deleted goal and its KPIs/initiatives
+ */
+export const useRestoreGoal = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreGoal>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreGoal>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRestoreGoalMutationOptions(options));
+};
+
+/**
+ * @summary Restore a soft-deleted KPI
+ */
+export const getRestoreKpiUrl = (id: number) => {
+  return `/api/kpis/${id}/restore`;
+};
+
+export const restoreKpi = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Kpi> => {
+  return customFetch<Kpi>(getRestoreKpiUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreKpiMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreKpi>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreKpi>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["restoreKpi"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreKpi>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return restoreKpi(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreKpiMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreKpi>>
+>;
+
+export type RestoreKpiMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a soft-deleted KPI
+ */
+export const useRestoreKpi = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreKpi>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreKpi>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRestoreKpiMutationOptions(options));
+};
+
+/**
+ * @summary Restore a soft-deleted goal initiative
+ */
+export const getRestoreGoalInitiativeUrl = (id: number) => {
+  return `/api/goal-initiatives/${id}/restore`;
+};
+
+export const restoreGoalInitiative = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GoalInitiative> => {
+  return customFetch<GoalInitiative>(getRestoreGoalInitiativeUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestoreGoalInitiativeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreGoalInitiative>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restoreGoalInitiative>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["restoreGoalInitiative"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restoreGoalInitiative>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return restoreGoalInitiative(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestoreGoalInitiativeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restoreGoalInitiative>>
+>;
+
+export type RestoreGoalInitiativeMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore a soft-deleted goal initiative
+ */
+export const useRestoreGoalInitiative = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restoreGoalInitiative>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restoreGoalInitiative>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRestoreGoalInitiativeMutationOptions(options));
 };
 
 /**
