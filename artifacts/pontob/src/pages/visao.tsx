@@ -158,23 +158,11 @@ function KriBlock({
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
 
-      {/* Column headers */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="flex-1">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Realizado</span>
-        </div>
-        <div className="w-16 text-center">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">% atingido</span>
-        </div>
-        <div className="flex-1 text-right">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50">Meta</span>
-        </div>
-      </div>
-
-      {/* Values row */}
-      <div className="flex items-end gap-2 mb-2.5">
+      {/* Values row — headers inline above each value */}
+      <div className="flex items-end gap-3 mb-2.5">
         {/* Realizado */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Realizado</span>
           {canWrite ? (
             <div className="relative">
               <Input
@@ -185,7 +173,8 @@ function KriBlock({
                 defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
                 placeholder={isCarried && actual != null ? String(actual) : "—"}
                 className={cn(
-                  "h-8 pl-0 pr-1 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                  "h-8 pl-0 pr-0 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                   isCarried
                     ? "text-muted-foreground/50 border-dashed border-muted-foreground/20 placeholder:text-muted-foreground/50 placeholder:font-bold placeholder:text-xl"
                     : actual != null
@@ -214,12 +203,13 @@ function KriBlock({
           )}
         </div>
 
-        {/* % badge — center */}
-        <div className="w-16 flex flex-col items-center pb-0.5">
+        {/* % badge — auto-width, never squeezes neighbours */}
+        <div className="shrink-0 flex flex-col items-center pb-0.5">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">%</span>
           {p != null ? (
             <>
               <span className={cn("text-base font-black leading-none tabular-nums", pctColor)}>{p}%</span>
-              <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">atingido</span>
+              <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">ating.</span>
             </>
           ) : (
             <span className="text-sm text-muted-foreground/20">—</span>
@@ -227,16 +217,18 @@ function KriBlock({
         </div>
 
         {/* Meta */}
-        <div className="flex-1 flex justify-end">
+        <div className="flex-1 min-w-0 flex flex-col items-end">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Meta</span>
           {canWrite ? (
             <Input
               type="number"
               min={0}
               step={isVgh ? 1000 : 1}
               defaultValue={targetRaw === null || targetRaw === "" ? "" : targetRaw}
-              placeholder="meta"
+              placeholder="—"
               className={cn(
-                "h-8 pr-0 pl-1 text-right text-sm font-semibold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                "h-8 pr-0 pl-0 text-right text-sm font-semibold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
                 cfg.accent,
                 "placeholder:text-muted-foreground/20 placeholder:font-normal",
               )}
