@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Pencil } from "lucide-react";
+import { CheckCircle2, Pencil, History } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
@@ -26,13 +28,81 @@ interface MonthlyForm {
 
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+const summaryFields: { key: keyof MonthlyForm; label: string }[] = [
+  { key: "kriProgress", label: "Evolução do KRI" },
+  { key: "improvedKpis", label: "KPIs que melhoraram" },
+  { key: "worsenedKpis", label: "KPIs que pioraram ou estagnaram" },
+  { key: "initiativesThatWorked", label: "Iniciativas que funcionaram" },
+  { key: "initiativesThatDidNotWork", label: "Iniciativas que não funcionaram" },
+  { key: "continueDoing", label: "Continuar fazendo" },
+  { key: "stopDoing", label: "Parar de fazer" },
+  { key: "startDoing", label: "Começar a fazer" },
+  { key: "nextMonthFocus", label: "Foco do próximo mês" },
+];
+
+function MonthlyCheckinSummary({
+  checkin,
+  goalTitle,
+  monthLabel,
+  onEdit,
+}: {
+  checkin: any;
+  goalTitle: string | undefined;
+  monthLabel: string;
+  onEdit: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-green-700">
+        <CheckCircle2 className="h-5 w-5" />
+        <span className="font-semibold">Check-in de {monthLabel} concluído</span>
+      </div>
+
+      <Card>
+        <CardContent className="pt-5 space-y-4">
+          {goalTitle && (
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Meta</p>
+              <p className="font-medium">{goalTitle}</p>
+            </div>
+          )}
+
+          {summaryFields.map(({ key, label }) =>
+            checkin[key] ? (
+              <div key={key}>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                <p className="text-sm">{checkin[key]}</p>
+              </div>
+            ) : null
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-3">
+        <Button className="flex-1" onClick={onEdit} data-testid="button-edit-checkin">
+          <Pencil className="h-4 w-4 mr-1.5" />
+          Editar check-in
+        </Button>
+        <Link href="/history">
+          <Button variant="outline" className="flex-1">
+            <History className="h-4 w-4 mr-1.5" />
+            Ver histórico
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function MonthlyCheckin() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
+  const monthLabel = `${MONTHS[now.getMonth()]} ${currentYear}`;
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
   const goalParams = { franchiseId: franchiseId ?? undefined };
@@ -42,7 +112,7 @@ export default function MonthlyCheckin() {
   );
 
   const monthlyParams = { franchiseId: franchiseId ?? undefined };
-  const { data: monthlyCheckins = [] } = useListMonthlyCheckins(
+  const { data: monthlyCheckins = [], isLoading: isLoadingCheckins } = useListMonthlyCheckins(
     monthlyParams,
     { query: { enabled: !!franchiseId, queryKey: getListMonthlyCheckinsQueryKey(monthlyParams) } }
   );
@@ -92,6 +162,7 @@ export default function MonthlyCheckin() {
           },
         });
         qc.invalidateQueries({ queryKey: getListMonthlyCheckinsQueryKey({}) });
+        setIsEditing(false);
         setSubmitted(true);
         toast({ title: "Check-in mensal atualizado", description: "Suas alterações foram salvas." });
       } else {
@@ -132,9 +203,17 @@ export default function MonthlyCheckin() {
         <h2 className="text-xl font-bold">
           {existingCheckin ? "Check-in mensal atualizado!" : "Check-in mensal registrado!"}
         </h2>
-        <Button variant="outline" onClick={() => setSubmitted(false)}>
-          {existingCheckin ? "Editar novamente" : "Novo check-in"}
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setSubmitted(false)}>
+            Ver resumo
+          </Button>
+          <Link href="/history">
+            <Button variant="outline">
+              <History className="h-4 w-4 mr-1.5" />
+              Ver histórico
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -155,7 +234,7 @@ export default function MonthlyCheckin() {
     <div className="max-w-xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Check-in Mensal</h1>
-        <p className="text-muted-foreground mt-1">{MONTHS[now.getMonth()]} {currentYear}</p>
+        <p className="text-muted-foreground mt-1">{monthLabel}</p>
       </div>
 
       {isAdmin && (
@@ -168,12 +247,35 @@ export default function MonthlyCheckin() {
 
       {isAdmin && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in mensal." />
+      ) : isLoadingCheckins ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-80 w-full rounded-lg" />
+        </div>
+      ) : existingCheckin && !isEditing ? (
+        <MonthlyCheckinSummary
+          checkin={existingCheckin}
+          goalTitle={(goals as any[]).find((g: any) => g.id === existingCheckin.goalId)?.title}
+          monthLabel={monthLabel}
+          onEdit={() => setIsEditing(true)}
+        />
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {existingCheckin && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <Pencil className="h-4 w-4 shrink-0" />
-              <span>Você já fez o check-in deste mês. Edite abaixo para atualizar.</span>
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-4 w-4 shrink-0" />
+                <span>Editando o check-in de {monthLabel}.</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-amber-800 hover:text-amber-900 hover:bg-amber-100 h-auto py-0.5 px-2"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
             </div>
           )}
 

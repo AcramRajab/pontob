@@ -5,10 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Target, Pencil } from "lucide-react";
+import { CheckCircle2, Target, Pencil, History } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
@@ -39,10 +40,79 @@ function getWeekDates() {
   };
 }
 
+const summaryFields: { key: keyof WeeklyForm; label: string }[] = [
+  { key: "planned", label: "O que foi planejado" },
+  { key: "executed", label: "O que foi executado" },
+  { key: "progressSummary", label: "Resumo do progresso" },
+  { key: "blockers", label: "Principais bloqueios" },
+  { key: "adjustments", label: "Ajustes necessários" },
+  { key: "nextWeekPriority", label: "Prioridade da próxima semana" },
+  { key: "initiativeDecision", label: "Decisão sobre iniciativas" },
+];
+
+function WeeklyCheckinSummary({
+  checkin,
+  goalTitle,
+  week,
+  onEdit,
+}: {
+  checkin: any;
+  goalTitle: string | undefined;
+  week: { start: string; end: string };
+  onEdit: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-green-700">
+        <CheckCircle2 className="h-5 w-5" />
+        <span className="font-semibold">Check-in desta semana concluído</span>
+      </div>
+
+      <Card>
+        <CardContent className="pt-5 space-y-4">
+          {goalTitle && (
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Meta</p>
+              <p className="font-medium">{goalTitle}</p>
+            </div>
+          )}
+
+          {summaryFields.map(({ key, label }) =>
+            checkin[key] ? (
+              <div key={key}>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+                <p className="text-sm">{checkin[key]}</p>
+              </div>
+            ) : null
+          )}
+
+          {checkin.needsRegionalSupport && (
+            <p className="text-sm text-amber-700 font-medium">Solicitou suporte da equipe regional</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex gap-3">
+        <Button className="flex-1" onClick={onEdit} data-testid="button-edit-checkin">
+          <Pencil className="h-4 w-4 mr-1.5" />
+          Editar check-in
+        </Button>
+        <Link href="/history">
+          <Button variant="outline" className="flex-1">
+            <History className="h-4 w-4 mr-1.5" />
+            Ver histórico
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function WeeklyCheckin() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [submitted, setSubmitted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const week = getWeekDates();
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
@@ -53,7 +123,7 @@ export default function WeeklyCheckin() {
   );
 
   const weeklyParams = { franchiseId: franchiseId ?? undefined };
-  const { data: weeklyCheckins = [] } = useListWeeklyCheckins(
+  const { data: weeklyCheckins = [], isLoading: isLoadingCheckins } = useListWeeklyCheckins(
     weeklyParams,
     { query: { enabled: !!franchiseId, queryKey: getListWeeklyCheckinsQueryKey(weeklyParams) } }
   );
@@ -103,6 +173,7 @@ export default function WeeklyCheckin() {
           },
         });
         qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
+        setIsEditing(false);
         setSubmitted(true);
         toast({ title: "Check-in semanal atualizado", description: "Suas alterações foram salvas." });
       } else {
@@ -142,9 +213,17 @@ export default function WeeklyCheckin() {
         <h2 className="text-xl font-bold">
           {existingCheckin ? "Check-in semanal atualizado!" : "Check-in semanal registrado!"}
         </h2>
-        <Button variant="outline" onClick={() => setSubmitted(false)}>
-          {existingCheckin ? "Editar novamente" : "Novo check-in"}
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => setSubmitted(false)}>
+            Ver resumo
+          </Button>
+          <Link href="/history">
+            <Button variant="outline">
+              <History className="h-4 w-4 mr-1.5" />
+              Ver histórico
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -176,6 +255,18 @@ export default function WeeklyCheckin() {
 
       {isAdmin && !franchiseId ? (
         <AdminEmptyState message="Selecione uma franquia acima para registrar o check-in semanal." />
+      ) : isLoadingCheckins ? (
+        <div className="space-y-4">
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      ) : existingCheckin && !isEditing ? (
+        <WeeklyCheckinSummary
+          checkin={existingCheckin}
+          goalTitle={(goals as any[]).find((g: any) => g.id === existingCheckin.goalId)?.title}
+          week={week}
+          onEdit={() => setIsEditing(true)}
+        />
       ) : goals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
@@ -192,9 +283,20 @@ export default function WeeklyCheckin() {
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {existingCheckin && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <Pencil className="h-4 w-4 shrink-0" />
-              <span>Você já fez o check-in desta semana. Edite abaixo para atualizar.</span>
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-4 w-4 shrink-0" />
+                <span>Editando o check-in desta semana.</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-amber-800 hover:text-amber-900 hover:bg-amber-100 h-auto py-0.5 px-2"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
             </div>
           )}
 
