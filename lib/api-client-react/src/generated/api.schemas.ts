@@ -212,6 +212,14 @@ export interface CatalogToggleResult {
   active: boolean;
 }
 
+export interface StrategicInitiativeToggleResult {
+  id: number;
+  name: string;
+  active: boolean;
+  /** Number of active goal initiatives still referencing this catalog item (0 when toggling to active) */
+  activeGoalCount: number;
+}
+
 export interface CatalogDeactivationImpact {
   /** Number of active goals that reference this catalog item */
   activeGoalCount: number;

@@ -83,6 +83,7 @@ import type {
   RejectInvite200,
   RevokeInvite200,
   StrategicInitiative,
+  StrategicInitiativeToggleResult,
   TodayOverview,
   ToggleGoalInitiativeToday200,
   TrashItem,
@@ -2152,6 +2153,105 @@ export const useToggleKeyProcessActive = <
 };
 
 /**
+ * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ */
+export const getGetStrategicInitiativeDeactivationImpactUrl = (id: number) => {
+  return `/api/strategic-initiatives/${id}/deactivation-impact`;
+};
+
+export const getStrategicInitiativeDeactivationImpact = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogDeactivationImpact> => {
+  return customFetch<CatalogDeactivationImpact>(
+    getGetStrategicInitiativeDeactivationImpactUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetStrategicInitiativeDeactivationImpactQueryKey = (
+  id: number,
+) => {
+  return [`/api/strategic-initiatives/${id}/deactivation-impact`] as const;
+};
+
+export const getGetStrategicInitiativeDeactivationImpactQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetStrategicInitiativeDeactivationImpactQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>
+  > = ({ signal }) =>
+    getStrategicInitiativeDeactivationImpact(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStrategicInitiativeDeactivationImpactQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>
+>;
+export type GetStrategicInitiativeDeactivationImpactQueryError =
+  ErrorType<void>;
+
+/**
+ * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ */
+
+export function useGetStrategicInitiativeDeactivationImpact<
+  TData = Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStrategicInitiativeDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStrategicInitiativeDeactivationImpactQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Toggle active status of a strategic initiative (admin/staff only)
  */
 export const getToggleStrategicInitiativeActiveUrl = (id: number) => {
@@ -2161,8 +2261,8 @@ export const getToggleStrategicInitiativeActiveUrl = (id: number) => {
 export const toggleStrategicInitiativeActive = async (
   id: number,
   options?: RequestInit,
-): Promise<CatalogToggleResult> => {
-  return customFetch<CatalogToggleResult>(
+): Promise<StrategicInitiativeToggleResult> => {
+  return customFetch<StrategicInitiativeToggleResult>(
     getToggleStrategicInitiativeActiveUrl(id),
     {
       ...options,

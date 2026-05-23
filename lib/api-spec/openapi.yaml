@@ -515,6 +515,27 @@ paths:
         "404":
           description: Not found
 
+  /strategic-initiatives/{id}/deactivation-impact:
+    get:
+      operationId: getStrategicInitiativeDeactivationImpact
+      tags: [strategicInitiatives]
+      summary: Count active goal initiatives that reference a strategic initiative (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Impact count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogDeactivationImpact"
+        "404":
+          description: Not found
+
   /strategic-initiatives/{id}/toggle-active:
     patch:
       operationId: toggleStrategicInitiativeActive
@@ -528,11 +549,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Updated active status
+          description: Updated active status with count of affected active goal initiatives
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CatalogToggleResult"
+                $ref: "#/components/schemas/StrategicInitiativeToggleResult"
         "404":
           description: Not found
 
@@ -1839,6 +1860,20 @@ components:
           type: string
         active:
           type: boolean
+
+    StrategicInitiativeToggleResult:
+      type: object
+      required: [id, name, active, activeGoalCount]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        active:
+          type: boolean
+        activeGoalCount:
+          type: integer
+          description: Number of active goal initiatives still referencing this catalog item (0 when toggling to active)
 
     CatalogDeactivationImpact:
       type: object

@@ -7,6 +7,7 @@ import {
   useToggleStrategicInitiativeActive,
   getDimensionDeactivationImpact,
   getKeyProcessDeactivationImpact,
+  getStrategicInitiativeDeactivationImpact,
   getListDimensionsQueryKey,
   getListKeyProcessesQueryKey,
   getListStrategicInitiativesQueryKey,
@@ -37,7 +38,7 @@ import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 
 type PendingDeactivation = {
-  type: "dimension" | "keyProcess";
+  type: "dimension" | "keyProcess" | "strategicInitiative";
   id: number;
   name: string;
   activeGoalCount: number;
@@ -147,12 +148,29 @@ export default function Catalog() {
     }
   }
 
+  async function handleStrategicInitiativeDeactivate(init: any) {
+    const key = `init-${init.id}`;
+    setImpactCheckingId(key);
+    try {
+      const impact = await getStrategicInitiativeDeactivationImpact(init.id);
+      if (impact.activeGoalCount > 0) {
+        setPendingDeactivation({ type: "strategicInitiative", id: init.id, name: init.name, activeGoalCount: impact.activeGoalCount });
+      } else {
+        toggleInit.mutate({ id: init.id });
+      }
+    } finally {
+      setImpactCheckingId(null);
+    }
+  }
+
   function confirmDeactivation() {
     if (!pendingDeactivation) return;
     if (pendingDeactivation.type === "dimension") {
       toggleDim.mutate({ id: pendingDeactivation.id });
-    } else {
+    } else if (pendingDeactivation.type === "keyProcess") {
       toggleKp.mutate({ id: pendingDeactivation.id });
+    } else {
+      toggleInit.mutate({ id: pendingDeactivation.id });
     }
     setPendingDeactivation(null);
   }
@@ -220,9 +238,21 @@ export default function Catalog() {
             <AlertDialogDescription>
               {pendingDeactivation && (
                 <>
-                  Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
-                  {pendingDeactivation.activeGoalCount === 1 ? "meta ativa que referencia" : "metas ativas que referenciam"} este item.
-                  Desativá-lo pode causar confusão para as franquias afetadas.
+                  {pendingDeactivation.type === "strategicInitiative" ? (
+                    <>
+                      Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                      {pendingDeactivation.activeGoalCount === 1
+                        ? "iniciativa de meta ativa que referencia"
+                        : "iniciativas de meta ativas que referenciam"}{" "}
+                      esta iniciativa do catálogo. Desativá-la fará com que apareça como "(inativo)" para as franquias afetadas.
+                    </>
+                  ) : (
+                    <>
+                      Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                      {pendingDeactivation.activeGoalCount === 1 ? "meta ativa que referencia" : "metas ativas que referenciam"} este item.
+                      Desativá-lo pode causar confusão para as franquias afetadas.
+                    </>
+                  )}
                 </>
               )}
             </AlertDialogDescription>
@@ -541,8 +571,8 @@ export default function Catalog() {
                           size="sm"
                           variant={init.active ? "outline" : "default"}
                           className="shrink-0 gap-1.5"
-                          disabled={toggleInit.isPending}
-                          onClick={() => toggleInit.mutate({ id: init.id })}
+                          disabled={toggleInit.isPending || impactCheckingId === `init-${init.id}`}
+                          onClick={() => init.active ? handleStrategicInitiativeDeactivate(init) : toggleInit.mutate({ id: init.id })}
                           data-testid={`toggle-initiative-${init.id}`}
                         >
                           {init.active ? (

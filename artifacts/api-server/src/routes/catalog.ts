@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, catalogAuditLogTable } from "@workspace/db";
-import { goalsTable } from "@workspace/db";
+import { goalsTable, goalInitiativesTable } from "@workspace/db";
 import { and, eq, notInArray, count, inArray, desc } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -220,6 +220,32 @@ router.get(
   },
 );
 
+router.get(
+  "/strategic-initiatives/:id/deactivation-impact",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    try {
+      const [row] = await db.select().from(strategicInitiativesTable).where(eq(strategicInitiativesTable.id, id));
+      if (!row) { res.status(404).json({ error: "Not found" }); return; }
+      const [result] = await db
+        .select({ activeGoalCount: count() })
+        .from(goalInitiativesTable)
+        .where(
+          and(
+            eq(goalInitiativesTable.strategicInitiativeId, id),
+            notInArray(goalInitiativesTable.status, ["concluida", "cancelada"]),
+          ),
+        );
+      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
 // ── Admin: toggle active status ──────────────────────────────────────────────
 
 router.patch(
@@ -304,7 +330,21 @@ router.patch(
         userName: req.session.userName ?? "unknown",
         userEmail: req.session.userEmail ?? "unknown",
       });
-      res.json({ id: updated.id, name: updated.name, active: updated.active });
+      const [impactResult] = await db
+        .select({ activeGoalCount: count() })
+        .from(goalInitiativesTable)
+        .where(
+          and(
+            eq(goalInitiativesTable.strategicInitiativeId, id),
+            notInArray(goalInitiativesTable.status, ["concluida", "cancelada"]),
+          ),
+        );
+      res.json({
+        id: updated.id,
+        name: updated.name,
+        active: updated.active,
+        activeGoalCount: impactResult?.activeGoalCount ?? 0,
+      });
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Internal server error" });

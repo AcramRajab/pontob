@@ -415,6 +415,19 @@ export const ToggleKeyProcessActiveResponse = zod.object({
 });
 
 /**
+ * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ */
+export const GetStrategicInitiativeDeactivationImpactParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetStrategicInitiativeDeactivationImpactResponse = zod.object({
+  activeGoalCount: zod
+    .number()
+    .describe("Number of active goals that reference this catalog item"),
+});
+
+/**
  * @summary Toggle active status of a strategic initiative (admin/staff only)
  */
 export const ToggleStrategicInitiativeActiveParams = zod.object({
@@ -425,6 +438,11 @@ export const ToggleStrategicInitiativeActiveResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   active: zod.boolean(),
+  activeGoalCount: zod
+    .number()
+    .describe(
+      "Number of active goal initiatives still referencing this catalog item (0 when toggling to active)",
+    ),
 });
 
 /**
