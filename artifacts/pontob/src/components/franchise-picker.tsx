@@ -8,6 +8,10 @@ interface FranchisePickerProps {
 }
 
 export function FranchisePicker({ franchises, value, onChange }: FranchisePickerProps) {
+  const sorted = [...franchises].sort((a, b) =>
+    a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
+  );
+
   return (
     <div className="flex items-center gap-3 p-3 bg-muted/60 border border-border/50 rounded-lg">
       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -20,7 +24,7 @@ export function FranchisePicker({ franchises, value, onChange }: FranchisePicker
           <SelectValue placeholder="Selecione uma franquia" />
         </SelectTrigger>
         <SelectContent>
-          {franchises.map((f: any) => (
+          {sorted.map((f: any) => (
             <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
           ))}
         </SelectContent>
