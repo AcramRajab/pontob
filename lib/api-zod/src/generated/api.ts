@@ -243,6 +243,36 @@ export const DeleteUserParams = zod.object({
 });
 
 /**
+ * @summary List all invite tokens (admin only)
+ */
+export const ListInvitesResponseItem = zod.object({
+  id: zod.number(),
+  franchiseId: zod.number(),
+  franchiseName: zod.string().nullish(),
+  role: zod.enum(["franqueado", "responsavel_interno", "staff_regional"]),
+  expiresAt: zod.string(),
+  createdAt: zod.string(),
+  usedAt: zod.string().nullish(),
+  usedByUserName: zod.string().nullish(),
+  usedByUserEmail: zod.string().nullish(),
+  approvedAt: zod.string().nullish(),
+  rejectedAt: zod.string().nullish(),
+  status: zod.enum(["pending", "used", "expired"]),
+});
+export const ListInvitesResponse = zod.array(ListInvitesResponseItem);
+
+/**
+ * @summary Revoke an unused invite token (admin only)
+ */
+export const RevokeInviteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RevokeInviteResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary List all dimensions
  */
 export const ListDimensionsQueryParams = zod.object({

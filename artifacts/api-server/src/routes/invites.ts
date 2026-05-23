@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { db, inviteTokensTable, usersTable, franchisesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendApprovalRequest, sendApprovalGranted, sendAdminError } from "../services/email";
 
@@ -44,6 +44,110 @@ const approvalHtml = (ok: boolean, title: string, body: string) => `
   </div>
 </body>
 </html>`;
+
+router.get("/invites", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
+  try {
+    const now = new Date();
+
+    const rows = await db
+      .select({
+        id: inviteTokensTable.id,
+        franchiseId: inviteTokensTable.franchiseId,
+        franchiseName: franchisesTable.name,
+        role: inviteTokensTable.role,
+        expiresAt: inviteTokensTable.expiresAt,
+        createdAt: inviteTokensTable.createdAt,
+        usedAt: inviteTokensTable.usedAt,
+        usedByUserId: inviteTokensTable.usedByUserId,
+        approvedAt: inviteTokensTable.approvedAt,
+        rejectedAt: inviteTokensTable.rejectedAt,
+      })
+      .from(inviteTokensTable)
+      .leftJoin(franchisesTable, eq(inviteTokensTable.franchiseId, franchisesTable.id))
+      .orderBy(desc(inviteTokensTable.createdAt));
+
+    const userIds = rows.map(r => r.usedByUserId).filter((id): id is number => id != null);
+    const userMap = new Map<number, { name: string; email: string }>();
+
+    if (userIds.length > 0) {
+      const usersData = await db
+        .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+        .from(usersTable)
+        .where(
+          userIds.length === 1
+            ? eq(usersTable.id, userIds[0])
+            : inArray(usersTable.id, userIds)
+        );
+      for (const u of usersData) {
+        userMap.set(u.id, { name: u.name, email: u.email });
+      }
+    }
+
+    const result = rows.map(r => {
+      let status: "pending" | "used" | "expired";
+      if (r.usedAt) {
+        status = "used";
+      } else if (r.expiresAt < now) {
+        status = "expired";
+      } else {
+        status = "pending";
+      }
+      const usedByUser = r.usedByUserId ? userMap.get(r.usedByUserId) : null;
+      return {
+        id: r.id,
+        franchiseId: r.franchiseId,
+        franchiseName: r.franchiseName ?? null,
+        role: r.role,
+        expiresAt: r.expiresAt.toISOString(),
+        createdAt: r.createdAt.toISOString(),
+        usedAt: r.usedAt ? r.usedAt.toISOString() : null,
+        usedByUserName: usedByUser?.name ?? null,
+        usedByUserEmail: usedByUser?.email ?? null,
+        approvedAt: r.approvedAt ? r.approvedAt.toISOString() : null,
+        rejectedAt: r.rejectedAt ? r.rejectedAt.toISOString() : null,
+        status,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/invites/:id", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    if (isNaN(id)) {
+      res.status(400).json({ error: "ID inválido." });
+      return;
+    }
+
+    const [invite] = await db
+      .select({ id: inviteTokensTable.id, usedAt: inviteTokensTable.usedAt })
+      .from(inviteTokensTable)
+      .where(eq(inviteTokensTable.id, id))
+      .limit(1);
+
+    if (!invite) {
+      res.status(404).json({ error: "Convite não encontrado." });
+      return;
+    }
+
+    if (invite.usedAt) {
+      res.status(400).json({ error: "Não é possível revogar um convite que já foi utilizado." });
+      return;
+    }
+
+    await db.delete(inviteTokensTable).where(eq(inviteTokensTable.id, id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.post("/invites", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {

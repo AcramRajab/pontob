@@ -72,6 +72,45 @@ export interface FranchiseUpdate {
   active?: boolean;
 }
 
+export type InviteTokenRole =
+  (typeof InviteTokenRole)[keyof typeof InviteTokenRole];
+
+export const InviteTokenRole = {
+  franqueado: "franqueado",
+  responsavel_interno: "responsavel_interno",
+  staff_regional: "staff_regional",
+} as const;
+
+export type InviteTokenStatus =
+  (typeof InviteTokenStatus)[keyof typeof InviteTokenStatus];
+
+export const InviteTokenStatus = {
+  pending: "pending",
+  used: "used",
+  expired: "expired",
+} as const;
+
+export interface InviteToken {
+  id: number;
+  franchiseId: number;
+  /** @nullable */
+  franchiseName?: string | null;
+  role: InviteTokenRole;
+  expiresAt: string;
+  createdAt: string;
+  /** @nullable */
+  usedAt?: string | null;
+  /** @nullable */
+  usedByUserName?: string | null;
+  /** @nullable */
+  usedByUserEmail?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  rejectedAt?: string | null;
+  status: InviteTokenStatus;
+}
+
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRole = {
@@ -1253,6 +1292,10 @@ export interface ProgressHistoryItem {
 
 export type ListUsersParams = {
   franchiseId?: number;
+};
+
+export type RevokeInvite200 = {
+  ok: boolean;
 };
 
 export type ListDimensionsParams = {

@@ -11,6 +11,7 @@ tags:
   - name: auth
   - name: franchises
   - name: users
+  - name: invites
   - name: dimensions
   - name: keyProcesses
   - name: strategicInitiatives
@@ -258,6 +259,48 @@ paths:
           description: Cannot delete own account
         "404":
           description: Not found
+
+  /invites:
+    get:
+      operationId: listInvites
+      tags: [invites]
+      summary: List all invite tokens (admin only)
+      responses:
+        "200":
+          description: List of invite tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InviteToken"
+
+  /invites/{id}:
+    delete:
+      operationId: revokeInvite
+      tags: [invites]
+      summary: Revoke an unused invite token (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Cannot revoke a used token
+        "404":
+          description: Token not found
 
   /dimensions:
     get:
@@ -1437,6 +1480,37 @@ components:
           type: string
         active:
           type: boolean
+
+    InviteToken:
+      type: object
+      required: [id, franchiseId, role, expiresAt, status, createdAt]
+      properties:
+        id:
+          type: integer
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [franqueado, responsavel_interno, staff_regional]
+        expiresAt:
+          type: string
+        createdAt:
+          type: string
+        usedAt:
+          type: ["string", "null"]
+        usedByUserName:
+          type: ["string", "null"]
+        usedByUserEmail:
+          type: ["string", "null"]
+        approvedAt:
+          type: ["string", "null"]
+        rejectedAt:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, used, expired]
 
     User:
       type: object

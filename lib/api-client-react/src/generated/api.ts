@@ -52,6 +52,7 @@ import type {
   HelpRequest,
   HelpRequestInput,
   HelpRequestUpdate,
+  InviteToken,
   KeyProcess,
   Kpi,
   KpiInput,
@@ -76,6 +77,7 @@ import type {
   ProgressHistoryItem,
   RegionalDashboard,
   RegionalVision,
+  RevokeInvite200,
   StrategicInitiative,
   TodayOverview,
   User,
@@ -1162,6 +1164,165 @@ export const useDeleteUser = <
   TContext
 > => {
   return useMutation(getDeleteUserMutationOptions(options));
+};
+
+/**
+ * @summary List all invite tokens (admin only)
+ */
+export const getListInvitesUrl = () => {
+  return `/api/invites`;
+};
+
+export const listInvites = async (
+  options?: RequestInit,
+): Promise<InviteToken[]> => {
+  return customFetch<InviteToken[]>(getListInvitesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListInvitesQueryKey = () => {
+  return [`/api/invites`] as const;
+};
+
+export const getListInvitesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInvites>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listInvites>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListInvitesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listInvites>>> = ({
+    signal,
+  }) => listInvites({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInvites>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListInvitesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInvites>>
+>;
+export type ListInvitesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all invite tokens (admin only)
+ */
+
+export function useListInvites<
+  TData = Awaited<ReturnType<typeof listInvites>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listInvites>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListInvitesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Revoke an unused invite token (admin only)
+ */
+export const getRevokeInviteUrl = (id: number) => {
+  return `/api/invites/${id}`;
+};
+
+export const revokeInvite = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RevokeInvite200> => {
+  return customFetch<RevokeInvite200>(getRevokeInviteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRevokeInviteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof revokeInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["revokeInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof revokeInvite>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return revokeInvite(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RevokeInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof revokeInvite>>
+>;
+
+export type RevokeInviteMutationError = ErrorType<void>;
+
+/**
+ * @summary Revoke an unused invite token (admin only)
+ */
+export const useRevokeInvite = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof revokeInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof revokeInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRevokeInviteMutationOptions(options));
 };
 
 /**

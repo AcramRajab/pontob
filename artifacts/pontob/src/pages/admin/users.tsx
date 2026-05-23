@@ -1,4 +1,4 @@
-import { useListUsers, useCreateUser, useUpdateUser, getListUsersQueryKey, getListFranchisesQueryKey, useListFranchises, UserInputRole, UserUpdateRole } from "@workspace/api-client-react";
+import { useListUsers, useCreateUser, useUpdateUser, getListUsersQueryKey, getListFranchisesQueryKey, useListFranchises, UserInputRole, UserUpdateRole, useListInvites, useRevokeInvite, getListInvitesQueryKey, InviteTokenStatus } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 const roleLabel: Record<string, string> = {
@@ -38,11 +39,6 @@ interface UserForm {
   franchiseId: string;
 }
 
-interface InviteForm {
-  franchiseId: string;
-  role: string;
-}
-
 interface GeneratedInvite {
   link: string;
   franchiseName: string;
@@ -67,7 +63,7 @@ function InviteStatusBadge({ user }: { user: any }) {
   );
 }
 
-function InviteLinkDialog({ franchises }: { franchises: any[] }) {
+function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGenerated?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [generated, setGenerated] = useState<GeneratedInvite | null>(null);
@@ -102,6 +98,7 @@ function InviteLinkDialog({ franchises }: { franchises: any[] }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao gerar convite");
       setGenerated({ link: data.link, franchiseName: data.franchiseName, role: data.role });
+      onGenerated?.();
     } catch (err: any) {
       toast({ title: err.message, variant: "destructive" });
     } finally {
@@ -207,6 +204,165 @@ function InviteLinkDialog({ franchises }: { franchises: any[] }) {
   );
 }
 
+function InviteStatusPill({ status }: { status: string }) {
+  if (status === InviteTokenStatus.pending) {
+    return (
+      <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 gap-1">
+        <AlertCircle className="h-3 w-3" />
+        Pendente
+      </Badge>
+    );
+  }
+  if (status === InviteTokenStatus.used) {
+    return (
+      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 gap-1">
+        <CheckCircle2 className="h-3 w-3" />
+        Utilizado
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-xs bg-slate-50 text-slate-500 border-slate-200 gap-1">
+      <XCircle className="h-3 w-3" />
+      Expirado
+    </Badge>
+  );
+}
+
+function ConvitesSection({ franchises }: { franchises: any[] }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [revokeTarget, setRevokeTarget] = useState<{ id: number; franchiseName: string | null; role: string } | null>(null);
+
+  const { data: invites = [], isLoading } = useListInvites({
+    query: { queryKey: getListInvitesQueryKey(), enabled: true },
+  });
+
+  const revoke = useRevokeInvite({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListInvitesQueryKey() });
+        toast({ title: "Convite revogado com sucesso" });
+        setRevokeTarget(null);
+      },
+      onError: (err: any) => {
+        toast({ title: err?.message ?? "Erro ao revogar convite", variant: "destructive" });
+        setRevokeTarget(null);
+      },
+    },
+  });
+
+  const pendingCount = invites.filter(i => i.status === InviteTokenStatus.pending).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {pendingCount > 0
+              ? `${pendingCount} convite${pendingCount > 1 ? "s" : ""} pendente${pendingCount > 1 ? "s" : ""} aguardando uso`
+              : "Nenhum convite pendente"}
+          </p>
+        </div>
+        <InviteLinkDialog
+          franchises={franchises}
+          onGenerated={() => qc.invalidateQueries({ queryKey: getListInvitesQueryKey() })}
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+        </div>
+      ) : invites.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Mail className="h-10 w-10 text-muted-foreground/40 mb-3" />
+            <p className="font-medium">Nenhum convite gerado</p>
+            <p className="text-sm text-muted-foreground mt-1">Gere um link de convite para começar.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {invites.map((inv) => {
+            const expiresAt = new Date(inv.expiresAt);
+            const createdAt = new Date(inv.createdAt);
+            const isPending = inv.status === InviteTokenStatus.pending;
+            return (
+              <Card key={inv.id} data-testid={`card-invite-${inv.id}`} className={inv.status !== InviteTokenStatus.pending ? "opacity-60" : ""}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <Link2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">
+                          {inv.franchiseName ?? "—"}
+                          <span className="ml-2 font-normal text-muted-foreground">·</span>
+                          <span className="ml-2 font-normal text-muted-foreground">{roleLabel[inv.role] ?? inv.role}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {inv.status === InviteTokenStatus.used && inv.usedByUserName ? (
+                            <>Usado por <strong>{inv.usedByUserName}</strong>{inv.usedByUserEmail ? ` (${inv.usedByUserEmail})` : ""}</>
+                          ) : inv.status === InviteTokenStatus.expired ? (
+                            <>Expirou em {expiresAt.toLocaleDateString("pt-BR")}</>
+                          ) : (
+                            <>Expira em {expiresAt.toLocaleDateString("pt-BR")} · Gerado em {createdAt.toLocaleDateString("pt-BR")}</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                      <InviteStatusPill status={inv.status} />
+                      {isPending && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setRevokeTarget({ id: inv.id, franchiseName: inv.franchiseName ?? null, role: inv.role })}
+                          data-testid={`button-revoke-invite-${inv.id}`}
+                          title="Revogar convite"
+                        >
+                          <ShieldX className="h-3.5 w-3.5 mr-1" />
+                          Revogar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <AlertDialog open={!!revokeTarget} onOpenChange={v => { if (!v) setRevokeTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revogar convite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O link de convite para <strong>{revokeTarget?.franchiseName ?? "—"}</strong>{" "}
+              ({roleLabel[revokeTarget?.role ?? ""] ?? revokeTarget?.role}) será excluído permanentemente
+              e não poderá mais ser utilizado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => revokeTarget && revoke.mutate({ id: revokeTarget.id })}
+              disabled={revoke.isPending}
+            >
+              {revoke.isPending ? "Revogando..." : "Revogar convite"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -215,11 +371,15 @@ export default function AdminUsers() {
   const [showPass, setShowPass] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [resendTarget, setResendTarget] = useState<{ id: number; name: string; email: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "invites">("users");
 
   const { data: users = [], isLoading } = useListUsers({}, { query: { enabled: true, queryKey: getListUsersQueryKey({}) } });
   const { data: franchises = [] } = useListFranchises({ query: { enabled: true, queryKey: getListFranchisesQueryKey() } });
+  const { data: invites = [] } = useListInvites({ query: { queryKey: getListInvitesQueryKey(), enabled: true } });
   const create = useCreateUser();
   const update = useUpdateUser();
+
+  const pendingInviteCount = invites.filter(i => i.status === InviteTokenStatus.pending).length;
 
   const deleteUser = useMutation({
     mutationFn: async (id: number) => {
@@ -328,236 +488,283 @@ export default function AdminUsers() {
           <h1 className="text-2xl font-bold tracking-tight">Usuários</h1>
           <p className="text-muted-foreground mt-1">Gestão de usuários e permissões</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <InviteLinkDialog franchises={franchises} />
-          <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
-            <DialogTrigger asChild>
-              <Button size="sm" data-testid="button-new-user" onClick={() => { reset({ role: "responsavel_interno", franchiseId: "none" }); setEditId(null); setOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1.5" /> Novo Usuário
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
-                <div className="space-y-1.5">
-                  <Label>Nome completo *</Label>
-                  <Input
-                    {...register("name", { required: "Campo obrigatório" })}
-                    placeholder="Ex: João Silva"
-                    data-testid="input-name"
-                  />
-                  {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>E-mail *</Label>
-                  <Input
-                    type="email"
-                    {...register("email", { required: "Campo obrigatório" })}
-                    placeholder="joao@exemplo.com.br"
-                    data-testid="input-email"
-                  />
-                  {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>{editId ? "Nova Senha" : "Senha *"}</Label>
-                  <div className="relative">
+        {activeTab === "users" && (
+          <div className="flex gap-2 flex-wrap">
+            <InviteLinkDialog
+              franchises={franchises}
+              onGenerated={() => qc.invalidateQueries({ queryKey: getListInvitesQueryKey() })}
+            />
+            <Dialog open={open} onOpenChange={v => { if (!v) closeDialog(); else setOpen(true); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" data-testid="button-new-user" onClick={() => { reset({ role: "responsavel_interno", franchiseId: "none" }); setEditId(null); setOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1.5" /> Novo Usuário
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editId ? "Editar Usuário" : "Novo Usuário"}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-1">
+                  <div className="space-y-1.5">
+                    <Label>Nome completo *</Label>
                     <Input
-                      type={showPass ? "text" : "password"}
-                      {...register("password", {
-                        required: editId ? false : "Campo obrigatório",
-                        minLength: { value: 6, message: "Mínimo 6 caracteres" },
-                      })}
-                      placeholder={editId ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"}
-                      data-testid="input-password"
-                      className="pr-10"
+                      {...register("name", { required: "Campo obrigatório" })}
+                      placeholder="Ex: João Silva"
+                      data-testid="input-name"
                     />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPass(p => !p)}
-                      tabIndex={-1}
-                    >
-                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
                   </div>
-                  {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
-                  {editId ? (
-                    <p className="text-xs text-muted-foreground">Preencha somente se quiser redefinir a senha deste usuário.</p>
-                  ) : null}
-                </div>
 
-                <div className="space-y-1.5">
-                  <Label>Perfil *</Label>
-                  <Controller
-                    name="role"
-                    control={control}
-                    rules={{ required: true }}
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-role">
-                          <SelectValue placeholder="Selecione o perfil" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(roleLabel).map(([v, l]) => (
-                            <SelectItem key={v} value={v}>{l}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.role && <p className="text-xs text-destructive">Campo obrigatório</p>}
-                </div>
+                  <div className="space-y-1.5">
+                    <Label>E-mail *</Label>
+                    <Input
+                      type="email"
+                      {...register("email", { required: "Campo obrigatório" })}
+                      placeholder="joao@exemplo.com.br"
+                      data-testid="input-email"
+                    />
+                    {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+                  </div>
 
-                <div className="space-y-1.5">
-                  <Label>Franquia</Label>
-                  <Controller
-                    name="franchiseId"
-                    control={control}
-                    render={({ field }) => (
-                      <Select value={field.value || "none"} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-franchise">
-                          <SelectValue placeholder="Sem franquia" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem franquia</SelectItem>
-                          {franchises.map((f: any) => (
-                            <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <Label>{editId ? "Nova Senha" : "Senha *"}</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPass ? "text" : "password"}
+                        {...register("password", {
+                          required: editId ? false : "Campo obrigatório",
+                          minLength: { value: 6, message: "Mínimo 6 caracteres" },
+                        })}
+                        placeholder={editId ? "Deixe em branco para manter a atual" : "Mínimo 6 caracteres"}
+                        data-testid="input-password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPass(p => !p)}
+                        tabIndex={-1}
+                      >
+                        {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+                    {editId ? (
+                      <p className="text-xs text-muted-foreground">Preencha somente se quiser redefinir a senha deste usuário.</p>
+                    ) : null}
+                  </div>
 
-                <div className="flex gap-2 justify-end pt-1">
-                  <Button variant="outline" type="button" onClick={closeDialog}>Cancelar</Button>
-                  <Button type="submit" disabled={create.isPending || update.isPending} data-testid="button-save">
-                    {create.isPending || update.isPending ? "Salvando..." : editId ? "Salvar alterações" : "Criar usuário"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+                  <div className="space-y-1.5">
+                    <Label>Perfil *</Label>
+                    <Controller
+                      name="role"
+                      control={control}
+                      rules={{ required: true }}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger data-testid="select-role">
+                            <SelectValue placeholder="Selecione o perfil" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(roleLabel).map(([v, l]) => (
+                              <SelectItem key={v} value={v}>{l}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.role && <p className="text-xs text-destructive">Campo obrigatório</p>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>Franquia</Label>
+                    <Controller
+                      name="franchiseId"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value || "none"} onValueChange={field.onChange}>
+                          <SelectTrigger data-testid="select-franchise">
+                            <SelectValue placeholder="Sem franquia" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem franquia</SelectItem>
+                            {franchises.map((f: any) => (
+                              <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button variant="outline" type="button" onClick={closeDialog}>Cancelar</Button>
+                    <Button type="submit" disabled={create.isPending || update.isPending} data-testid="button-save">
+                      {create.isPending || update.isPending ? "Salvando..." : editId ? "Salvar alterações" : "Criar usuário"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
-        </div>
-      ) : users.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
-            <p className="font-medium">Nenhum usuário cadastrado</p>
-            <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Usuário" para começar.</p>
-          </CardContent>
-        </Card>
+      <div className="flex gap-1 border-b">
+        <button
+          onClick={() => setActiveTab("users")}
+          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "users"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid="tab-users"
+        >
+          <span className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Usuários
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab("invites")}
+          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            activeTab === "invites"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+          data-testid="tab-invites"
+        >
+          <span className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Convites
+            {pendingInviteCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+                {pendingInviteCount}
+              </span>
+            )}
+          </span>
+        </button>
+      </div>
+
+      {activeTab === "invites" ? (
+        <ConvitesSection franchises={franchises} />
       ) : (
-        <div className="space-y-2">
-          {users.map((u: any) => (
-            <Card key={u.id} data-testid={`card-user-${u.id}`} className={!u.active ? "opacity-50" : ""}>
-              <CardContent className="py-3 px-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-sm truncate">{u.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {u.email}
-                        {u.franchiseName && <span className="ml-2 text-muted-foreground/70">— {u.franchiseName}</span>}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                    <Badge className={`text-xs border ${roleBadgeColor[u.role] || ""}`} variant="outline">
-                      {roleLabel[u.role] || u.role}
-                    </Badge>
-                    <InviteStatusBadge user={u} />
-                    {!u.active && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
-                    {INVITATION_ROLES.includes(u.role) && !u.lastLoginAt && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                        onClick={() => setResendTarget({ id: u.id, name: u.name, email: u.email })}
-                        data-testid={`button-resend-${u.id}`}
-                        title="Reenviar convite"
-                      >
-                        <Send className="h-3.5 w-3.5 mr-1" />
-                        Reenviar convite
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => handleEdit(u)} data-testid={`button-edit-${u.id}`}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
-                      Editar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setDeleteTarget({ id: u.id, name: u.name })}
-                      data-testid={`button-delete-${u.id}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
+        <>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+            </div>
+          ) : users.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                <p className="font-medium">Nenhum usuário cadastrado</p>
+                <p className="text-sm text-muted-foreground mt-1">Clique em "Novo Usuário" para começar.</p>
               </CardContent>
             </Card>
-          ))}
-        </div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((u: any) => (
+                <Card key={u.id} data-testid={`card-user-${u.id}`} className={!u.active ? "opacity-50" : ""}>
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm shrink-0">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{u.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {u.email}
+                            {u.franchiseName && <span className="ml-2 text-muted-foreground/70">— {u.franchiseName}</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                        <Badge className={`text-xs border ${roleBadgeColor[u.role] || ""}`} variant="outline">
+                          {roleLabel[u.role] || u.role}
+                        </Badge>
+                        <InviteStatusBadge user={u} />
+                        {!u.active && <Badge variant="secondary" className="text-xs">Inativo</Badge>}
+                        {INVITATION_ROLES.includes(u.role) && !u.lastLoginAt && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            onClick={() => setResendTarget({ id: u.id, name: u.name, email: u.email })}
+                            data-testid={`button-resend-${u.id}`}
+                            title="Reenviar convite"
+                          >
+                            <Send className="h-3.5 w-3.5 mr-1" />
+                            Reenviar convite
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(u)} data-testid={`button-edit-${u.id}`}>
+                          <Pencil className="h-3.5 w-3.5 mr-1" />
+                          Editar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteTarget({ id: u.id, name: u.name })}
+                          data-testid={`button-delete-${u.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <AlertDialog open={!!deleteTarget} onOpenChange={v => { if (!v) setDeleteTarget(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive hover:bg-destructive/90 text-white"
+                  onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id)}
+                  disabled={deleteUser.isPending}
+                >
+                  {deleteUser.isPending ? "Excluindo..." : "Excluir"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={!!resendTarget} onOpenChange={v => { if (!v) setResendTarget(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reenviar convite?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Isso vai gerar uma <strong>nova senha temporária</strong> e enviá-la por e-mail para{" "}
+                  <strong>{resendTarget?.name}</strong> ({resendTarget?.email}).
+                  A senha atual deste usuário será substituída.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={() => resendTarget && resendInvite.mutate(resendTarget.id)}
+                  disabled={resendInvite.isPending}
+                >
+                  {resendInvite.isPending ? "Enviando..." : "Reenviar convite"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={v => { if (!v) setDeleteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir <strong>{deleteTarget?.name}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-white"
-              onClick={() => deleteTarget && deleteUser.mutate(deleteTarget.id)}
-              disabled={deleteUser.isPending}
-            >
-              {deleteUser.isPending ? "Excluindo..." : "Excluir"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={!!resendTarget} onOpenChange={v => { if (!v) setResendTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reenviar convite?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Isso vai gerar uma <strong>nova senha temporária</strong> e enviá-la por e-mail para{" "}
-              <strong>{resendTarget?.name}</strong> ({resendTarget?.email}).
-              A senha atual deste usuário será substituída.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-              onClick={() => resendTarget && resendInvite.mutate(resendTarget.id)}
-              disabled={resendInvite.isPending}
-            >
-              {resendInvite.isPending ? "Enviando..." : "Reenviar convite"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
