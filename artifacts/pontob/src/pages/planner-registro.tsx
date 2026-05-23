@@ -47,12 +47,12 @@ const SECTIONS = [
     activeBg: "bg-blue-600",
     activeHover: "hover:bg-blue-700",
     indicators: [
-      { key: "reunioes_agendadas",           label: "Reuniões agendadas",               isMonetary: false, isNegative: false },
-      { key: "reunioes_realizadas",           label: "Reuniões realizadas",              isMonetary: false, isNegative: false },
-      { key: "corretores_entraram",           label: "Corretores entraram",              isMonetary: false, isNegative: false },
-      { key: "estagiarios_entraram",          label: "Estagiários entraram",             isMonetary: false, isNegative: false },
-      { key: "corretores_sairam",             label: "Corretores saíram",                isMonetary: false, isNegative: true  },
-      { key: "estagiarios_sairam",            label: "Estagiários saíram",               isMonetary: false, isNegative: true  },
+      { key: "reunioes_agendadas",           label: "Reuniões agendadas",               isMonetary: false, isNegative: false, description: "Reuniões de captação de corretores ou estagiários que você agendou hoje — mesmo que ainda não tenham acontecido." },
+      { key: "reunioes_realizadas",           label: "Reuniões realizadas",              isMonetary: false, isNegative: false, description: "Reuniões de apresentação ou entrevista que efetivamente aconteceram hoje." },
+      { key: "corretores_entraram",           label: "Corretores entraram",              isMonetary: false, isNegative: false, description: "Corretores que assinaram contrato e entraram oficialmente na franquia hoje." },
+      { key: "estagiarios_entraram",          label: "Estagiários entraram",             isMonetary: false, isNegative: false, description: "Estagiários que ingressaram na franquia hoje." },
+      { key: "corretores_sairam",             label: "Corretores saíram",                isMonetary: false, isNegative: true,  description: "Corretores que encerraram contrato e saíram da franquia hoje." },
+      { key: "estagiarios_sairam",            label: "Estagiários saíram",               isMonetary: false, isNegative: true,  description: "Estagiários que saíram da franquia hoje." },
     ],
   },
   {
@@ -66,9 +66,9 @@ const SECTIONS = [
     activeBg: "bg-violet-600",
     activeHover: "hover:bg-violet-700",
     indicators: [
-      { key: "novos_contratos_representacao", label: "Novos contratos de representação", isMonetary: false, isNegative: false },
-      { key: "contratos_cancelados",          label: "Contratos cancelados",             isMonetary: false, isNegative: true  },
-      { key: "contratos_vendidos",            label: "Contratos vendidos",               isMonetary: false, isNegative: false },
+      { key: "novos_contratos_representacao", label: "Novos contratos de representação", isMonetary: false, isNegative: false, description: "Novos contratos de representação exclusiva assinados hoje com proprietários de imóveis." },
+      { key: "contratos_cancelados",          label: "Contratos cancelados",             isMonetary: false, isNegative: true,  description: "Contratos de representação que foram cancelados ou rescindidos hoje." },
+      { key: "contratos_vendidos",            label: "Contratos vendidos",               isMonetary: false, isNegative: false, description: "Contratos de representação que resultaram em venda concretizada hoje." },
     ],
   },
   {
@@ -82,8 +82,8 @@ const SECTIONS = [
     activeBg: "bg-emerald-600",
     activeHover: "hover:bg-emerald-700",
     indicators: [
-      { key: "venda_assinada",  label: "VGV",                        isMonetary: true,  isNegative: false },
-      { key: "venda_realizada", label: "VGC Recebido e reportado",   isMonetary: true,  isNegative: false },
+      { key: "venda_assinada",  label: "VGV",                        isMonetary: true,  isNegative: false, description: "VGV — Valor Geral de Vendas. Lance aqui o valor do contrato que você assinou hoje. Representa o que você produziu — mesmo que ainda não tenha recebido a comissão." },
+      { key: "venda_realizada", label: "VGC Recebido e reportado",   isMonetary: true,  isNegative: false, description: "VGC — Valor de Comissão recebida e já reportada à franqueadora. Lance aqui apenas o que foi efetivamente pago e confirmado." },
     ],
   },
 ];
@@ -164,12 +164,14 @@ function parseBRL(raw: string): number {
 function MonetaryForm({
   indicatorKey,
   label,
+  description,
   onSubmit,
   onCancel,
   loading,
 }: {
   indicatorKey: string;
   label: string;
+  description?: string;
   onSubmit: (delta: number, note: string) => void;
   onCancel: () => void;
   loading: boolean;
@@ -188,12 +190,24 @@ function MonetaryForm({
   }
 
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{label}</p>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}><X className="h-3.5 w-3.5" /></Button>
+    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/20">
+        <p className="text-sm font-bold">{label}</p>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
       </div>
-      <div className="space-y-2">
+
+      {/* Tutorial banner */}
+      {description && (
+        <div className="flex items-start gap-2.5 px-4 py-2.5 bg-amber-50 border-b border-amber-100">
+          <span className="text-amber-500 mt-0.5 shrink-0 text-base leading-none">💡</span>
+          <p className="text-xs text-amber-800 leading-relaxed">{description}</p>
+        </div>
+      )}
+
+      <div className="p-4 space-y-3">
         {/* Live BRL preview */}
         <div className={cn(
           "rounded-lg border px-4 py-3 text-center transition-colors",
@@ -209,38 +223,41 @@ function MonetaryForm({
         </div>
 
         {/* Numeric input */}
-        <div className="relative">
-          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            inputMode="numeric"
-            placeholder="Ex: 10 · 1500 · 150000"
-            value={raw}
-            onChange={e => setRaw(e.target.value.replace(/[^0-9.,]/g, ""))}
-            onKeyDown={handleKeyDown}
-            className="pl-8 font-mono text-base"
-            autoFocus
-          />
+        <div className="space-y-1.5">
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              inputMode="numeric"
+              placeholder="Ex: 10 · 1500 · 150000"
+              value={raw}
+              onChange={e => setRaw(e.target.value.replace(/[^0-9.,]/g, ""))}
+              onKeyDown={handleKeyDown}
+              className="pl-8 font-mono text-base"
+              autoFocus
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground/60 px-1">
+            Digite em reais: <span className="font-mono">10</span> = R$ 10,00 · <span className="font-mono">1500</span> = R$ 1.500,00 · <span className="font-mono">150000</span> = R$ 150.000,00
+          </p>
         </div>
-        <p className="text-[11px] text-muted-foreground/60 px-1">
-          Digite em reais: <span className="font-mono">10</span> = R$ 10,00 &nbsp;·&nbsp; <span className="font-mono">1500</span> = R$ 1.500,00 &nbsp;·&nbsp; <span className="font-mono">150000</span> = R$ 150.000,00
-        </p>
 
         <Input
           placeholder="Observação (opcional: imóvel, cliente...)"
           value={note}
           onChange={e => setNote(e.target.value)}
         />
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onCancel} className="flex-1">Cancelar</Button>
-        <Button
-          size="sm"
-          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-          disabled={!valid || loading}
-          onClick={() => valid && onSubmit(parsed, note)}
-        >
-          {loading ? "Salvando..." : valid ? `Lançar ${preview}` : "Lançar"}
-        </Button>
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onCancel} className="flex-1">Cancelar</Button>
+          <Button
+            size="sm"
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+            disabled={!valid || loading}
+            onClick={() => valid && onSubmit(parsed, note)}
+          >
+            {loading ? "Salvando..." : valid ? `Lançar ${preview}` : "Lançar"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -506,6 +523,7 @@ export default function PlannerRegistro() {
         <MonetaryForm
           indicatorKey={monetaryOpen}
           label={ALL_INDICATORS.find(i => i.key === monetaryOpen)?.label ?? monetaryOpen}
+          description={ALL_INDICATORS.find(i => i.key === monetaryOpen)?.description}
           onSubmit={(delta, note) => handleMonetary(monetaryOpen, delta, note)}
           onCancel={() => setMonetaryOpen(null)}
           loading={logMutation.isPending}
@@ -530,25 +548,36 @@ export default function PlannerRegistro() {
                   const isPending = logMutation.isPending && (logMutation.variables as any)?.indicatorKey === ind.key;
 
                   if (ind.isMonetary) {
+                    const isActive = monetaryOpen === ind.key;
                     return (
                       <div
                         key={ind.key}
                         className={cn(
-                          "rounded-xl border p-4 flex items-center justify-between gap-3",
-                          section.border, section.bg,
+                          "rounded-xl border p-4 flex items-center justify-between gap-3 transition-all duration-150",
+                          isActive
+                            ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300/50 shadow-sm"
+                            : cn(section.border, section.bg),
                         )}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground/70 leading-tight">{ind.label}</p>
-                          <p className={cn("text-xl font-black tabular-nums mt-1", section.color)}>
+                          <div className="flex items-center gap-1.5">
+                            <p className={cn("text-xs font-semibold leading-tight", isActive ? "text-emerald-800" : "text-foreground/70")}>{ind.label}</p>
+                            {isActive && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">editando</span>}
+                          </div>
+                          <p className={cn("text-xl font-black tabular-nums mt-1", isActive ? "text-emerald-700" : section.color)}>
                             {count > 0 ? fmtBRL(count) : "R$0"}
                           </p>
                           <p className="text-[10px] text-muted-foreground/60 mt-0.5">acumulado hoje</p>
                         </div>
                         <Button
                           size="sm"
-                          className={cn("gap-1.5 text-white shrink-0", section.activeBg, section.activeHover)}
-                          onClick={() => setMonetaryOpen(ind.key)}
+                          className={cn(
+                            "gap-1.5 text-white shrink-0 transition-all",
+                            isActive
+                              ? "bg-emerald-600 hover:bg-emerald-700 shadow"
+                              : cn(section.activeBg, section.activeHover),
+                          )}
+                          onClick={() => setMonetaryOpen(isActive ? null : ind.key)}
                           disabled={!canWrite || isSubmitted}
                         >
                           <Plus className="h-3.5 w-3.5" />
