@@ -81,16 +81,24 @@ export default function GoalNew() {
   const [pendingKeyProcess, setPendingKeyProcess] = useState<string | null>(null);
 
   const isAdmin = isAdminRole(user?.role);
+  const isSocio = (user as any)?.role === "socio";
+  // socio: franchises come from the user object (linked at login), no API fetch needed
+  const socioFranchises: Array<{ id: number; name: string }> = isSocio
+    ? ((user as any)?.linkedFranchises ?? []).slice().sort((a: any, b: any) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
+      )
+    : [];
 
   const dimKey = getListDimensionsQueryKey();
   const { data: dimensions = [] } = useListDimensions({}, { query: { queryKey: dimKey } });
 
   const franchisesKey = getListFranchisesQueryKey();
-  const { data: franchises = [] } = useListFranchises(
+  const { data: adminFranchises = [] } = useListFranchises(
     { query: { enabled: isAdmin, queryKey: franchisesKey } }
   );
+  const franchises = isAdmin ? adminFranchises : socioFranchises;
 
-  const defaultFranchiseId = isAdmin ? "" : String(user?.franchiseId ?? "");
+  const defaultFranchiseId = (isAdmin || isSocio) ? "" : String((user as any)?.franchiseId ?? "");
 
   const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<GoalForm>({
     defaultValues: {
@@ -141,9 +149,9 @@ export default function GoalNew() {
   async function onSubmit(form: GoalForm) {
     if (!kriType) return;
 
-    const franchiseId = isAdmin
+    const franchiseId = (isAdmin || isSocio)
       ? (form.franchiseId ? parseInt(form.franchiseId) : undefined)
-      : user?.franchiseId;
+      : (user as any)?.franchiseId;
 
     if (!franchiseId) {
       toast({ title: "Selecione uma franquia", variant: "destructive" });
@@ -270,8 +278,8 @@ export default function GoalNew() {
             );
           })()}
 
-          {/* Franchise selector (admins only) */}
-          {isAdmin && (
+          {/* Franchise selector (admins and socio) */}
+          {(isAdmin || isSocio) && (
             <div className="space-y-1.5">
               <Label>Franquia *</Label>
               <Controller
