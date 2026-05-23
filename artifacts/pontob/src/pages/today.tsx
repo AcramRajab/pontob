@@ -352,15 +352,32 @@ export default function Today() {
                     })}
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setPickerOpen(true)}
-                    className="w-full rounded-lg border border-dashed border-primary/20 py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:bg-primary/[0.02] transition-colors"
-                  >
+                  <div className="rounded-lg border border-dashed border-primary/20 py-5 px-4 flex flex-col items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center">
-                      <Plus className="h-5 w-5 text-primary/50" />
+                      <Zap className="h-5 w-5 text-primary/40" />
                     </div>
-                    <span className="text-xs font-medium text-muted-foreground/70">Selecionar iniciativas para hoje</span>
-                  </button>
+                    <p className="text-xs text-muted-foreground/70 font-medium text-center">Nenhuma iniciativa selecionada</p>
+                    <div className="flex flex-col gap-1.5 w-full">
+                      <Button size="sm" className="w-full gap-2 text-xs" onClick={() => setPickerOpen(true)}>
+                        <Check className="h-3.5 w-3.5" />
+                        Selecionar iniciativas
+                      </Button>
+                      <div className="flex gap-1.5">
+                        <Link href="/goals/new" className="flex-1">
+                          <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs">
+                            <Plus className="h-3.5 w-3.5" />
+                            Nova Meta
+                          </Button>
+                        </Link>
+                        <Link href="/goals" className="flex-1">
+                          <Button size="sm" variant="outline" className="w-full gap-1.5 text-xs">
+                            <ArrowRightCircle className="h-3.5 w-3.5" />
+                            Nova Iniciativa
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -459,13 +476,20 @@ export default function Today() {
                   <p className="text-sm font-medium text-foreground/70">Nenhuma iniciativa ativa</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Crie iniciativas em suas metas para gerenciar aqui.</p>
                 </div>
-                <Link
-                  href="/goals"
-                  className="text-xs font-medium text-primary hover:underline underline-offset-2"
-                  onClick={() => setPickerOpen(false)}
-                >
-                  Ir para Metas →
-                </Link>
+                <div className="flex flex-col gap-2 w-full px-4 mt-1">
+                  <Link href="/goals/new" onClick={() => setPickerOpen(false)}>
+                    <Button className="w-full gap-2" size="sm">
+                      <Plus className="h-4 w-4" />
+                      Nova Meta
+                    </Button>
+                  </Link>
+                  <Link href="/goals" onClick={() => setPickerOpen(false)}>
+                    <Button variant="outline" className="w-full gap-2" size="sm">
+                      <ArrowRightCircle className="h-4 w-4" />
+                      Adicionar iniciativa em Meta existente
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="p-4 space-y-5">
