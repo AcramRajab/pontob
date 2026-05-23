@@ -127,6 +127,38 @@ function dayLabel(d: Date) {
   });
 }
 
+// ─── BRL currency helpers ──────────────────────────────────────────────────────
+
+const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function fmtBRLFull(v: number) {
+  return brlFmt.format(v);
+}
+
+/** Parse a BRL-style string typed by the user:
+ *  "10"        → 10
+ *  "150000"    → 150000
+ *  "150.000"   → 150000
+ *  "150.000,50"→ 150000.50
+ *  "150000,50" → 150000.50
+ */
+function parseBRL(raw: string): number {
+  // Remove R$, spaces
+  let s = raw.replace(/R\$\s?/g, "").trim();
+  // If there's a comma, treat as decimal separator (pt-BR style)
+  if (s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else {
+    // Only dots present — ambiguous; if last group has 3 digits it's thousands sep
+    const parts = s.split(".");
+    if (parts.length > 1 && parts[parts.length - 1].length === 3) {
+      s = s.replace(/\./g, ""); // treat all as thousands separators
+    }
+    // otherwise keep dots as decimal (e.g. "10.5")
+  }
+  return parseFloat(s);
+}
+
 // ─── Monetary quick-entry form ─────────────────────────────────────────────────
 
 function MonetaryForm({
@@ -145,8 +177,15 @@ function MonetaryForm({
   const [raw, setRaw] = useState("");
   const [note, setNote] = useState("");
 
-  const parsed = parseFloat(raw.replace(/\./g, "").replace(",", "."));
-  const valid = !isNaN(parsed) && parsed > 0;
+  const parsed = parseBRL(raw);
+  const valid = raw.trim().length > 0 && !isNaN(parsed) && parsed > 0;
+  const preview = valid ? fmtBRLFull(parsed) : null;
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && valid && !loading) {
+      onSubmit(parsed, note);
+    }
+  }
 
   return (
     <div className="rounded-xl border bg-card p-4 space-y-3 shadow-sm">
@@ -155,16 +194,37 @@ function MonetaryForm({
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}><X className="h-3.5 w-3.5" /></Button>
       </div>
       <div className="space-y-2">
+        {/* Live BRL preview */}
+        <div className={cn(
+          "rounded-lg border px-4 py-3 text-center transition-colors",
+          valid ? "bg-emerald-50 border-emerald-200" : "bg-muted/30"
+        )}>
+          <span className={cn(
+            "text-2xl font-black tabular-nums tracking-tight transition-colors",
+            valid ? "text-emerald-700" : "text-muted-foreground/30"
+          )}>
+            {preview ?? "R$ 0,00"}
+          </span>
+          <p className="text-[11px] text-muted-foreground/60 mt-0.5">valor a lançar</p>
+        </div>
+
+        {/* Numeric input */}
         <div className="relative">
           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Valor em R$ (ex: 150000)"
+            inputMode="numeric"
+            placeholder="Ex: 10 · 1500 · 150000"
             value={raw}
-            onChange={e => setRaw(e.target.value)}
-            className="pl-8 font-mono"
+            onChange={e => setRaw(e.target.value.replace(/[^0-9.,]/g, ""))}
+            onKeyDown={handleKeyDown}
+            className="pl-8 font-mono text-base"
             autoFocus
           />
         </div>
+        <p className="text-[11px] text-muted-foreground/60 px-1">
+          Digite em reais: <span className="font-mono">10</span> = R$ 10,00 &nbsp;·&nbsp; <span className="font-mono">1500</span> = R$ 1.500,00 &nbsp;·&nbsp; <span className="font-mono">150000</span> = R$ 150.000,00
+        </p>
+
         <Input
           placeholder="Observação (opcional: imóvel, cliente...)"
           value={note}
@@ -179,7 +239,7 @@ function MonetaryForm({
           disabled={!valid || loading}
           onClick={() => valid && onSubmit(parsed, note)}
         >
-          {loading ? "Salvando..." : `Lançar ${valid ? fmtBRL(parsed) : ""}`}
+          {loading ? "Salvando..." : valid ? `Lançar ${preview}` : "Lançar"}
         </Button>
       </div>
     </div>
