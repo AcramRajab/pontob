@@ -11,7 +11,7 @@ import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Link } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 function whatsappUrl(phone: string) {
@@ -50,8 +50,23 @@ export default function Today() {
   const qc = useQueryClient();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toggling, setToggling] = useState<Set<number>>(new Set());
+  const alertsGeneratedRef = useRef(false);
 
   const today = new Date().toISOString().split("T")[0];
+
+  // Fire-and-forget: generate/refresh alerts once per page load when franchiseId is known
+  useEffect(() => {
+    if (!franchiseId || alertsGeneratedRef.current) return;
+    alertsGeneratedRef.current = true;
+    fetch("/api/alerts/generate", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ franchiseId }),
+    }).then(() => {
+      qc.invalidateQueries({ queryKey: getGetTodayOverviewQueryKey(params) });
+    }).catch(() => {});
+  }, [franchiseId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const params = { franchiseId: franchiseId ?? undefined };
   const { data: overview, isLoading } = useGetTodayOverview(
