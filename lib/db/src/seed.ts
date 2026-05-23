@@ -8,29 +8,20 @@ import {
   strategicInitiativesTable,
 } from "./schema/index.js";
 import bcrypt from "bcryptjs";
+import { validateSeedData } from "./seed-validation.js";
+import { USER_SEED_CONFIG, PERMANENTLY_DEACTIVATED_EMAILS } from "./seed-config.js";
 
 const RESET = process.argv.includes("--reset");
 
-// These accounts were replaced by real production accounts. They must never be
-// re-activated, even if an old or modified seed script tries to insert them.
-// The post-upsert guard below enforces this after every seed run.
-const PERMANENTLY_DEACTIVATED_EMAILS = [
-  "admin@remaxsc.com.br",
-  "regional@remaxsc.com.br",
-];
-
 const SEED_FRANCHISE_NAMES = ["RE/MAX Franquia Teste", "RE/MAX Capital", "RE/MAX Excellence"];
-const SEED_USER_EMAILS = [
-  "acramrajab@remax.com.br",
-  "claudiaroncolatto@remax.com.br",
-  "marinasandri@remax.com.br",
-  "franqueado@remaxsc.com.br",
-  "responsavel@remaxsc.com.br",
-  "regional@remaxsc.com.br",
-];
+const SEED_USER_EMAILS = USER_SEED_CONFIG.map(u => u.email);
 
 async function seed() {
   console.log(`Seeding database${RESET ? " (reset mode — tables will be cleared first)" : ""}...`);
+
+  // ── Pre-seed validation (runs before any DB writes) ─────────────────────────
+  // Validates the same data that will be written — same object, no drift risk.
+  validateSeedData(USER_SEED_CONFIG, PERMANENTLY_DEACTIVATED_EMAILS);
 
   if (RESET) {
     console.log("Clearing catalog tables with cascade...");
@@ -69,25 +60,28 @@ async function seed() {
   }
 
   const franchises = await db.select().from(franchisesTable).orderBy(franchisesTable.id);
-  const f1 = franchises.find(f => f.name === "RE/MAX Franquia Teste")!;
   console.log("Franchises seeded:", franchises.length);
 
   // ── Users ───────────────────────────────────────────────────────────────────
-  const passwords = {
-    admin123:       await bcrypt.hash("admin123",       10),
-    remax2026:      await bcrypt.hash("remax2026",      10),
-    franqueado123:  await bcrypt.hash("franqueado123",  10),
-    responsavel123: await bcrypt.hash("responsavel123", 10),
-  };
+  // Hash unique passwords only once.
+  const uniquePasswords = [...new Set(USER_SEED_CONFIG.map(u => u.password))];
+  const hashMap = new Map<string, string>();
+  for (const pw of uniquePasswords) {
+    hashMap.set(pw, await bcrypt.hash(pw, 10));
+  }
 
-  const userData = [
-    { name: "Acram Rajab",         email: "acramrajab@remax.com.br",       passwordHash: passwords.admin123,       role: "master_admin",        franchiseId: null,  active: true  },
-    { name: "Claudia Roncolatto",  email: "claudiaroncolatto@remax.com.br",passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: true  },
-    { name: "Marina Sandri",       email: "marinasandri@remax.com.br",     passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: true  },
-    { name: "Carlos Mendes",       email: "franqueado@remaxsc.com.br",     passwordHash: passwords.franqueado123,  role: "franqueado",          franchiseId: f1.id, active: true  },
-    { name: "Maria Costa",         email: "responsavel@remaxsc.com.br",    passwordHash: passwords.responsavel123, role: "responsavel_interno", franchiseId: f1.id, active: true  },
-    { name: "Regional (legacy)",   email: "regional@remaxsc.com.br",       passwordHash: passwords.remax2026,      role: "staff_regional",      franchiseId: null,  active: false },
-  ];
+  // Derive DB insert rows directly from USER_SEED_CONFIG — the same source
+  // that was validated above. There is no separate copy that could diverge.
+  const userData = USER_SEED_CONFIG.map(u => ({
+    name:         u.name,
+    email:        u.email,
+    passwordHash: hashMap.get(u.password)!,
+    role:         u.role,
+    franchiseId:  u.franchiseName
+      ? franchises.find(f => f.name === u.franchiseName)!.id
+      : null,
+    active:       u.active,
+  }));
 
   for (const u of userData) {
     await db
