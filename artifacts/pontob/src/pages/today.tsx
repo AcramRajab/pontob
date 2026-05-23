@@ -2,35 +2,46 @@ import { useAuth } from "@/lib/auth";
 import { useGetTodayOverview, getGetTodayOverviewQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Loader2, CheckCircle2, AlertTriangle, CalendarDays, MessageCircle,
-  ChevronRight, Plus, X, ArrowRightCircle, Check,
+  ChevronRight, Plus, X, ArrowRightCircle, Check, Target, Zap,
+  TrendingUp, Bell, Sparkles,
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Link } from "wouter";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 function whatsappUrl(phone: string) {
   const digits = phone.replace(/\D/g, "");
   return `https://wa.me/${digits.startsWith("55") ? digits : `55${digits}`}`;
 }
-
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
+function todayLabel() {
+  return new Date().toLocaleDateString("pt-BR", {
+    weekday: "long", day: "2-digit", month: "long",
+  });
+}
 
-function statusLabel(status: string) {
+function statusBadge(status: string) {
   if (status === "atrasada") return { label: "Atrasada", cls: "text-red-600 bg-red-50 border-red-200" };
   if (status === "em_andamento") return { label: "Em andamento", cls: "text-blue-600 bg-blue-50 border-blue-200" };
   if (status === "adiantada") return { label: "Adiantado", cls: "text-green-700 bg-green-50 border-green-200" };
   return null;
+}
+
+function progressColor(status: string, pct: number) {
+  if (status === "atrasada") return "from-red-400 to-red-500";
+  if (pct >= 80) return "from-green-400 to-green-500";
+  if (pct >= 50) return "from-blue-400 to-blue-500";
+  return "from-primary to-primary/80";
 }
 
 export default function Today() {
@@ -54,7 +65,6 @@ export default function Today() {
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
-  // All active initiatives for the picker
   const { data: allInitiatives = [], isLoading: loadingPicker } = useQuery({
     queryKey: ["all-active-initiatives", franchiseId],
     queryFn: async () => {
@@ -73,9 +83,7 @@ export default function Today() {
   const { data: allCandidatos = [] } = useQuery({
     queryKey: ["candidatos-for-today", franchiseId],
     queryFn: async () => {
-      const url = franchiseId
-        ? `/api/recruiting/candidatos?franchiseId=${franchiseId}`
-        : `/api/recruiting/candidatos`;
+      const url = franchiseId ? `/api/recruiting/candidatos?franchiseId=${franchiseId}` : `/api/recruiting/candidatos`;
       const r = await fetch(url, { credentials: "include" });
       if (!r.ok) return [];
       return r.json() as Promise<any[]>;
@@ -87,13 +95,12 @@ export default function Today() {
   const in48h = now + 48 * 60 * 60 * 1000;
   const upcomingInterviews = allCandidatos
     .filter((c) => c.interviewAt)
-    .filter((c) => {
-      const t = new Date(c.interviewAt).getTime();
-      return t >= now - 60 * 60 * 1000 && t <= in48h;
-    })
+    .filter((c) => { const t = new Date(c.interviewAt).getTime(); return t >= now - 60 * 60 * 1000 && t <= in48h; })
     .sort((a, b) => new Date(a.interviewAt).getTime() - new Date(b.interviewAt).getTime());
 
   const pinnedIds = new Set<number>((overview?.initiativesForToday ?? []).map((i: any) => i.id));
+  const pinnedList = (overview?.initiativesForToday ?? []) as any[];
+  const alertList = (overview?.pendingAlerts ?? []) as any[];
 
   async function toggleToday(id: number) {
     setToggling(prev => new Set(prev).add(id));
@@ -106,7 +113,6 @@ export default function Today() {
     }
   }
 
-  // Group picker initiatives by goal
   const initiativesByGoal = allInitiatives.reduce((acc: Record<string, any[]>, ini: any) => {
     const key = ini.goalTitle || `Meta #${ini.goalId}`;
     if (!acc[key]) acc[key] = [];
@@ -115,18 +121,26 @@ export default function Today() {
   }, {});
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Hoje</h1>
-        <p className="text-muted-foreground mt-1">Dois minutos para não perder a semana.</p>
+    <div className="space-y-6 pb-8">
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground capitalize mb-0.5">{todayLabel()}</p>
+          <h1 className="text-2xl font-bold tracking-tight">Hoje</h1>
+        </div>
+        {!isLoading && !!franchiseId && (
+          <div className="flex items-center gap-1.5 shrink-0 mt-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary/60" />
+            <span className="text-xs text-muted-foreground">
+              {user?.name?.split(" ")[0]}, bom dia!
+            </span>
+          </div>
+        )}
       </div>
 
       {isAdmin && (
-        <FranchisePicker
-          franchises={franchises}
-          value={adminFranchiseId}
-          onChange={setAdminFranchiseId}
-        />
+        <FranchisePicker franchises={franchises} value={adminFranchiseId} onChange={setAdminFranchiseId} />
       )}
 
       {isAdmin && !franchiseId ? (
@@ -137,67 +151,103 @@ export default function Today() {
         </div>
       ) : (
         <>
-          {/* Top 3 priorities */}
+          {/* ── Stats pills ─────────────────────────────────────── */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              {
+                icon: Target, label: "Metas ativas", value: overview?.activeGoals ?? 0,
+                iconCls: "text-primary", bgCls: "bg-primary/8", borderCls: "border-primary/15",
+              },
+              {
+                icon: Bell, label: "Alertas", value: alertList.length,
+                iconCls: alertList.length > 0 ? "text-destructive" : "text-muted-foreground",
+                bgCls: alertList.length > 0 ? "bg-destructive/5" : "bg-muted/40",
+                borderCls: alertList.length > 0 ? "border-destructive/20" : "border-border",
+                valueCls: alertList.length > 0 ? "text-destructive" : undefined,
+              },
+              {
+                icon: TrendingUp, label: "Score semana", value: overview?.weekScore ?? 0,
+                iconCls: "text-emerald-600", bgCls: "bg-emerald-50", borderCls: "border-emerald-100",
+                valueCls: "text-emerald-700",
+              },
+            ].map(({ icon: Icon, label, value, iconCls, bgCls, borderCls, valueCls }) => (
+              <div key={label} className={cn("rounded-xl border px-4 py-3.5 flex flex-col gap-1.5", bgCls, borderCls)}>
+                <div className="flex items-center gap-1.5">
+                  <Icon className={cn("h-3.5 w-3.5 shrink-0", iconCls)} strokeWidth={2} />
+                  <span className="text-[11px] font-medium text-muted-foreground leading-none">{label}</span>
+                </div>
+                <p className={cn("text-2xl font-black tabular-nums leading-none", valueCls ?? "text-foreground")}>
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Priorities ──────────────────────────────────────── */}
           <div>
-            <div className="flex items-baseline justify-between mb-3">
-              <h2 className="font-semibold text-base">
-                {top3Goals.length > 0 ? "Suas prioridades" : "Metas"}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-sm text-foreground/80 uppercase tracking-wide">
+                Suas prioridades
               </h2>
-              <Link href="/goals" className="text-xs text-muted-foreground hover:text-foreground">
-                Ver todas →
+              <Link href="/goals" className="text-xs text-primary/70 hover:text-primary font-medium flex items-center gap-1">
+                Ver todas <ChevronRight className="h-3 w-3" />
               </Link>
             </div>
 
             {top3Goals.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Nenhuma meta ativa.{" "}
-                <Link href="/goals" className="underline underline-offset-2 hover:text-foreground">
-                  Criar meta
-                </Link>
+              <div className="rounded-xl border border-dashed p-8 text-center">
+                <Target className="mx-auto h-8 w-8 text-muted-foreground/20 mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhuma meta ativa.</p>
+                <Link href="/goals" className="text-xs text-primary hover:underline mt-1 block">+ Criar meta</Link>
               </div>
             ) : (
               <div className="space-y-2">
                 {top3Goals.map((goal: any, idx: number) => {
                   const pct = Math.round(goal.progressPercentage ?? 0);
-                  const st = statusLabel(goal.status);
+                  const st = statusBadge(goal.status);
+                  const gradientCls = progressColor(goal.status, pct);
+                  const rankColors = ["text-amber-500", "text-slate-400", "text-orange-400"];
                   return (
                     <Link key={goal.id} href={`/goals/${goal.id}`}>
-                      <div className="group flex items-center gap-4 rounded-lg border bg-background px-4 py-3 hover:border-primary/30 hover:bg-primary/[0.02] transition-all cursor-pointer">
-                        <span className="shrink-0 text-xs font-bold text-muted-foreground/50 w-4 text-center select-none">
-                          {idx + 1}
-                        </span>
-                        <div className="min-w-0 flex-1 space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm leading-tight truncate">{goal.title}</span>
-                            {st && (
-                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${st.cls}`}>
-                                {st.label}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {goal.dimensionName}{goal.keyProcessName ? ` · ${goal.keyProcessName}` : ""}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  goal.status === "atrasada" ? "bg-red-400" : pct >= 80 ? "bg-green-500" : "bg-primary"
-                                }`}
-                                style={{ width: `${pct}%` }}
-                              />
+                      <div className="group rounded-xl border bg-card hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer overflow-hidden">
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          {/* rank */}
+                          <span className={cn("shrink-0 text-sm font-black w-5 text-center select-none", rankColors[idx] ?? "text-muted-foreground/40")}>
+                            {idx + 1}
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <span className="font-semibold text-sm leading-tight">{goal.title}</span>
+                              {st && (
+                                <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0", st.cls)}>
+                                  {st.label}
+                                </span>
+                              )}
                             </div>
-                            <span className="text-xs font-semibold tabular-nums shrink-0 text-muted-foreground">
-                              {pct}%
-                            </span>
+                            <p className="text-xs text-muted-foreground/70 truncate">
+                              {goal.dimensionName}{goal.keyProcessName ? ` · ${goal.keyProcessName}` : ""}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm font-black tabular-nums text-foreground/70">{pct}%</span>
                             {goal.currentValue != null && goal.targetValue != null && (
-                              <span className="text-xs text-muted-foreground/60 shrink-0 hidden sm:block">
-                                {goal.currentValue} / {goal.targetValue}{goal.unit ? ` ${goal.unit}` : ""}
+                              <span className="text-[11px] text-muted-foreground/50 hidden sm:block">
+                                {goal.currentValue}/{goal.targetValue}{goal.unit ? ` ${goal.unit}` : ""}
                               </span>
                             )}
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors" />
                           </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
+
+                        {/* Progress bar — full width at bottom */}
+                        <div className="h-1 bg-muted/60">
+                          <div
+                            className={cn("h-full bg-gradient-to-r transition-all", gradientCls)}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
                     </Link>
                   );
@@ -206,52 +256,25 @@ export default function Today() {
             )}
           </div>
 
-          {/* Stats row */}
-          <div className="grid gap-3 grid-cols-3">
-            <Card className="border-0 bg-muted/40">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground">Metas ativas</p>
-                <p className="text-2xl font-bold mt-0.5">{overview?.activeGoals || 0}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-muted/40">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground">Alertas</p>
-                <p className={`text-2xl font-bold mt-0.5 ${(overview?.pendingAlerts?.length ?? 0) > 0 ? "text-destructive" : ""}`}>
-                  {overview?.pendingAlerts?.length || 0}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 bg-muted/40">
-              <CardContent className="p-4">
-                <p className="text-xs text-muted-foreground">Score semana</p>
-                <p className="text-2xl font-bold mt-0.5">{overview?.weekScore || 0}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Upcoming interviews */}
+          {/* ── Upcoming interviews ─────────────────────────────── */}
           {upcomingInterviews.length > 0 && (
-            <Card className="border-purple-200 bg-purple-50/40">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4 text-purple-600" />
-                  <CardTitle className="text-base text-purple-800">Entrevistas próximas</CardTitle>
-                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                    {upcomingInterviews.length}
-                  </span>
-                </div>
-                <CardDescription>Candidatos com entrevista agendada nas próximas 48h.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white overflow-hidden">
+              <div className="px-4 py-3 border-b border-purple-100 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-purple-600" />
+                <span className="font-semibold text-sm text-purple-800">Entrevistas próximas</span>
+                <span className="ml-auto text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-semibold">
+                  {upcomingInterviews.length}
+                </span>
+              </div>
+              <div className="p-3 space-y-2">
                 {upcomingInterviews.map((c) => {
-                  const isToday = new Date(c.interviewAt).toDateString() === new Date().toDateString();
+                  const isToday2 = new Date(c.interviewAt).toDateString() === new Date().toDateString();
                   return (
                     <div key={c.id} className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-lg border border-purple-100">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isToday ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-700"}`}>
-                            {isToday ? formatTime(c.interviewAt) : `${formatDate(c.interviewAt)} ${formatTime(c.interviewAt)}`}
+                          <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded", isToday2 ? "bg-purple-600 text-white" : "bg-purple-100 text-purple-700")}>
+                            {isToday2 ? formatTime(c.interviewAt) : `${formatDate(c.interviewAt)} ${formatTime(c.interviewAt)}`}
                           </span>
                           <span className="text-sm font-medium truncate">{c.name}</span>
                         </div>
@@ -268,180 +291,251 @@ export default function Today() {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
-          {/* Initiatives + Alerts */}
+          {/* ── Initiatives + Alerts ────────────────────────────── */}
           <div className="grid gap-4 md:grid-cols-2">
-            {/* ── Iniciativas de Hoje ───────────────────────────── */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm">Iniciativas de Hoje</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">O que precisa ser executado agora.</CardDescription>
+
+            {/* Iniciativas de Hoje */}
+            <div className="rounded-xl border overflow-hidden">
+              <div className="px-4 py-3 border-b bg-gradient-to-r from-primary/5 to-transparent flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <Zap className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 text-xs shrink-0"
-                    onClick={() => setPickerOpen(true)}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Selecionar
-                  </Button>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">Foco de Hoje</p>
+                    {pinnedList.length > 0 && (
+                      <p className="text-[10px] text-muted-foreground">{pinnedList.length} iniciativa{pinnedList.length !== 1 ? "s" : ""} selecionada{pinnedList.length !== 1 ? "s" : ""}</p>
+                    )}
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {(overview?.initiativesForToday?.length ?? 0) > 0 ? (
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="flex items-center gap-1 text-xs text-primary font-medium hover:bg-primary/5 px-2 py-1 rounded-md transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Selecionar
+                </button>
+              </div>
+
+              <div className="p-3">
+                {pinnedList.length > 0 ? (
                   <div className="space-y-2">
-                    {(overview!.initiativesForToday as any[]).map((init: any) => {
+                    {pinnedList.map((init: any) => {
                       const isToggling = toggling.has(init.id);
                       return (
-                        <div key={init.id} className="flex items-center gap-3 px-3 py-2.5 border rounded-lg bg-primary/[0.02] border-primary/20">
-                          <ArrowRightCircle className="h-4 w-4 text-primary shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm truncate">{init.initiativeName || init.customName || "Iniciativa"}</p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {init.goalTitle || init.dimensionName || ""}
-                              {init.keyProcessName ? ` · ${init.keyProcessName}` : ""}
-                            </p>
+                        <div key={init.id} className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-primary/15 bg-primary/[0.03] hover:bg-primary/[0.06] transition-colors">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <ArrowRightCircle className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium leading-tight truncate">{init.initiativeName || init.customName || "Iniciativa"}</p>
+                            {(init.goalTitle || init.keyProcessName) && (
+                              <p className="text-[11px] text-muted-foreground/70 truncate mt-0.5">
+                                {init.goalTitle ?? init.keyProcessName}
+                              </p>
+                            )}
                           </div>
                           <button
-                            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 transition-colors shrink-0"
-                            title="Remover de hoje"
                             disabled={isToggling}
                             onClick={() => toggleToday(init.id)}
+                            className="h-6 w-6 rounded-full flex items-center justify-center text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                            title="Remover do foco de hoje"
                           >
-                            {isToggling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                            {isToggling ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
                           </button>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <CheckCircle2 className="mx-auto h-7 w-7 mb-2 opacity-30" />
-                    <p className="text-sm">Nenhuma iniciativa selecionada para hoje.</p>
-                    <button
-                      className="mt-2 text-xs text-primary hover:underline underline-offset-2"
-                      onClick={() => setPickerOpen(true)}
-                    >
-                      + Selecionar iniciativas
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="w-full rounded-lg border border-dashed border-primary/20 py-8 flex flex-col items-center gap-2 text-muted-foreground hover:border-primary/40 hover:bg-primary/[0.02] transition-colors"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center">
+                      <Plus className="h-5 w-5 text-primary/50" />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground/70">Selecionar iniciativas para hoje</span>
+                  </button>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            {/* ── Alertas Recentes ──────────────────────────────── */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Alertas Recentes</CardTitle>
-                <CardDescription className="text-xs">O que não é registrado não pode ser resolvido.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {overview?.pendingAlerts?.length ? (
+            {/* Alertas Recentes */}
+            <div className="rounded-xl border overflow-hidden">
+              <div className={cn(
+                "px-4 py-3 border-b flex items-center gap-2",
+                alertList.length > 0 ? "bg-gradient-to-r from-destructive/5 to-transparent" : "bg-muted/20"
+              )}>
+                <div className={cn(
+                  "h-6 w-6 rounded-md flex items-center justify-center",
+                  alertList.length > 0 ? "bg-destructive/10" : "bg-muted"
+                )}>
+                  <AlertTriangle className={cn("h-3.5 w-3.5", alertList.length > 0 ? "text-destructive" : "text-muted-foreground/50")} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold leading-tight">Alertas</p>
+                  {alertList.length > 0 && (
+                    <p className="text-[10px] text-destructive font-medium">{alertList.length} pendente{alertList.length !== 1 ? "s" : ""}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3">
+                {alertList.length > 0 ? (
                   <div className="space-y-2">
-                    {overview.pendingAlerts.map(alert => (
-                      <div key={alert.id} className="flex items-start gap-3 px-3 py-2.5 border rounded-lg border-destructive/20 bg-destructive/5">
-                        <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    {alertList.map((alert: any) => (
+                      <div key={alert.id} className="flex items-start gap-3 px-3 py-2.5 border rounded-lg border-destructive/20 bg-destructive/[0.03]">
+                        <div className="h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+                          <AlertTriangle className="h-3 w-3 text-destructive" />
+                        </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-sm text-destructive truncate">{alert.type}</p>
+                          <p className="text-sm font-semibold text-destructive/90 truncate">{alert.type}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle2 className="mx-auto h-7 w-7 mb-2 opacity-40 text-green-500" />
-                    <p className="text-sm">Nenhum alerta pendente.</p>
+                  <div className="py-8 flex flex-col items-center gap-2 text-muted-foreground">
+                    <div className="h-10 w-10 rounded-full bg-green-50 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground/70">Nenhum alerta pendente</span>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </>
       )}
 
-      {/* ── Sheet: Selecionar Iniciativas para Hoje ───────────── */}
+      {/* ── Sheet: Selecionar Iniciativas ───────────────────────── */}
       <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
-          <SheetHeader className="px-5 py-4 border-b shrink-0">
-            <SheetTitle className="text-base">Selecionar iniciativas para hoje</SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              Marque as iniciativas que você vai executar hoje. Elas ficam no seu painel de foco.
-            </p>
-          </SheetHeader>
+        <SheetContent side="right" className="w-full sm:max-w-sm flex flex-col gap-0 p-0">
 
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-            {loadingPicker ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          {/* Sheet header com gradiente */}
+          <div className="bg-gradient-to-br from-primary to-primary/80 px-5 py-5 shrink-0">
+            <SheetHeader className="space-y-1">
+              <div className="flex items-center justify-between">
+                <SheetTitle className="text-white text-base font-bold">Foco de hoje</SheetTitle>
+                <button
+                  onClick={() => setPickerOpen(false)}
+                  className="h-7 w-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                >
+                  <X className="h-3.5 w-3.5 text-white" />
+                </button>
               </div>
-            ) : allInitiatives.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <ArrowRightCircle className="mx-auto h-8 w-8 mb-3 opacity-20" />
-                <p className="text-sm">Nenhuma iniciativa ativa encontrada.</p>
-                <Link href="/goals" className="text-xs text-primary hover:underline underline-offset-2 mt-1 block" onClick={() => setPickerOpen(false)}>
-                  Criar em Metas →
-                </Link>
+              <p className="text-white/70 text-xs leading-relaxed">
+                Marque as iniciativas que vai executar hoje.
+              </p>
+            </SheetHeader>
+
+            {/* Pinned count pill */}
+            {pinnedIds.size > 0 && (
+              <div className="mt-3 inline-flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+                <Check className="h-3 w-3 text-white" />
+                <span className="text-xs text-white font-medium">{pinnedIds.size} selecionada{pinnedIds.size !== 1 ? "s" : ""}</span>
               </div>
-            ) : (
-              Object.entries(initiativesByGoal).map(([goalTitle, inis]) => (
-                <div key={goalTitle}>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                    {goalTitle}
-                  </p>
-                  <div className="space-y-1.5">
-                    {(inis as any[]).map((ini: any) => {
-                      const isPinned = pinnedIds.has(ini.id) || ini.pinnedDate === today;
-                      const isToggling = toggling.has(ini.id);
-                      return (
-                        <button
-                          key={ini.id}
-                          disabled={isToggling}
-                          onClick={() => toggleToday(ini.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all ${
-                            isPinned
-                              ? "bg-primary/5 border-primary/30"
-                              : "bg-background border-border hover:border-primary/20 hover:bg-muted/30"
-                          }`}
-                        >
-                          <div className={`h-5 w-5 rounded flex items-center justify-center shrink-0 border-2 transition-colors ${
-                            isPinned ? "bg-primary border-primary" : "border-muted-foreground/30"
-                          }`}>
-                            {isToggling
-                              ? <Loader2 className="h-3 w-3 animate-spin text-white" />
-                              : isPinned
-                                ? <Check className="h-3 w-3 text-white" />
-                                : null
-                            }
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm font-medium truncate ${isPinned ? "text-foreground" : "text-foreground/80"}`}>
-                              {ini.initiativeName || ini.customName || "Iniciativa"}
-                            </p>
-                            {(ini.dimensionName || ini.keyProcessName) && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {ini.dimensionName}{ini.keyProcessName ? ` · ${ini.keyProcessName}` : ""}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
             )}
           </div>
 
-          <div className="px-5 py-3 border-t shrink-0">
-            <Button className="w-full" onClick={() => setPickerOpen(false)}>
-              Pronto ({pinnedIds.size} selecionada{pinnedIds.size !== 1 ? "s" : ""})
+          {/* List */}
+          <div className="flex-1 overflow-y-auto">
+            {loadingPicker ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              </div>
+            ) : allInitiatives.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 px-6 text-center">
+                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+                  <ArrowRightCircle className="h-7 w-7 text-muted-foreground/30" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground/70">Nenhuma iniciativa ativa</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Crie iniciativas em suas metas para gerenciar aqui.</p>
+                </div>
+                <Link
+                  href="/goals"
+                  className="text-xs font-medium text-primary hover:underline underline-offset-2"
+                  onClick={() => setPickerOpen(false)}
+                >
+                  Ir para Metas →
+                </Link>
+              </div>
+            ) : (
+              <div className="p-4 space-y-5">
+                {Object.entries(initiativesByGoal).map(([goalTitle, inis]) => (
+                  <div key={goalTitle}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide truncate">
+                        {goalTitle}
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {(inis as any[]).map((ini: any) => {
+                        const isPinned = pinnedIds.has(ini.id) || ini.pinnedDate === today;
+                        const isToggling = toggling.has(ini.id);
+                        return (
+                          <button
+                            key={ini.id}
+                            disabled={isToggling}
+                            onClick={() => toggleToday(ini.id)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all",
+                              isPinned
+                                ? "bg-primary/5 border-primary/25 shadow-sm"
+                                : "bg-background border-border hover:border-primary/15 hover:bg-muted/30"
+                            )}
+                          >
+                            {/* Checkbox visual */}
+                            <div className={cn(
+                              "h-5 w-5 rounded-md flex items-center justify-center shrink-0 border-2 transition-all",
+                              isPinned ? "bg-primary border-primary" : "border-muted-foreground/25"
+                            )}>
+                              {isToggling
+                                ? <Loader2 className="h-3 w-3 animate-spin text-white" />
+                                : isPinned ? <Check className="h-3 w-3 text-white" strokeWidth={3} /> : null
+                              }
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <p className={cn("text-sm font-medium truncate leading-tight", isPinned ? "text-foreground" : "text-foreground/75")}>
+                                {ini.initiativeName || ini.customName || "Iniciativa"}
+                              </p>
+                              {ini.keyProcessName && (
+                                <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">{ini.keyProcessName}</p>
+                              )}
+                            </div>
+
+                            {isPinned && (
+                              <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <Zap className="h-3 w-3 text-primary" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-3 border-t bg-muted/20 shrink-0">
+            <Button
+              className="w-full gap-2 font-semibold"
+              onClick={() => setPickerOpen(false)}
+            >
+              <Check className="h-4 w-4" />
+              Confirmar {pinnedIds.size > 0 ? `(${pinnedIds.size})` : ""}
             </Button>
           </div>
         </SheetContent>
