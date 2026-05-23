@@ -1,6 +1,13 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, franchisesTable } from "@workspace/db";
+import {
+  db, usersTable, franchisesTable,
+  dailyCheckinsTable, weeklyCheckinsTable, monthlyCheckinsTable,
+  goalsTable, goalInitiativesTable,
+  helpRequestsTable, weeklyPlannerEntriesTable, weeklyPlannerWeeksTable,
+  plannerEventLogTable, progressHistoryTable, inviteTokensTable,
+  commentsTable,
+} from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, requireRole, requireWriteAccess } from "../middlewares/auth";
 import { logAudit, shouldAudit } from "../services/audit";
@@ -141,7 +148,7 @@ router.post("/users", requireAuth, requireWriteAccess, async (req, res) => {
 
 router.get("/users/:id", requireAuth, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const role = req.session.userRole!;
     if (role !== "master_admin" && role !== "staff_regional" && req.session.userId !== id) {
       // franqueado can view users in their franchise
@@ -179,7 +186,7 @@ router.get("/users/:id", requireAuth, async (req, res) => {
 
 router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const role = req.session.userRole!;
 
     // franqueado can only edit responsavel_interno users in their own franchise
@@ -233,15 +240,35 @@ router.patch("/users/:id", requireAuth, requireWriteAccess, async (req, res) => 
 
 router.delete("/users/:id", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (id === req.session.userId) {
       res.status(400).json({ error: "Você não pode excluir sua própria conta." });
       return;
     }
     const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, id)).limit(1);
     if (!existing) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
-    const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
-    if (!deleted) { res.status(404).json({ error: "Usuário não encontrado." }); return; }
+
+    await db.transaction(async (tx) => {
+      // Records where user_id is NOT NULL → delete them
+      await tx.delete(dailyCheckinsTable).where(eq(dailyCheckinsTable.userId, id));
+      await tx.delete(weeklyCheckinsTable).where(eq(weeklyCheckinsTable.userId, id));
+      await tx.delete(monthlyCheckinsTable).where(eq(monthlyCheckinsTable.userId, id));
+      await tx.delete(weeklyPlannerEntriesTable).where(eq(weeklyPlannerEntriesTable.userId, id));
+      await tx.delete(plannerEventLogTable).where(eq(plannerEventLogTable.userId, id));
+      await tx.delete(progressHistoryTable).where(eq(progressHistoryTable.userId, id));
+      await tx.delete(helpRequestsTable).where(eq(helpRequestsTable.userId, id));
+      await tx.delete(commentsTable).where(eq(commentsTable.userId, id));
+
+      // Nullable FK columns → set to null (preserve the records)
+      await tx.update(goalsTable).set({ ownerUserId: null }).where(eq(goalsTable.ownerUserId, id));
+      await tx.update(goalInitiativesTable).set({ ownerUserId: null }).where(eq(goalInitiativesTable.ownerUserId, id));
+      await tx.update(helpRequestsTable).set({ assignedTo: null }).where(eq(helpRequestsTable.assignedTo, id));
+      await tx.update(weeklyPlannerWeeksTable).set({ submittedByUserId: null }).where(eq(weeklyPlannerWeeksTable.submittedByUserId, id));
+      await tx.update(inviteTokensTable).set({ usedByUserId: null }).where(eq(inviteTokensTable.usedByUserId, id));
+      // audit_logs.user_id has onDelete: "set null" on the constraint — handled by DB
+
+      await tx.delete(usersTable).where(eq(usersTable.id, id));
+    });
 
     if (shouldAudit(req.session.userRole!)) {
       await logAudit({
@@ -259,7 +286,7 @@ router.delete("/users/:id", requireAuth, requireRole("master_admin", "staff_regi
 
 router.post("/users/:id/resend-invite", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const [user] = await db
       .select({
         id: usersTable.id, name: usersTable.name, email: usersTable.email,
