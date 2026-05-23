@@ -905,6 +905,34 @@ paths:
         "404":
           description: Not found
 
+  /goal-initiatives/{id}/toggle-today:
+    post:
+      operationId: toggleGoalInitiativeToday
+      tags: [goalInitiatives]
+      summary: Toggle pinned_date for today on a goal initiative
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated initiative with pinnedDate
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, pinnedDate]
+                properties:
+                  id:
+                    type: integer
+                  pinnedDate:
+                    type: string
+                    nullable: true
+        "404":
+          description: Not found
+
   /goal-initiatives/{id}/restore:
     post:
       operationId: restoreGoalInitiative

@@ -478,6 +478,7 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
         investmentOrEffort: goalInitiativesTable.investmentOrEffort,
         progressPercentage: goalInitiativesTable.progressPercentage,
         status: goalInitiativesTable.status,
+        pinnedDate: goalInitiativesTable.pinnedDate,
         notes: goalInitiativesTable.notes,
         createdAt: goalInitiativesTable.createdAt,
       })
@@ -487,7 +488,10 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
       .leftJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
       .leftJoin(keyProcessesTable, eq(strategicInitiativesTable.keyProcessId, keyProcessesTable.id))
       .leftJoin(usersTable, eq(goalInitiativesTable.ownerUserId, usersTable.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(and(
+        conditions.length > 0 ? and(...conditions) : undefined,
+        isNull(goalInitiativesTable.deletedAt),
+      ))
       .orderBy(goalInitiativesTable.createdAt);
 
     res.json(rows.map(i => ({ ...i, createdAt: i.createdAt instanceof Date ? i.createdAt.toISOString() : i.createdAt })));
@@ -782,6 +786,24 @@ router.post("/kpis/:id/restore", requireAuth, requireWriteAccess, async (req, re
       .where(eq(kpisTable.id, id))
       .returning();
     res.json({ ...k, createdAt: k.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/goal-initiatives/:id/toggle-today", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const franchiseId = await getInitiativeFranchiseId(id);
+    if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const today = new Date().toISOString().split("T")[0];
+    const [current] = await db.select({ pinnedDate: goalInitiativesTable.pinnedDate })
+      .from(goalInitiativesTable).where(eq(goalInitiativesTable.id, id)).limit(1);
+    const newPinnedDate = current?.pinnedDate === today ? null : today;
+    await db.update(goalInitiativesTable).set({ pinnedDate: newPinnedDate }).where(eq(goalInitiativesTable.id, id));
+    res.json({ id, pinnedDate: newPinnedDate });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

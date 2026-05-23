@@ -84,6 +84,7 @@ import type {
   RevokeInvite200,
   StrategicInitiative,
   TodayOverview,
+  ToggleGoalInitiativeToday200,
   TrashItem,
   User,
   UserInput,
@@ -3804,6 +3805,93 @@ export const useRestoreKpi = <
   TContext
 > => {
   return useMutation(getRestoreKpiMutationOptions(options));
+};
+
+/**
+ * @summary Toggle pinned_date for today on a goal initiative
+ */
+export const getToggleGoalInitiativeTodayUrl = (id: number) => {
+  return `/api/goal-initiatives/${id}/toggle-today`;
+};
+
+export const toggleGoalInitiativeToday = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ToggleGoalInitiativeToday200> => {
+  return customFetch<ToggleGoalInitiativeToday200>(
+    getToggleGoalInitiativeTodayUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getToggleGoalInitiativeTodayMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleGoalInitiativeToday>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleGoalInitiativeToday>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleGoalInitiativeToday"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleGoalInitiativeToday>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleGoalInitiativeToday(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleGoalInitiativeTodayMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleGoalInitiativeToday>>
+>;
+
+export type ToggleGoalInitiativeTodayMutationError = ErrorType<void>;
+
+/**
+ * @summary Toggle pinned_date for today on a goal initiative
+ */
+export const useToggleGoalInitiativeToday = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleGoalInitiativeToday>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleGoalInitiativeToday>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getToggleGoalInitiativeTodayMutationOptions(options));
 };
 
 /**

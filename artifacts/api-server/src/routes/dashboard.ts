@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable, weeklyPlannerEntriesTable, PLANNER_INDICATORS } from "@workspace/db";
-import { eq, and, sql, desc, gte, lte, ne, inArray, notInArray } from "drizzle-orm";
+import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, keyProcessesTable, strategicInitiativesTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable, weeklyPlannerEntriesTable, PLANNER_INDICATORS } from "@workspace/db";
+import { eq, and, sql, desc, gte, lte, ne, inArray, notInArray, isNull } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
 const router = Router();
@@ -63,14 +63,27 @@ router.get("/dashboard/today", requireAuth, async (req, res) => {
     const initiativesForToday = await db.select({
       id: goalInitiativesTable.id,
       goalId: goalInitiativesTable.goalId,
+      goalTitle: goalsTable.title,
       strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+      initiativeName: strategicInitiativesTable.name,
+      customName: goalInitiativesTable.customName,
+      dimensionName: dimensionsTable.name,
+      keyProcessName: keyProcessesTable.name,
       progressPercentage: goalInitiativesTable.progressPercentage,
       status: goalInitiativesTable.status,
+      pinnedDate: goalInitiativesTable.pinnedDate,
       notes: goalInitiativesTable.notes,
       createdAt: goalInitiativesTable.createdAt,
     }).from(goalInitiativesTable)
       .innerJoin(goalsTable, and(eq(goalInitiativesTable.goalId, goalsTable.id), eq(goalsTable.franchiseId, franchiseId)))
-      .where(eq(goalInitiativesTable.status, "ativa"))
+      .leftJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+      .leftJoin(dimensionsTable, eq(goalsTable.dimensionId, dimensionsTable.id))
+      .leftJoin(keyProcessesTable, eq(goalsTable.keyProcessId, keyProcessesTable.id))
+      .where(and(
+        eq(goalInitiativesTable.status, "ativa"),
+        eq(goalInitiativesTable.pinnedDate, today),
+        isNull(goalInitiativesTable.deletedAt),
+      ))
       .limit(10);
 
     const todayCheckins = await db.select().from(dailyCheckinsTable)
@@ -100,11 +113,7 @@ router.get("/dashboard/today", requireAuth, async (req, res) => {
       activeGoals: activeGoals[0]?.count ?? 0,
       initiativesForToday: initiativesForToday.map(i => ({
         ...i,
-        initiativeName: null, dimensionName: null, keyProcessName: null,
-        desiredResult: null, actualResult: null, mainKpiId: null, ownerUserId: null, ownerName: null,
-        startDate: null, endDate: null, frequency: null, executionDay: null, executionTime: null,
-        estimatedTime: null, whatWillBeDone: null, whyItMatters: null, whoIsResponsible: null,
-        whereItWillBeDone: null, howItWillBeDone: null, investmentOrEffort: null,
+        initiativeName: i.initiativeName || i.customName || "Iniciativa",
         createdAt: i.createdAt instanceof Date ? i.createdAt.toISOString() : i.createdAt,
       })),
       todayCheckins: todayCheckins.map(c => ({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() })),

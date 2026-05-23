@@ -1090,6 +1090,18 @@ export const RestoreKpiResponse = zod.object({
 });
 
 /**
+ * @summary Toggle pinned_date for today on a goal initiative
+ */
+export const ToggleGoalInitiativeTodayParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleGoalInitiativeTodayResponse = zod.object({
+  id: zod.number(),
+  pinnedDate: zod.string().nullable(),
+});
+
+/**
  * @summary Restore a soft-deleted goal initiative
  */
 export const RestoreGoalInitiativeParams = zod.object({

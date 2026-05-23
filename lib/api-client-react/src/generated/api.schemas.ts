@@ -1367,6 +1367,11 @@ export type ListTrashParams = {
   franchiseId?: number;
 };
 
+export type ToggleGoalInitiativeToday200 = {
+  id: number;
+  pinnedDate: string | null;
+};
+
 export type ListDailyCheckinsParams = {
   goalId?: number;
   franchiseId?: number;

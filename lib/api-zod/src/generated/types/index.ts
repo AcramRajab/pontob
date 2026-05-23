@@ -106,6 +106,7 @@ export * from "./rejectInvite200";
 export * from "./revokeInvite200";
 export * from "./strategicInitiative";
 export * from "./todayOverview";
+export * from "./toggleGoalInitiativeToday200";
 export * from "./trashItem";
 export * from "./user";
 export * from "./userInput";
