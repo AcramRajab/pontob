@@ -1,9 +1,9 @@
 import { useAuth } from "@/lib/auth";
-import { useGetTodayOverview, getGetTodayOverviewQueryKey } from "@workspace/api-client-react";
+import { useGetTodayOverview, getGetTodayOverviewQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, MessageCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, AlertCircle, CalendarDays, MessageCircle, ChevronRight } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { Link } from "wouter";
@@ -21,6 +21,13 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
 
+function statusLabel(status: string) {
+  if (status === "atrasada") return { label: "Atrasada", cls: "text-red-600 bg-red-50 border-red-200" };
+  if (status === "em_andamento") return { label: "Em andamento", cls: "text-blue-600 bg-blue-50 border-blue-200" };
+  if (status === "adiantada") return { label: "Adiantado", cls: "text-green-700 bg-green-50 border-green-200" };
+  return null;
+}
+
 export default function Today() {
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
   const { user } = useAuth();
@@ -30,6 +37,17 @@ export default function Today() {
     params,
     { query: { enabled: !!franchiseId, queryKey: getGetTodayOverviewQueryKey(params) } }
   );
+
+  const goalParams = { franchiseId: franchiseId ?? undefined };
+  const { data: allGoals = [] } = useListGoals(
+    goalParams,
+    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+  );
+
+  const top3Goals = [...allGoals]
+    .filter((g: any) => !["concluida", "cancelada"].includes(g.status))
+    .sort((a: any, b: any) => (b.progressPercentage ?? 0) - (a.progressPercentage ?? 0))
+    .slice(0, 3);
 
   const { data: allCandidatos = [] } = useQuery({
     queryKey: ["candidatos-for-today", franchiseId],
@@ -58,7 +76,7 @@ export default function Today() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Hoje</h1>
-        <p className="text-muted-foreground mt-2">Dois minutos para não perder a semana.</p>
+        <p className="text-muted-foreground mt-1">Dois minutos para não perder a semana.</p>
       </div>
 
       {isAdmin && (
@@ -77,35 +95,100 @@ export default function Today() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link href="/goals">
-              <Card className="cursor-pointer transition-colors hover:bg-accent/50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Metas Ativas</CardTitle>
-                  <TargetIcon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{overview?.activeGoals || 0}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Ver todas as metas →</p>
-                </CardContent>
-              </Card>
-            </Link>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Alertas Pendentes</CardTitle>
-                <AlertCircle className="h-4 w-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overview?.pendingAlerts?.length || 0}</div>
+          {/* Top 3 priorities */}
+          <div>
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="font-semibold text-base">
+                {top3Goals.length > 0 ? "Suas prioridades" : "Metas"}
+              </h2>
+              <Link href="/goals" className="text-xs text-muted-foreground hover:text-foreground">
+                Ver todas →
+              </Link>
+            </div>
+
+            {top3Goals.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                Nenhuma meta ativa.{" "}
+                <Link href="/goals" className="underline underline-offset-2 hover:text-foreground">
+                  Criar meta
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {top3Goals.map((goal: any, idx: number) => {
+                  const pct = Math.round(goal.progressPercentage ?? 0);
+                  const st = statusLabel(goal.status);
+                  return (
+                    <Link key={goal.id} href={`/goals/${goal.id}`}>
+                      <div className="group flex items-center gap-4 rounded-lg border bg-background px-4 py-3 hover:border-primary/30 hover:bg-primary/[0.02] transition-all cursor-pointer">
+                        {/* rank dot */}
+                        <span className="shrink-0 text-xs font-bold text-muted-foreground/50 w-4 text-center select-none">
+                          {idx + 1}
+                        </span>
+
+                        {/* main content */}
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm leading-tight truncate">{goal.title}</span>
+                            {st && (
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${st.cls}`}>
+                                {st.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {goal.dimensionName}{goal.keyProcessName ? ` · ${goal.keyProcessName}` : ""}
+                          </p>
+                          {/* progress bar */}
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  goal.status === "atrasada" ? "bg-red-400" : pct >= 80 ? "bg-green-500" : "bg-primary"
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold tabular-nums shrink-0 text-muted-foreground">
+                              {pct}%
+                            </span>
+                            {goal.currentValue != null && goal.targetValue != null && (
+                              <span className="text-xs text-muted-foreground/60 shrink-0 hidden sm:block">
+                                {goal.currentValue} / {goal.targetValue}{goal.unit ? ` ${goal.unit}` : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Stats row */}
+          <div className="grid gap-3 grid-cols-3">
+            <Card className="border-0 bg-muted/40">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Metas ativas</p>
+                <p className="text-2xl font-bold mt-0.5">{overview?.activeGoals || 0}</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pontuação da Semana</CardTitle>
-                <TrophyIcon className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{overview?.weekScore || 0}</div>
+            <Card className="border-0 bg-muted/40">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Alertas</p>
+                <p className={`text-2xl font-bold mt-0.5 ${(overview?.pendingAlerts?.length ?? 0) > 0 ? "text-destructive" : ""}`}>
+                  {overview?.pendingAlerts?.length || 0}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 bg-muted/40">
+              <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground">Score semana</p>
+                <p className="text-2xl font-bold mt-0.5">{overview?.weekScore || 0}</p>
               </CardContent>
             </Card>
           </div>
@@ -154,58 +237,59 @@ export default function Today() {
             </Card>
           )}
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Iniciativas de Hoje</CardTitle>
-                <CardDescription>O que precisa ser executado agora.</CardDescription>
+          {/* Initiatives + Alerts */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Iniciativas de Hoje</CardTitle>
+                <CardDescription className="text-xs">O que precisa ser executado agora.</CardDescription>
               </CardHeader>
               <CardContent>
                 {overview?.initiativesForToday?.length ? (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {overview.initiativesForToday.map(init => (
-                      <div key={init.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <div className="font-medium">{(init as any).initiativeName || "Iniciativa"}</div>
-                          <div className="text-sm text-muted-foreground">{(init as any).dimensionName}</div>
+                      <div key={init.id} className="flex items-center justify-between gap-3 px-3 py-2.5 border rounded-lg">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{(init as any).initiativeName || "Iniciativa"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{(init as any).dimensionName}</p>
                         </div>
-                        <Button variant="outline" size="sm" asChild>
+                        <Button variant="outline" size="sm" className="shrink-0 h-7 text-xs" asChild>
                           <Link href="/checkin/daily">Check-in</Link>
                         </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center p-8 text-muted-foreground">
-                    <CheckCircle2 className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                    <p>Nenhuma iniciativa agendada para hoje.</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle2 className="mx-auto h-7 w-7 mb-2 opacity-40" />
+                    <p className="text-sm">Nenhuma iniciativa agendada para hoje.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Alertas Recentes</CardTitle>
-                <CardDescription>O que não é registrado não pode ser resolvido.</CardDescription>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Alertas Recentes</CardTitle>
+                <CardDescription className="text-xs">O que não é registrado não pode ser resolvido.</CardDescription>
               </CardHeader>
               <CardContent>
                 {overview?.pendingAlerts?.length ? (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {overview.pendingAlerts.map(alert => (
-                      <div key={alert.id} className="flex items-start space-x-3 p-4 border rounded-lg border-destructive/20 bg-destructive/5">
-                        <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-destructive">{alert.type}</div>
-                          <div className="text-sm text-muted-foreground mt-1">{alert.message}</div>
+                      <div key={alert.id} className="flex items-start gap-3 px-3 py-2.5 border rounded-lg border-destructive/20 bg-destructive/5">
+                        <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-destructive truncate">{alert.type}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{alert.message}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center p-8 text-muted-foreground">
-                    <CheckCircle2 className="mx-auto h-8 w-8 mb-2 opacity-50 text-green-500" />
-                    <p>Nenhum alerta pendente.</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle2 className="mx-auto h-7 w-7 mb-2 opacity-40 text-green-500" />
+                    <p className="text-sm">Nenhum alerta pendente.</p>
                   </div>
                 )}
               </CardContent>
@@ -214,22 +298,5 @@ export default function Today() {
         </>
       )}
     </div>
-  );
-}
-
-function TargetIcon(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
-    </svg>
-  );
-}
-function TrophyIcon(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-    </svg>
   );
 }
