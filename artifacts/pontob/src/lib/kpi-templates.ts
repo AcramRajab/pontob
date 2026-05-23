@@ -35,3 +35,23 @@ export const PLANNER_SECTIONS: { key: PlannerSection; color: string; bg: string;
 export function templatesBySection(section: PlannerSection) {
   return PLANNER_KPI_TEMPLATES.filter(t => t.section === section);
 }
+
+const SECTION_KEYWORDS: Record<PlannerSection, string[]> = {
+  "Recrutamento": ["recrutamento", "seleção", "selecao", "creci", "corretor", "agente", "captação de agente"],
+  "Operação": ["captação", "captacao", "cre ", "cres", "representação", "representacao", "imóvel", "imovel", "proprietário", "locação"],
+  "Vendas": ["negociação", "negociacao", "fechamento", "vgh", "vendas", "honorário", "honrario", "comercial", "transação", "vgc"],
+};
+
+export function relevantSectionsForGoal(
+  keyProcessName: string | null | undefined,
+  dimensionName: string | null | undefined,
+): PlannerSection[] {
+  const text = `${keyProcessName ?? ""} ${dimensionName ?? ""}`.toLowerCase();
+  if (!text.trim()) return PLANNER_SECTIONS.map(s => s.key);
+
+  const matched = (Object.keys(SECTION_KEYWORDS) as PlannerSection[]).filter(section =>
+    SECTION_KEYWORDS[section].some(kw => text.includes(kw))
+  );
+
+  return matched.length > 0 ? matched : PLANNER_SECTIONS.map(s => s.key);
+}

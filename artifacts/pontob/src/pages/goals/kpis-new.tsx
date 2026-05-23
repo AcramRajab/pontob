@@ -1,17 +1,17 @@
 import { useRoute, useLocation } from "wouter";
-import { useCreateKpi, getListGoalKpisQueryKey, KpiInputFrequency, KpiInputIndicatorType, KpiInputDesiredDirection } from "@workspace/api-client-react";
+import { useCreateKpi, getListGoalKpisQueryKey, KpiInputFrequency, KpiInputIndicatorType, KpiInputDesiredDirection, useGetGoal, getGetGoalQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Zap } from "lucide-react";
-import { PLANNER_KPI_TEMPLATES, PLANNER_SECTIONS, templatesBySection, type KpiTemplate } from "@/lib/kpi-templates";
+import { useState } from "react";
+import { ArrowLeft, ChevronDown, Zap } from "lucide-react";
+import { PLANNER_SECTIONS, templatesBySection, relevantSectionsForGoal, type KpiTemplate } from "@/lib/kpi-templates";
 
 interface KpiForm {
   name: string;
@@ -32,6 +32,17 @@ export default function NewKpi() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const create = useCreateKpi();
+  const [showAllSections, setShowAllSections] = useState(false);
+
+  const { data: goal } = useGetGoal(goalId, {
+    query: { enabled: !!goalId, queryKey: getGetGoalQueryKey(goalId) },
+  });
+
+  const relevantKeys = relevantSectionsForGoal(goal?.keyProcessName, goal?.dimensionName);
+  const isFiltered = relevantKeys.length < PLANNER_SECTIONS.length;
+  const visibleSections = showAllSections || !isFiltered
+    ? PLANNER_SECTIONS
+    : PLANNER_SECTIONS.filter(s => relevantKeys.includes(s.key));
 
   const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<KpiForm>({
     defaultValues: {
@@ -90,14 +101,30 @@ export default function NewKpi() {
       {/* Planner Suggestions */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-2 pt-4">
-          <CardTitle className="text-sm flex items-center gap-2 text-primary">
-            <Zap className="h-4 w-4" />
-            Sugestões do Planner Semanal
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Clique em um KPI para pré-preencher o formulário</p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle className="text-sm flex items-center gap-2 text-primary">
+                <Zap className="h-4 w-4" />
+                Sugestões para este KRI
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Clique em um KPI para pré-preencher o formulário
+              </p>
+            </div>
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={() => setShowAllSections(v => !v)}
+                className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 shrink-0 mt-0.5"
+              >
+                {showAllSections ? "Menos" : "Ver todos"}
+                <ChevronDown className={`h-3 w-3 transition-transform ${showAllSections ? "rotate-180" : ""}`} />
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="pb-4 space-y-3">
-          {PLANNER_SECTIONS.map(sec => (
+          {visibleSections.map(sec => (
             <div key={sec.key}>
               <p className={`text-xs font-semibold uppercase tracking-wide mb-1.5 ${sec.color}`}>{sec.key}</p>
               <div className="flex flex-wrap gap-1.5">

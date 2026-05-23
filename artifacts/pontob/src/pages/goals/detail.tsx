@@ -10,7 +10,7 @@ import {
   Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2,
   CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap,
 } from "lucide-react";
-import { PLANNER_SECTIONS, templatesBySection } from "@/lib/kpi-templates";
+import { PLANNER_SECTIONS, templatesBySection, relevantSectionsForGoal } from "@/lib/kpi-templates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -328,9 +328,11 @@ export default function GoalDetail() {
                 <DialogHeader><DialogTitle>Novo KPI</DialogTitle></DialogHeader>
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2.5">
                   <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5" /> Sugestões do Planner Semanal
+                    <Zap className="h-3.5 w-3.5" /> Sugestões para este KRI
                   </p>
-                  {PLANNER_SECTIONS.map(sec => (
+                  {PLANNER_SECTIONS.filter(sec =>
+                    relevantSectionsForGoal(goal?.keyProcessName, goal?.dimensionName).includes(sec.key)
+                  ).map(sec => (
                     <div key={sec.key}>
                       <p className={`text-xs font-semibold mb-1 ${sec.color}`}>{sec.key}</p>
                       <div className="flex flex-wrap gap-1">
