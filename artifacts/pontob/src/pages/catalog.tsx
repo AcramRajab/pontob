@@ -5,6 +5,8 @@ import {
   useToggleDimensionActive,
   useToggleKeyProcessActive,
   useToggleStrategicInitiativeActive,
+  getDimensionDeactivationImpact,
+  getKeyProcessDeactivationImpact,
   getListDimensionsQueryKey,
   getListKeyProcessesQueryKey,
   getListStrategicInitiativesQueryKey,
@@ -13,6 +15,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useState } from "react";
@@ -21,11 +33,21 @@ import { PLANNER_KPI_TEMPLATES, PLANNER_SECTIONS, templatesBySection } from "@/l
 import { useAuth } from "@/lib/auth";
 import { useQueryClient } from "@tanstack/react-query";
 
+type PendingDeactivation = {
+  type: "dimension" | "keyProcess";
+  id: number;
+  name: string;
+  activeGoalCount: number;
+};
+
 export default function Catalog() {
   const [dimensionId, setDimensionId] = useState<string>("");
   const [keyProcessId, setKeyProcessId] = useState<string>("");
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+
+  const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
+  const [impactCheckingId, setImpactCheckingId] = useState<string | null>(null);
 
   const isAdmin = !authLoading && (user?.role === "master_admin" || user?.role === "staff_regional");
 
@@ -47,7 +69,6 @@ export default function Catalog() {
     { query: { enabled: true, queryKey: getListStrategicInitiativesQueryKey(initParams) } }
   );
 
-  // Admin management queries — include inactive items
   const adminDimsParams = { includeInactive: true };
   const { data: adminDimensions = [], isLoading: adminDimsLoading } = useListDimensions(
     adminDimsParams,
@@ -91,6 +112,46 @@ export default function Catalog() {
     },
   });
 
+  async function handleDimensionDeactivate(d: any) {
+    const key = `dim-${d.id}`;
+    setImpactCheckingId(key);
+    try {
+      const impact = await getDimensionDeactivationImpact(d.id);
+      if (impact.activeGoalCount > 0) {
+        setPendingDeactivation({ type: "dimension", id: d.id, name: d.name, activeGoalCount: impact.activeGoalCount });
+      } else {
+        toggleDim.mutate({ id: d.id });
+      }
+    } finally {
+      setImpactCheckingId(null);
+    }
+  }
+
+  async function handleKeyProcessDeactivate(kp: any) {
+    const key = `kp-${kp.id}`;
+    setImpactCheckingId(key);
+    try {
+      const impact = await getKeyProcessDeactivationImpact(kp.id);
+      if (impact.activeGoalCount > 0) {
+        setPendingDeactivation({ type: "keyProcess", id: kp.id, name: kp.name, activeGoalCount: impact.activeGoalCount });
+      } else {
+        toggleKp.mutate({ id: kp.id });
+      }
+    } finally {
+      setImpactCheckingId(null);
+    }
+  }
+
+  function confirmDeactivation() {
+    if (!pendingDeactivation) return;
+    if (pendingDeactivation.type === "dimension") {
+      toggleDim.mutate({ id: pendingDeactivation.id });
+    } else {
+      toggleKp.mutate({ id: pendingDeactivation.id });
+    }
+    setPendingDeactivation(null);
+  }
+
   const isLoading = dimsLoading || initsLoading;
   const adminIsLoading = adminDimsLoading || adminKpsLoading || adminInitsLoading;
 
@@ -117,6 +178,32 @@ export default function Catalog() {
         <h1 className="text-2xl font-bold tracking-tight">Catálogo de Iniciativas</h1>
         <p className="text-muted-foreground mt-1">Iniciativas estratégicas e KPIs do planner semanal</p>
       </div>
+
+      <AlertDialog open={!!pendingDeactivation} onOpenChange={open => { if (!open) setPendingDeactivation(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar "{pendingDeactivation?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeactivation && (
+                <>
+                  Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                  {pendingDeactivation.activeGoalCount === 1 ? "meta ativa que referencia" : "metas ativas que referenciam"} este item.
+                  Desativá-lo pode causar confusão para as franquias afetadas.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeactivation}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Desativar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Tabs defaultValue="initiatives">
         <TabsList>
@@ -305,8 +392,8 @@ export default function Catalog() {
                           size="sm"
                           variant={d.active ? "outline" : "default"}
                           className="shrink-0 gap-1.5"
-                          disabled={toggleDim.isPending}
-                          onClick={() => toggleDim.mutate({ id: d.id })}
+                          disabled={toggleDim.isPending || impactCheckingId === `dim-${d.id}`}
+                          onClick={() => d.active ? handleDimensionDeactivate(d) : toggleDim.mutate({ id: d.id })}
                           data-testid={`toggle-dimension-${d.id}`}
                         >
                           {d.active ? (
@@ -345,8 +432,8 @@ export default function Catalog() {
                           size="sm"
                           variant={kp.active ? "outline" : "default"}
                           className="shrink-0 gap-1.5"
-                          disabled={toggleKp.isPending}
-                          onClick={() => toggleKp.mutate({ id: kp.id })}
+                          disabled={toggleKp.isPending || impactCheckingId === `kp-${kp.id}`}
+                          onClick={() => kp.active ? handleKeyProcessDeactivate(kp) : toggleKp.mutate({ id: kp.id })}
                           data-testid={`toggle-key-process-${kp.id}`}
                         >
                           {kp.active ? (

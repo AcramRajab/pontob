@@ -23,6 +23,7 @@ import type {
   Candidato,
   CandidatoInput,
   CandidatoUpdate,
+  CatalogDeactivationImpact,
   CatalogToggleResult,
   DailyCheckin,
   DailyCheckinInput,
@@ -1790,6 +1791,101 @@ export function useListStrategicInitiatives<
 }
 
 /**
+ * @summary Count active goals that reference a dimension (admin/staff only)
+ */
+export const getGetDimensionDeactivationImpactUrl = (id: number) => {
+  return `/api/dimensions/${id}/deactivation-impact`;
+};
+
+export const getDimensionDeactivationImpact = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogDeactivationImpact> => {
+  return customFetch<CatalogDeactivationImpact>(
+    getGetDimensionDeactivationImpactUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDimensionDeactivationImpactQueryKey = (id: number) => {
+  return [`/api/dimensions/${id}/deactivation-impact`] as const;
+};
+
+export const getGetDimensionDeactivationImpactQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDimensionDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDimensionDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDimensionDeactivationImpactQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDimensionDeactivationImpact>>
+  > = ({ signal }) =>
+    getDimensionDeactivationImpact(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDimensionDeactivationImpact>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDimensionDeactivationImpactQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDimensionDeactivationImpact>>
+>;
+export type GetDimensionDeactivationImpactQueryError = ErrorType<void>;
+
+/**
+ * @summary Count active goals that reference a dimension (admin/staff only)
+ */
+
+export function useGetDimensionDeactivationImpact<
+  TData = Awaited<ReturnType<typeof getDimensionDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDimensionDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDimensionDeactivationImpactQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Toggle active status of a dimension (admin/staff only)
  */
 export const getToggleDimensionActiveUrl = (id: number) => {
@@ -1872,6 +1968,101 @@ export const useToggleDimensionActive = <
 > => {
   return useMutation(getToggleDimensionActiveMutationOptions(options));
 };
+
+/**
+ * @summary Count active goals that reference a key process (admin/staff only)
+ */
+export const getGetKeyProcessDeactivationImpactUrl = (id: number) => {
+  return `/api/key-processes/${id}/deactivation-impact`;
+};
+
+export const getKeyProcessDeactivationImpact = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogDeactivationImpact> => {
+  return customFetch<CatalogDeactivationImpact>(
+    getGetKeyProcessDeactivationImpactUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetKeyProcessDeactivationImpactQueryKey = (id: number) => {
+  return [`/api/key-processes/${id}/deactivation-impact`] as const;
+};
+
+export const getGetKeyProcessDeactivationImpactQueryOptions = <
+  TData = Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetKeyProcessDeactivationImpactQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>
+  > = ({ signal }) =>
+    getKeyProcessDeactivationImpact(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetKeyProcessDeactivationImpactQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>
+>;
+export type GetKeyProcessDeactivationImpactQueryError = ErrorType<void>;
+
+/**
+ * @summary Count active goals that reference a key process (admin/staff only)
+ */
+
+export function useGetKeyProcessDeactivationImpact<
+  TData = Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getKeyProcessDeactivationImpact>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetKeyProcessDeactivationImpactQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Toggle active status of a key process (admin/staff only)

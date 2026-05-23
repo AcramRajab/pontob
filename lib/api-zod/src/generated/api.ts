@@ -363,6 +363,19 @@ export const ListStrategicInitiativesResponse = zod.array(
 );
 
 /**
+ * @summary Count active goals that reference a dimension (admin/staff only)
+ */
+export const GetDimensionDeactivationImpactParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetDimensionDeactivationImpactResponse = zod.object({
+  activeGoalCount: zod
+    .number()
+    .describe("Number of active goals that reference this catalog item"),
+});
+
+/**
  * @summary Toggle active status of a dimension (admin/staff only)
  */
 export const ToggleDimensionActiveParams = zod.object({
@@ -373,6 +386,19 @@ export const ToggleDimensionActiveResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   active: zod.boolean(),
+});
+
+/**
+ * @summary Count active goals that reference a key process (admin/staff only)
+ */
+export const GetKeyProcessDeactivationImpactParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetKeyProcessDeactivationImpactResponse = zod.object({
+  activeGoalCount: zod
+    .number()
+    .describe("Number of active goals that reference this catalog item"),
 });
 
 /**

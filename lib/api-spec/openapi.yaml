@@ -431,6 +431,27 @@ paths:
                 items:
                   $ref: "#/components/schemas/StrategicInitiative"
 
+  /dimensions/{id}/deactivation-impact:
+    get:
+      operationId: getDimensionDeactivationImpact
+      tags: [dimensions]
+      summary: Count active goals that reference a dimension (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Impact count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogDeactivationImpact"
+        "404":
+          description: Not found
+
   /dimensions/{id}/toggle-active:
     patch:
       operationId: toggleDimensionActive
@@ -449,6 +470,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CatalogToggleResult"
+        "404":
+          description: Not found
+
+  /key-processes/{id}/deactivation-impact:
+    get:
+      operationId: getKeyProcessDeactivationImpact
+      tags: [keyProcesses]
+      summary: Count active goals that reference a key process (admin/staff only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Impact count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogDeactivationImpact"
         "404":
           description: Not found
 
@@ -1686,6 +1728,14 @@ components:
           type: string
         active:
           type: boolean
+
+    CatalogDeactivationImpact:
+      type: object
+      required: [activeGoalCount]
+      properties:
+        activeGoalCount:
+          type: integer
+          description: Number of active goals that reference this catalog item
 
     Goal:
       type: object

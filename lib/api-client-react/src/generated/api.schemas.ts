@@ -212,6 +212,11 @@ export interface CatalogToggleResult {
   active: boolean;
 }
 
+export interface CatalogDeactivationImpact {
+  /** Number of active goals that reference this catalog item */
+  activeGoalCount: number;
+}
+
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
 
 export const GoalStatus = {

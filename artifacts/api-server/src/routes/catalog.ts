@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { goalsTable } from "@workspace/db";
+import { and, eq, notInArray, count } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
@@ -118,6 +119,60 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ── Admin: deactivation impact ───────────────────────────────────────────────
+
+router.get(
+  "/dimensions/:id/deactivation-impact",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    try {
+      const [row] = await db.select().from(dimensionsTable).where(eq(dimensionsTable.id, id));
+      if (!row) { res.status(404).json({ error: "Not found" }); return; }
+      const [result] = await db
+        .select({ activeGoalCount: count() })
+        .from(goalsTable)
+        .where(
+          and(
+            eq(goalsTable.dimensionId, id),
+            notInArray(goalsTable.status, ["concluida", "cancelada"]),
+          ),
+        );
+      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+router.get(
+  "/key-processes/:id/deactivation-impact",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    try {
+      const [row] = await db.select().from(keyProcessesTable).where(eq(keyProcessesTable.id, id));
+      if (!row) { res.status(404).json({ error: "Not found" }); return; }
+      const [result] = await db
+        .select({ activeGoalCount: count() })
+        .from(goalsTable)
+        .where(
+          and(
+            eq(goalsTable.keyProcessId, id),
+            notInArray(goalsTable.status, ["concluida", "cancelada"]),
+          ),
+        );
+      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
 
 // ── Admin: toggle active status ──────────────────────────────────────────────
 
