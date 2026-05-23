@@ -28,7 +28,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useState } from "react";
-import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search } from "lucide-react";
+import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -191,6 +191,18 @@ export default function Catalog() {
       <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
         Inativo
       </Badge>
+    );
+  }
+
+  function LastChangedHint({ item }: { item: any }) {
+    if (!item.lastChangedAt) return null;
+    const date = new Date(item.lastChangedAt);
+    const formatted = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return (
+      <span className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+        <Clock className="h-3 w-3 shrink-0" />
+        Alterado em {formatted} por {item.lastChangedBy}
+      </span>
     );
   }
 
@@ -428,11 +440,14 @@ export default function Catalog() {
                         data-testid={`mgmt-dimension-${d.id}`}
                         className={`flex items-center justify-between px-4 py-3 gap-3 ${!d.active ? "bg-muted/40" : ""}`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className={`text-sm font-medium truncate ${!d.active ? "line-through text-muted-foreground" : ""}`}>
-                            {d.name}
-                          </span>
-                          {!d.active && <InactiveLabel />}
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className={`text-sm font-medium truncate ${!d.active ? "line-through text-muted-foreground" : ""}`}>
+                              {d.name}
+                            </span>
+                            {!d.active && <InactiveLabel />}
+                          </div>
+                          <LastChangedHint item={d} />
                         </div>
                         <Button
                           size="sm"
@@ -465,14 +480,17 @@ export default function Catalog() {
                         data-testid={`mgmt-key-process-${kp.id}`}
                         className={`flex items-center justify-between px-4 py-3 gap-3 ${!kp.active ? "bg-muted/40" : ""}`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="min-w-0">
-                            <span className={`text-sm font-medium block truncate ${!kp.active ? "line-through text-muted-foreground" : ""}`}>
-                              {kp.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">{kp.dimensionName}</span>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0">
+                              <span className={`text-sm font-medium block truncate ${!kp.active ? "line-through text-muted-foreground" : ""}`}>
+                                {kp.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{kp.dimensionName}</span>
+                            </div>
+                            {!kp.active && <InactiveLabel />}
                           </div>
-                          {!kp.active && <InactiveLabel />}
+                          <LastChangedHint item={kp} />
                         </div>
                         <Button
                           size="sm"
@@ -505,16 +523,19 @@ export default function Catalog() {
                         data-testid={`mgmt-initiative-${init.id}`}
                         className={`flex items-center justify-between px-4 py-3 gap-3 ${!init.active ? "bg-muted/40" : ""}`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="min-w-0 flex-1">
-                            <span className={`text-sm font-medium block ${!init.active ? "line-through text-muted-foreground" : ""}`}>
-                              {init.name}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {init.dimensionName} › {init.keyProcessName}
-                            </span>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                              <span className={`text-sm font-medium block ${!init.active ? "line-through text-muted-foreground" : ""}`}>
+                                {init.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {init.dimensionName} › {init.keyProcessName}
+                              </span>
+                            </div>
+                            {!init.active && <InactiveLabel />}
                           </div>
-                          {!init.active && <InactiveLabel />}
+                          <LastChangedHint item={init} />
                         </div>
                         <Button
                           size="sm"
