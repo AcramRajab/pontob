@@ -1817,6 +1817,8 @@ components:
           type: ["string", "null"]
         rejectedAt:
           type: ["string", "null"]
+        openedAt:
+          type: ["string", "null"]
         status:
           type: string
           enum: [pending, used, expired]

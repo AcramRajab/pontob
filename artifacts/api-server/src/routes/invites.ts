@@ -61,6 +61,7 @@ router.get("/invites", requireAuth, requireRole("master_admin", "staff_regional"
         usedByUserId: inviteTokensTable.usedByUserId,
         approvedAt: inviteTokensTable.approvedAt,
         rejectedAt: inviteTokensTable.rejectedAt,
+        openedAt: inviteTokensTable.openedAt,
       })
       .from(inviteTokensTable)
       .leftJoin(franchisesTable, eq(inviteTokensTable.franchiseId, franchisesTable.id))
@@ -105,6 +106,7 @@ router.get("/invites", requireAuth, requireRole("master_admin", "staff_regional"
         usedByUserEmail: usedByUser?.email ?? null,
         approvedAt: r.approvedAt ? r.approvedAt.toISOString() : null,
         rejectedAt: r.rejectedAt ? r.rejectedAt.toISOString() : null,
+        openedAt: r.openedAt ? r.openedAt.toISOString() : null,
         status,
       };
     });
@@ -211,6 +213,7 @@ router.get("/invites/:token", async (req, res) => {
         role: inviteTokensTable.role,
         expiresAt: inviteTokensTable.expiresAt,
         usedAt: inviteTokensTable.usedAt,
+        openedAt: inviteTokensTable.openedAt,
         franchiseName: franchisesTable.name,
       })
       .from(inviteTokensTable)
@@ -231,6 +234,13 @@ router.get("/invites/:token", async (req, res) => {
     if (invite.expiresAt < now) {
       res.json({ valid: false, error: "Este link expirou. Solicite um novo ao administrador." });
       return;
+    }
+
+    if (!invite.openedAt) {
+      await db
+        .update(inviteTokensTable)
+        .set({ openedAt: now })
+        .where(eq(inviteTokensTable.id, invite.id));
     }
 
     res.json({ valid: true, franchiseName: invite.franchiseName, role: invite.role });

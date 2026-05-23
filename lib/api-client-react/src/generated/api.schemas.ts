@@ -111,6 +111,8 @@ export interface InviteToken {
   approvedAt?: string | null;
   /** @nullable */
   rejectedAt?: string | null;
+  /** @nullable */
+  openedAt?: string | null;
   status: InviteTokenStatus;
 }
 

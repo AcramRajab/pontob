@@ -13,6 +13,7 @@ export const inviteTokensTable = pgTable("invite_tokens", {
   approvalToken: text("approval_token").unique(),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  openedAt: timestamp("opened_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

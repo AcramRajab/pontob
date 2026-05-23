@@ -257,6 +257,7 @@ export const ListInvitesResponseItem = zod.object({
   usedByUserEmail: zod.string().nullish(),
   approvedAt: zod.string().nullish(),
   rejectedAt: zod.string().nullish(),
+  openedAt: zod.string().nullish(),
   status: zod.enum(["pending", "used", "expired"]),
 });
 export const ListInvitesResponse = zod.array(ListInvitesResponseItem);

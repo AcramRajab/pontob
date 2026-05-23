@@ -460,6 +460,11 @@ function ConvitesSection({ franchises }: { franchises: any[] }) {
                             <>Expira em {expiresAt.toLocaleDateString("pt-BR")} · Gerado em {createdAt.toLocaleDateString("pt-BR")}</>
                           )}
                         </p>
+                        {inv.status === InviteTokenStatus.pending && inv.openedAt && (
+                          <p className="text-xs text-amber-600 truncate">
+                            Aberto em {new Date(inv.openedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
