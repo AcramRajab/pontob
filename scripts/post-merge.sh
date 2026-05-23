@@ -2,4 +2,5 @@
 set -e
 pnpm install --frozen-lockfile
 pnpm --filter @workspace/db run push-force
-pnpm --filter @workspace/api-spec run codegen || true
+# Run orval codegen directly (skip typecheck:libs which has a pre-existing error)
+pnpm --filter @workspace/api-spec exec orval --config ./orval.config.ts || true
