@@ -128,7 +128,15 @@ export default function NewGoalInitiative() {
       toast({ title: "Iniciativa adicionada" });
       navigate(`/goals/${goalId}`);
     } catch (err: any) {
-      toast({ title: err?.message || "Erro ao adicionar iniciativa", variant: "destructive" });
+      if (err?.status === 409) {
+        toast({
+          title: "Iniciativa já vinculada",
+          description: "Esta iniciativa já está vinculada a esta meta.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: err?.message || "Erro ao adicionar iniciativa", variant: "destructive" });
+      }
     }
   };
 
