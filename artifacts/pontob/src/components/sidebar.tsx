@@ -112,11 +112,15 @@ export function AppSidebar() {
         {(isMasterAdmin || isStaffRegional || isFranqueado) && (
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
         )}
-        <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
-        <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
-        <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
-        <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
         <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
+        {!isFranqueado && (
+          <>
+            <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
+            <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
+            <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
+            <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
+          </>
+        )}
 
         {/* Regional */}
         {(isMasterAdmin || isStaffRegional) && (
@@ -128,7 +132,7 @@ export function AppSidebar() {
         )}
 
         {/* Pessoas */}
-        {(isFranqueado || isMasterAdmin || isStaffRegional) && (
+        {(isMasterAdmin || isStaffRegional) && (
           <>
             <NavSection label="Pessoas" />
             <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
@@ -146,7 +150,7 @@ export function AppSidebar() {
 
         {/* Suporte */}
         <NavDivider />
-        <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
+        {!isFranqueado && <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />}
         <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
         <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
 

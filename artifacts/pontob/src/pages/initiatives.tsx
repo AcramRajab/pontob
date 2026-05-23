@@ -254,21 +254,33 @@ export default function Initiatives() {
                 </Button>
               </div>
             ) : (
-              goals.map((goal: any) => (
-                <button
-                  key={goal.id}
-                  className="w-full text-left rounded-lg border px-4 py-3 hover:border-primary/40 hover:bg-primary/[0.02] transition-all"
-                  onClick={() => handleGoalSelect(goal.id)}
-                >
-                  <p className="font-medium text-sm">{goal.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {goal.dimensionName} — {goal.keyProcessName}
-                    <span className="ml-2 text-muted-foreground/60">
-                      {goal.activeInitiativesCount}/3 ativas
-                    </span>
-                  </p>
-                </button>
-              ))
+              goals.map((goal: any) => {
+                const slotsFull = (goal.activeInitiativesCount ?? 0) >= 3;
+                return (
+                  <button
+                    key={goal.id}
+                    disabled={slotsFull}
+                    className={`w-full text-left rounded-lg border px-4 py-3 transition-all ${slotsFull ? "opacity-60 cursor-not-allowed bg-muted/30" : "hover:border-primary/40 hover:bg-primary/[0.02]"}`}
+                    onClick={() => !slotsFull && handleGoalSelect(goal.id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-sm">{goal.title}</p>
+                      <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                        {[0, 1, 2].map(i => (
+                          <div
+                            key={i}
+                            className={`h-2 w-2 rounded-full ${i < (goal.activeInitiativesCount ?? 0) ? "bg-primary" : "bg-border"}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {goal.dimensionName} — {goal.keyProcessName}
+                      {slotsFull && <span className="ml-2 text-orange-600 font-medium">conclua uma para liberar slot</span>}
+                    </p>
+                  </button>
+                );
+              })
             )}
           </div>
         </DialogContent>

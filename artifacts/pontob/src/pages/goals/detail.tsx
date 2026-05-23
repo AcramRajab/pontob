@@ -443,17 +443,28 @@ export default function GoalDetail() {
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-primary" />Iniciativas
             </CardTitle>
-            <CardDescription>{activeInitiatives}/3 iniciativas ativas — conclua uma antes de adicionar mais</CardDescription>
+            <div className="flex items-center gap-2 mt-1.5">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className={`h-2 w-2 rounded-full transition-colors ${i < activeInitiatives ? "bg-primary" : "bg-border"}`}
+                />
+              ))}
+              <span className="text-xs text-muted-foreground ml-0.5">
+                {activeInitiatives === 0
+                  ? "nenhuma ativa"
+                  : activeInitiatives === 3
+                  ? "3/3 — conclua uma para adicionar nova"
+                  : `${activeInitiatives}/3 ativas`}
+              </span>
+            </div>
           </div>
           {canAddInitiative && (
             <Button size="sm" variant="outline" asChild>
               <Link href={`/goals/${id}/initiatives/new`}>
-                <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar Iniciativa
+                <Plus className="h-3.5 w-3.5 mr-1.5" /> Adicionar
               </Link>
             </Button>
-          )}
-          {canWrite && !canAddInitiative && activeInitiatives >= 3 && (
-            <span className="text-xs text-muted-foreground">Limite de 3 ativas atingido</span>
           )}
         </CardHeader>
         <CardContent>

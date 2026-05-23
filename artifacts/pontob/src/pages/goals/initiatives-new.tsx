@@ -1,5 +1,5 @@
 import { useRoute, useLocation } from "wouter";
-import { useListKeyProcesses, useListStrategicInitiatives, useCreateGoalInitiative, getListGoalInitiativesQueryKey, useListUsers, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey, getListUsersQueryKey, GoalInitiativeInputFrequency, getGetGoalQueryKey, useGetGoal } from "@workspace/api-client-react";
+import { useListKeyProcesses, useListStrategicInitiatives, useCreateGoalInitiative, useUpdateGoalInitiative, getListGoalInitiativesQueryKey, useListUsers, getListKeyProcessesQueryKey, getListStrategicInitiativesQueryKey, getListUsersQueryKey, GoalInitiativeInputFrequency, getGetGoalQueryKey, useGetGoal } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, BookOpen, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronRight, BookOpen, Pencil, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface InitiativeForm {
@@ -47,7 +47,7 @@ export default function NewGoalInitiative() {
   const [keyProcessId, setKeyProcessId] = useState<string>("");
 
   // Load the goal so we can lock filters to its dimension/key-process
-  const { data: goal } = useGetGoal(goalId, {
+  const { data: goal, isLoading: goalLoading } = useGetGoal(goalId, {
     query: { queryKey: getGetGoalQueryKey(goalId) },
   });
 
@@ -74,6 +74,26 @@ export default function NewGoalInitiative() {
   const franchiseUsers = users.filter((u: any) => u.franchiseId === user?.franchiseId);
 
   const create = useCreateGoalInitiative();
+  const updateInitiative = useUpdateGoalInitiative();
+  const [completingId, setCompletingId] = useState<number | null>(null);
+
+  const goalInitiatives = (goal as any)?.initiatives ?? [];
+  const activeGoalInits = goalInitiatives.filter((i: any) => i.status === "ativa");
+  const isAtLimit = !goalLoading && !!goal && activeGoalInits.length >= 3;
+
+  const handleCompleteInitiative = async (initiativeId: number) => {
+    setCompletingId(initiativeId);
+    try {
+      await updateInitiative.mutateAsync({ id: initiativeId, data: { status: "concluida", progressPercentage: 100 } as any });
+      qc.invalidateQueries({ queryKey: getGetGoalQueryKey(goalId) });
+      toast({ title: "Iniciativa concluída! Um slot foi liberado." });
+    } catch {
+      toast({ title: "Erro ao concluir iniciativa", variant: "destructive" });
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
   const { register, handleSubmit, control, formState: { errors } } = useForm<InitiativeForm>({
     defaultValues: { frequency: "diario" },
   });
@@ -222,6 +242,73 @@ export default function NewGoalInitiative() {
       </form>
     </div>
   );
+
+  if (isAtLimit) {
+    return (
+      <div className="max-w-xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(`/goals/${goalId}`)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Limite atingido</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">{(goal as any)?.title}</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map(i => <div key={i} className="h-3 w-3 rounded-full bg-orange-400" />)}
+            </div>
+            <span className="font-semibold text-orange-700 text-sm">3 de 3 slots em uso</span>
+          </div>
+          <p className="text-sm text-orange-700/80">Esta meta já tem 3 iniciativas ativas. Para adicionar uma nova, conclua uma das existentes abaixo.</p>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Como liberar um slot</p>
+          {[
+            "Escolha uma das iniciativas abaixo para concluir",
+            'Clique em "Concluir" — o progresso vai para 100%',
+            "O slot é liberado e você pode adicionar a nova iniciativa",
+          ].map((text, idx) => (
+            <div key={idx} className="flex items-start gap-3">
+              <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs font-bold text-muted-foreground">{idx + 1}</span>
+              </div>
+              <p className="text-sm text-muted-foreground pt-0.5">{text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          {activeGoalInits.map((ini: any) => (
+            <div key={ini.id} className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 bg-white">
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{ini.initiativeName || ini.customName || "Iniciativa"}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${ini.progressPercentage ?? 0}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground">{ini.progressPercentage ?? 0}%</span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                disabled={completingId === ini.id}
+                onClick={() => handleCompleteInitiative(ini.id)}
+              >
+                {completingId === ini.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Concluir"}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (mode === "choose") {
     return (
