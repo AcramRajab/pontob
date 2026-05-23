@@ -8,7 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import {
   Loader2, ArrowLeft, Plus, Trash2, TrendingUp, Target, BarChart2,
-  CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap,
+  CheckCircle2, PauseCircle, XCircle, Pencil, CheckCheck, Clock, Zap, AlertTriangle,
 } from "lucide-react";
 import { PLANNER_SECTIONS, templatesBySection, relevantSectionsForGoal } from "@/lib/kpi-templates";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -509,6 +509,22 @@ export default function GoalDetail() {
                           <p className="text-xs text-muted-foreground">
                             {initiative.startDate} — {initiative.endDate || "em aberto"}
                           </p>
+                        )}
+                        {initiative.strategicInitiativeId && initiative.catalogActive === false && (
+                          <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-amber-800">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                            <p className="text-xs leading-snug">
+                              Esta iniciativa foi desativada do catálogo.{" "}
+                              {canWrite && (
+                                <Link
+                                  href={`/goals/${id}/initiatives/new`}
+                                  className="font-medium underline underline-offset-2 hover:text-amber-900"
+                                >
+                                  Adicionar uma substituta
+                                </Link>
+                              )}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
