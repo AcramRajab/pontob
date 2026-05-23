@@ -273,6 +273,28 @@ export const RevokeInviteResponse = zod.object({
 });
 
 /**
+ * @summary Approve a pending user registration (admin only)
+ */
+export const ApproveInviteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveInviteResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Reject a pending user registration (admin only)
+ */
+export const RejectInviteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RejectInviteResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary List all dimensions
  */
 export const ListDimensionsQueryParams = zod.object({

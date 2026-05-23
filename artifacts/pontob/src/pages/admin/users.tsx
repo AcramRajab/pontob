@@ -1,4 +1,4 @@
-import { useListUsers, useCreateUser, useUpdateUser, getListUsersQueryKey, getListFranchisesQueryKey, useListFranchises, UserInputRole, UserUpdateRole, useListInvites, useRevokeInvite, getListInvitesQueryKey, InviteTokenStatus } from "@workspace/api-client-react";
+import { useListUsers, useCreateUser, useUpdateUser, getListUsersQueryKey, getListFranchisesQueryKey, useListFranchises, UserInputRole, UserUpdateRole, useListInvites, useRevokeInvite, useApproveInvite, useRejectInvite, getListInvitesQueryKey, InviteTokenStatus } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle, UserCheck, UserX, Hourglass } from "lucide-react";
 import { useState } from "react";
 
 const roleLabel: Record<string, string> = {
@@ -229,6 +229,155 @@ function InviteStatusPill({ status }: { status: string }) {
   );
 }
 
+function PendingApprovalSection({ invites }: { invites: any[] }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [approveTarget, setApproveTarget] = useState<{ id: number; name: string; email: string; franchiseName: string | null; role: string } | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<{ id: number; name: string; franchiseName: string | null; role: string } | null>(null);
+
+  const pending = invites.filter(
+    (inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt
+  );
+
+  const approve = useApproveInvite({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListInvitesQueryKey() });
+        qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+        toast({ title: "Usuário aprovado com sucesso", description: "O acesso foi liberado e um e-mail de boas-vindas foi enviado." });
+        setApproveTarget(null);
+      },
+      onError: (err: any) => {
+        toast({ title: err?.message ?? "Erro ao aprovar usuário", variant: "destructive" });
+        setApproveTarget(null);
+      },
+    },
+  });
+
+  const reject = useRejectInvite({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListInvitesQueryKey() });
+        qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+        toast({ title: "Cadastro rejeitado", description: "O usuário foi removido permanentemente." });
+        setRejectTarget(null);
+      },
+      onError: (err: any) => {
+        toast({ title: err?.message ?? "Erro ao rejeitar usuário", variant: "destructive" });
+        setRejectTarget(null);
+      },
+    },
+  });
+
+  if (pending.length === 0) return null;
+
+  return (
+    <>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Hourglass className="h-4 w-4 text-amber-600 shrink-0" />
+          <p className="text-sm font-semibold text-amber-800">
+            Aguardando aprovação ({pending.length})
+          </p>
+        </div>
+        <div className="space-y-2">
+          {pending.map((inv) => (
+            <div
+              key={inv.id}
+              data-testid={`card-pending-approval-${inv.id}`}
+              className="flex items-center justify-between gap-3 rounded-md bg-white border border-amber-100 px-4 py-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-semibold text-sm shrink-0">
+                  {(inv.usedByUserName ?? "?").charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{inv.usedByUserName ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {inv.usedByUserEmail ?? ""}
+                    {inv.franchiseName && (
+                      <span className="ml-2 text-muted-foreground/70">— {inv.franchiseName}</span>
+                    )}
+                    <span className="ml-2">· {roleLabel[inv.role] ?? inv.role}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800"
+                  onClick={() => setApproveTarget({ id: inv.id, name: inv.usedByUserName ?? "—", email: inv.usedByUserEmail ?? "", franchiseName: inv.franchiseName ?? null, role: inv.role })}
+                  data-testid={`button-approve-${inv.id}`}
+                >
+                  <UserCheck className="h-3.5 w-3.5 mr-1" />
+                  Aprovar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setRejectTarget({ id: inv.id, name: inv.usedByUserName ?? "—", franchiseName: inv.franchiseName ?? null, role: inv.role })}
+                  data-testid={`button-reject-${inv.id}`}
+                >
+                  <UserX className="h-3.5 w-3.5 mr-1" />
+                  Rejeitar
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <AlertDialog open={!!approveTarget} onOpenChange={v => { if (!v) setApproveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprovar cadastro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{approveTarget?.name}</strong> ({approveTarget?.email}) da franquia{" "}
+              <strong>{approveTarget?.franchiseName ?? "—"}</strong> receberá acesso imediato à plataforma.
+              Um e-mail de boas-vindas será enviado automaticamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => approveTarget && approve.mutate({ id: approveTarget.id })}
+              disabled={approve.isPending}
+            >
+              {approve.isPending ? "Aprovando..." : "Aprovar acesso"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!rejectTarget} onOpenChange={v => { if (!v) setRejectTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rejeitar cadastro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O cadastro de <strong>{rejectTarget?.name}</strong> da franquia{" "}
+              <strong>{rejectTarget?.franchiseName ?? "—"}</strong> será <strong>removido permanentemente</strong>.
+              O usuário não terá acesso à plataforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-white"
+              onClick={() => rejectTarget && reject.mutate({ id: rejectTarget.id })}
+              disabled={reject.isPending}
+            >
+              {reject.isPending ? "Rejeitando..." : "Rejeitar cadastro"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function ConvitesSection({ franchises }: { franchises: any[] }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -380,6 +529,7 @@ export default function AdminUsers() {
   const update = useUpdateUser();
 
   const pendingInviteCount = invites.filter(i => i.status === InviteTokenStatus.pending).length;
+  const pendingApprovalCount = invites.filter(i => i.status === InviteTokenStatus.used && !i.approvedAt && !i.rejectedAt).length;
 
   const deleteUser = useMutation({
     mutationFn: async (id: number) => {
@@ -623,6 +773,11 @@ export default function AdminUsers() {
           <span className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Usuários
+            {pendingApprovalCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold">
+                {pendingApprovalCount}
+              </span>
+            )}
           </span>
         </button>
         <button
@@ -650,6 +805,7 @@ export default function AdminUsers() {
         <ConvitesSection franchises={franchises} />
       ) : (
         <>
+          <PendingApprovalSection invites={invites} />
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}

@@ -343,6 +343,144 @@ router.post("/invites/:token/accept", async (req, res) => {
   }
 });
 
+router.post("/invites/:id/approve", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    if (isNaN(id)) {
+      res.status(400).json({ error: "ID inválido." });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        id: inviteTokensTable.id,
+        usedByUserId: inviteTokensTable.usedByUserId,
+        approvedAt: inviteTokensTable.approvedAt,
+        rejectedAt: inviteTokensTable.rejectedAt,
+        role: inviteTokensTable.role,
+        franchiseName: franchisesTable.name,
+        usedAt: inviteTokensTable.usedAt,
+      })
+      .from(inviteTokensTable)
+      .leftJoin(franchisesTable, eq(inviteTokensTable.franchiseId, franchisesTable.id))
+      .where(eq(inviteTokensTable.id, id))
+      .limit(1);
+
+    const invite = rows[0];
+
+    if (!invite) {
+      res.status(404).json({ error: "Convite não encontrado." });
+      return;
+    }
+
+    if (!invite.usedAt || !invite.usedByUserId) {
+      res.status(400).json({ error: "Este convite ainda não foi utilizado por nenhum usuário." });
+      return;
+    }
+
+    if (invite.approvedAt) {
+      res.status(400).json({ error: "Este cadastro já foi aprovado anteriormente." });
+      return;
+    }
+
+    if (invite.rejectedAt) {
+      res.status(400).json({ error: "Este cadastro já foi rejeitado e não pode ser aprovado." });
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, invite.usedByUserId))
+      .limit(1);
+
+    if (!user) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+
+    await db.update(usersTable).set({ active: true }).where(eq(usersTable.id, user.id));
+    await db.update(inviteTokensTable).set({ approvedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));
+
+    const appUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : `https://${req.headers.host}`;
+
+    sendApprovalGranted({
+      toEmail: user.email,
+      toName: user.name,
+      franchiseName: invite.franchiseName ?? "—",
+      role: invite.role,
+      appUrl,
+    }).catch(() => {});
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/invites/:id/reject", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    if (isNaN(id)) {
+      res.status(400).json({ error: "ID inválido." });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        id: inviteTokensTable.id,
+        usedByUserId: inviteTokensTable.usedByUserId,
+        approvedAt: inviteTokensTable.approvedAt,
+        rejectedAt: inviteTokensTable.rejectedAt,
+        usedAt: inviteTokensTable.usedAt,
+      })
+      .from(inviteTokensTable)
+      .where(eq(inviteTokensTable.id, id))
+      .limit(1);
+
+    const invite = rows[0];
+
+    if (!invite) {
+      res.status(404).json({ error: "Convite não encontrado." });
+      return;
+    }
+
+    if (!invite.usedAt || !invite.usedByUserId) {
+      res.status(400).json({ error: "Este convite ainda não foi utilizado por nenhum usuário." });
+      return;
+    }
+
+    if (invite.approvedAt) {
+      res.status(400).json({ error: "Este cadastro já foi aprovado e não pode ser rejeitado." });
+      return;
+    }
+
+    if (invite.rejectedAt) {
+      res.status(400).json({ error: "Este cadastro já foi rejeitado anteriormente." });
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.id, invite.usedByUserId))
+      .limit(1);
+
+    if (user) {
+      await db.delete(usersTable).where(eq(usersTable.id, user.id));
+    }
+    await db.update(inviteTokensTable).set({ rejectedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/invites/approve/:approvalToken", async (req, res) => {
   try {
     const { approvalToken } = req.params;

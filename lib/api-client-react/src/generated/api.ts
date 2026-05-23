@@ -18,6 +18,7 @@ import type {
 
 import type {
   Alert,
+  ApproveInvite200,
   AuthUser,
   Candidato,
   CandidatoInput,
@@ -77,6 +78,7 @@ import type {
   ProgressHistoryItem,
   RegionalDashboard,
   RegionalVision,
+  RejectInvite200,
   RevokeInvite200,
   StrategicInitiative,
   TodayOverview,
@@ -1323,6 +1325,174 @@ export const useRevokeInvite = <
   TContext
 > => {
   return useMutation(getRevokeInviteMutationOptions(options));
+};
+
+/**
+ * @summary Approve a pending user registration (admin only)
+ */
+export const getApproveInviteUrl = (id: number) => {
+  return `/api/invites/${id}/approve`;
+};
+
+export const approveInvite = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ApproveInvite200> => {
+  return customFetch<ApproveInvite200>(getApproveInviteUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getApproveInviteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["approveInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveInvite>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return approveInvite(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveInvite>>
+>;
+
+export type ApproveInviteMutationError = ErrorType<void>;
+
+/**
+ * @summary Approve a pending user registration (admin only)
+ */
+export const useApproveInvite = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getApproveInviteMutationOptions(options));
+};
+
+/**
+ * @summary Reject a pending user registration (admin only)
+ */
+export const getRejectInviteUrl = (id: number) => {
+  return `/api/invites/${id}/reject`;
+};
+
+export const rejectInvite = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RejectInvite200> => {
+  return customFetch<RejectInvite200>(getRejectInviteUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRejectInviteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejectInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["rejectInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejectInvite>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return rejectInvite(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejectInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejectInvite>>
+>;
+
+export type RejectInviteMutationError = ErrorType<void>;
+
+/**
+ * @summary Reject a pending user registration (admin only)
+ */
+export const useRejectInvite = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejectInvite>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejectInvite>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRejectInviteMutationOptions(options));
 };
 
 /**

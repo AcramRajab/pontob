@@ -302,6 +302,60 @@ paths:
         "404":
           description: Token not found
 
+  /invites/{id}/approve:
+    post:
+      operationId: approveInvite
+      tags: [invites]
+      summary: Approve a pending user registration (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Already processed or not awaiting approval
+        "404":
+          description: Invite not found
+
+  /invites/{id}/reject:
+    post:
+      operationId: rejectInvite
+      tags: [invites]
+      summary: Reject a pending user registration (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: Already processed or not awaiting approval
+        "404":
+          description: Invite not found
+
   /dimensions:
     get:
       operationId: listDimensions

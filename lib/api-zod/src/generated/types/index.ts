@@ -9,6 +9,7 @@
 export * from "./alert";
 export * from "./alertSeverity";
 export * from "./alertStatus";
+export * from "./approveInvite200";
 export * from "./authUser";
 export * from "./authUserRole";
 export * from "./candidato";
@@ -99,6 +100,7 @@ export * from "./regionalDashboard";
 export * from "./regionalVision";
 export * from "./regionalVisionFranchise";
 export * from "./regionalVisionQuarter";
+export * from "./rejectInvite200";
 export * from "./revokeInvite200";
 export * from "./strategicInitiative";
 export * from "./todayOverview";

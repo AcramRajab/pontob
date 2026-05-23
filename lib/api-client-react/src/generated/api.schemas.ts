@@ -1298,6 +1298,14 @@ export type RevokeInvite200 = {
   ok: boolean;
 };
 
+export type ApproveInvite200 = {
+  ok: boolean;
+};
+
+export type RejectInvite200 = {
+  ok: boolean;
+};
+
 export type ListDimensionsParams = {
   /**
    * Include inactive dimensions (admin/staff only)
