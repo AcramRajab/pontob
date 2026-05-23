@@ -250,6 +250,8 @@ router.get("/goals/:id", requireAuth, async (req, res) => {
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
         actualResult: goalInitiativesTable.actualResult,
+        resultValue: goalInitiativesTable.resultValue,
+        resultUnit: goalInitiativesTable.resultUnit,
         mainKpiId: goalInitiativesTable.mainKpiId,
         ownerUserId: goalInitiativesTable.ownerUserId,
         ownerName: usersTable.name,
@@ -461,6 +463,8 @@ router.get("/goal-initiatives", requireAuth, async (req, res) => {
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
         actualResult: goalInitiativesTable.actualResult,
+        resultValue: goalInitiativesTable.resultValue,
+        resultUnit: goalInitiativesTable.resultUnit,
         mainKpiId: goalInitiativesTable.mainKpiId,
         ownerUserId: goalInitiativesTable.ownerUserId,
         ownerName: usersTable.name,
@@ -520,6 +524,8 @@ router.get("/goals/:id/initiatives", requireAuth, async (req, res) => {
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
         actualResult: goalInitiativesTable.actualResult,
+        resultValue: goalInitiativesTable.resultValue,
+        resultUnit: goalInitiativesTable.resultUnit,
         mainKpiId: goalInitiativesTable.mainKpiId,
         ownerUserId: goalInitiativesTable.ownerUserId,
         ownerName: usersTable.name,
@@ -646,6 +652,8 @@ router.get("/goal-initiatives/:id", requireAuth, async (req, res) => {
         keyProcessName: keyProcessesTable.name,
         desiredResult: goalInitiativesTable.desiredResult,
         actualResult: goalInitiativesTable.actualResult,
+        resultValue: goalInitiativesTable.resultValue,
+        resultUnit: goalInitiativesTable.resultUnit,
         mainKpiId: goalInitiativesTable.mainKpiId,
         ownerUserId: goalInitiativesTable.ownerUserId,
         ownerName: usersTable.name,
@@ -688,7 +696,7 @@ router.patch("/goal-initiatives/:id", requireAuth, requireWriteAccess, async (re
     const franchiseId = await getInitiativeFranchiseId(id);
     if (franchiseId === null) { res.status(404).json({ error: "Not found" }); return; }
     if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
-    const fields = ["customName", "desiredResult", "actualResult", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];
+    const fields = ["customName", "desiredResult", "actualResult", "resultValue", "resultUnit", "ownerUserId", "startDate", "endDate", "frequency", "executionDay", "executionTime", "estimatedTime", "whatWillBeDone", "whyItMatters", "whoIsResponsible", "whereItWillBeDone", "howItWillBeDone", "investmentOrEffort", "progressPercentage", "status", "notes"];
     const update: Record<string, unknown> = {};
     fields.forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
 

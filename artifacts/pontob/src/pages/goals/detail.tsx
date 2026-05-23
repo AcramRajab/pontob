@@ -86,6 +86,12 @@ export default function GoalDetail() {
   const deleteInitiative = useDeleteGoalInitiative();
   const [confirmDeleteInitiativeId, setConfirmDeleteInitiativeId] = useState<number | null>(null);
   const [confirmDeleteInitiativeName, setConfirmDeleteInitiativeName] = useState("");
+  // Completion dialog
+  const [completingInitiative, setCompletingInitiative] = useState<any | null>(null);
+  const [completionResultValue, setCompletionResultValue] = useState("");
+  const [completionResultUnit, setCompletionResultUnit] = useState("");
+  const [completionNotes, setCompletionNotes] = useState("");
+  const [completionExtraUpdate, setCompletionExtraUpdate] = useState<Record<string, unknown>>({});
 
   const onDeleteInitiative = async () => {
     if (!confirmDeleteInitiativeId) return;
@@ -180,13 +186,40 @@ export default function GoalDetail() {
     }
   };
 
+  const openCompletionDialog = (initiativeId: number, extra: Record<string, unknown> = {}) => {
+    const initiative = ((goal as any)?.initiatives ?? []).find((i: any) => i.id === initiativeId);
+    setCompletingInitiative(initiative ?? { id: initiativeId });
+    setCompletionResultValue("");
+    setCompletionResultUnit("");
+    setCompletionNotes("");
+    setCompletionExtraUpdate(extra);
+  };
+
   const onUpdateInitiativeStatus = async (initiativeId: number, status: string) => {
+    if (status === "concluida") { openCompletionDialog(initiativeId); return; }
     try {
       await updateInitiative.mutateAsync({ id: initiativeId, data: { status: status as any } });
       qc.invalidateQueries({ queryKey: qKey });
       toast({ title: "Status atualizado" });
     } catch {
       toast({ title: "Erro ao atualizar status", variant: "destructive" });
+    }
+  };
+
+  const onConfirmCompletion = async () => {
+    if (!completingInitiative) return;
+    try {
+      const data: any = { status: "concluida", ...completionExtraUpdate };
+      const rv = parseFloat(completionResultValue);
+      if (!isNaN(rv)) data.resultValue = rv;
+      if (completionResultUnit.trim()) data.resultUnit = completionResultUnit.trim();
+      if (completionNotes.trim()) data.actualResult = completionNotes.trim();
+      await updateInitiative.mutateAsync({ id: completingInitiative.id, data });
+      qc.invalidateQueries({ queryKey: qKey });
+      toast({ title: "Iniciativa concluída! 🎉" });
+      setCompletingInitiative(null);
+    } catch {
+      toast({ title: "Erro ao concluir iniciativa", variant: "destructive" });
     }
   };
 
@@ -208,14 +241,16 @@ export default function GoalDetail() {
       toast({ title: "Informe um valor entre 0 e 100", variant: "destructive" });
       return;
     }
+    if (val === 100) {
+      openCompletionDialog(initiativeId, { progressPercentage: 100 });
+      setProgressEditId(null);
+      setProgressEditValue("");
+      return;
+    }
     try {
-      const update: any = { progressPercentage: val };
-      if (val === 100) update.status = "concluida";
-      await updateInitiative.mutateAsync({ id: initiativeId, data: update });
+      await updateInitiative.mutateAsync({ id: initiativeId, data: { progressPercentage: val } as any });
       qc.invalidateQueries({ queryKey: qKey });
-      toast({
-        title: val === 100 ? "Iniciativa concluída automaticamente! 🎉" : "Progresso atualizado",
-      });
+      toast({ title: "Progresso atualizado" });
       setProgressEditId(null);
       setProgressEditValue("");
     } catch {
@@ -610,6 +645,15 @@ export default function GoalDetail() {
                         </div>
                       )}
 
+                      {initiative.resultValue != null && (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-700 rounded-full px-2.5 py-0.5 text-sm font-semibold">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {initiative.resultValue}{initiative.resultUnit ? ` ${initiative.resultUnit}` : ""}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-start gap-1.5 min-w-0 flex-1">
                         <CheckCheck className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${initiative.actualResult ? "text-green-600" : "text-muted-foreground/40"}`} />
                         <div className="min-w-0 flex-1">
@@ -653,6 +697,71 @@ export default function GoalDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Completion dialog — collect numeric result */}
+      <Dialog open={!!completingInitiative} onOpenChange={open => { if (!open) setCompletingInitiative(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Iniciativa Concluída!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            {completingInitiative && (
+              <p className="text-sm text-muted-foreground italic border-l-2 border-green-300 pl-3">
+                "{completingInitiative.customName || completingInitiative.initiativeName}"
+              </p>
+            )}
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Resultado mensurável</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className="w-28 shrink-0"
+                  placeholder="ex: 3"
+                  value={completionResultValue}
+                  onChange={e => setCompletionResultValue(e.target.value)}
+                />
+                <Input
+                  className="flex-1"
+                  placeholder="unidade — ex: agendamentos de corretores"
+                  value={completionResultUnit}
+                  onChange={e => setCompletionResultUnit(e.target.value)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Preencha para que o sistema possa ranquear quais iniciativas trazem mais resultados na rede.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Observações (opcional)</Label>
+              <Textarea
+                rows={2}
+                className="text-sm"
+                placeholder="Descreva detalhes do resultado alcançado..."
+                value={completionNotes}
+                onChange={e => setCompletionNotes(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setCompletingInitiative(null)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={onConfirmCompletion}
+                disabled={updateInitiative.isPending}
+              >
+                {updateInitiative.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar conclusão"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm delete initiative */}
       <AlertDialog open={!!confirmDeleteInitiativeId} onOpenChange={open => { if (!open) setConfirmDeleteInitiativeId(null); }}>

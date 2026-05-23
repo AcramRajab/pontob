@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, goalsTable, goalInitiativesTable, dailyCheckinsTable, alertsTable, helpRequestsTable, franchisesTable, dimensionsTable, keyProcessesTable, strategicInitiativesTable, kpisTable, franchiseVisaoTable, franchiseVisaoMilestonesTable, franchiseKrisTable, weeklyPlannerEntriesTable, PLANNER_INDICATORS } from "@workspace/db";
-import { eq, and, sql, desc, gte, lte, ne, inArray, notInArray, isNull } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lte, ne, inArray, notInArray, isNull, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
 
 const router = Router();
@@ -657,6 +657,45 @@ router.get("/dashboard/regional/franchise/:id", requireAuth, requireAdminOrStaff
       checkinsByMonth,
       goalProgressByDimension,
     });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /dashboard/initiative-ranking — top catalog initiatives ranked by average result across the network
+router.get("/dashboard/initiative-ranking", requireAuth, async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        strategicInitiativeId: goalInitiativesTable.strategicInitiativeId,
+        initiativeName: strategicInitiativesTable.name,
+        kri: strategicInitiativesTable.kri,
+        dimensionName: dimensionsTable.name,
+        completions: sql<number>`count(*)`.mapWith(Number),
+        avgResult: sql<number>`round(avg(${goalInitiativesTable.resultValue})::numeric, 1)`.mapWith(Number),
+        totalResult: sql<number>`sum(${goalInitiativesTable.resultValue})`.mapWith(Number),
+        unit: sql<string>`mode() within group (order by ${goalInitiativesTable.resultUnit})`,
+      })
+      .from(goalInitiativesTable)
+      .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+      .innerJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+      .innerJoin(dimensionsTable, eq(strategicInitiativesTable.dimensionId, dimensionsTable.id))
+      .where(and(
+        eq(goalInitiativesTable.status, "concluida"),
+        isNull(goalInitiativesTable.deletedAt),
+        isNotNull(goalInitiativesTable.resultValue),
+      ))
+      .groupBy(
+        goalInitiativesTable.strategicInitiativeId,
+        strategicInitiativesTable.name,
+        strategicInitiativesTable.kri,
+        dimensionsTable.name,
+      )
+      .orderBy(sql`avg(${goalInitiativesTable.resultValue}) desc nulls last`)
+      .limit(20);
+
+    res.json(rows);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

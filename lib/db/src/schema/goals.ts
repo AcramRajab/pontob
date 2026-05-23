@@ -83,6 +83,8 @@ export const goalInitiativesTable = pgTable("goal_initiatives", {
   investmentOrEffort: text("investment_or_effort"),
   progressPercentage: real("progress_percentage").notNull().default(0),
   status: text("status").notNull().default("ativa"),
+  resultValue: real("result_value"),
+  resultUnit: text("result_unit"),
   notes: text("notes"),
   pinnedDate: date("pinned_date"),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign, TrendingUp, BookOpen } from "lucide-react";
+import { Loader2, LayoutDashboard, Target, CheckCircle2, Clock, Pencil, Users, FileSignature, DollarSign, TrendingUp, BookOpen, Trophy } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar, Cell } from "recharts";
 import { useForm } from "react-hook-form";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -96,6 +96,77 @@ function InitiativeScorePanel({ franchiseId }: { franchiseId: number }) {
             Conclua iniciativas com resultado documentado para subir sua pontuação neste painel.
           </p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface RankingRow {
+  strategicInitiativeId: number | null;
+  initiativeName: string;
+  kri: string | null;
+  dimensionName: string;
+  completions: number;
+  avgResult: number;
+  totalResult: number;
+  unit: string | null;
+}
+
+async function fetchInitiativeRanking(): Promise<RankingRow[]> {
+  const res = await fetch("/api/dashboard/initiative-ranking", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed");
+  return res.json();
+}
+
+function InitiativeRankingPanel() {
+  const { data, isLoading } = useQuery<RankingRow[]>({
+    queryKey: ["initiative-ranking"],
+    queryFn: fetchInitiativeRanking,
+    staleTime: 120_000,
+  });
+
+  if (isLoading) return (
+    <Card>
+      <CardContent className="flex h-32 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </CardContent>
+    </Card>
+  );
+
+  if (!data || data.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-amber-500" />
+          Ranking de Iniciativas — Resultados na Rede
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Iniciativas do cardápio ordenadas pelo resultado médio registrado pelas franquias ao concluí-las.
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="divide-y">
+          {data.map((row, i) => (
+            <div key={row.strategicInitiativeId ?? i} className="flex items-center gap-3 px-6 py-3 hover:bg-muted/30 transition-colors">
+              <span className={`text-sm font-bold w-6 shrink-0 text-center ${i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-700" : "text-muted-foreground/50"}`}>
+                {i + 1}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium leading-snug truncate">{row.initiativeName}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Badge variant="outline" className="text-xs py-0 h-4">{row.dimensionName}</Badge>
+                  <span className="text-xs text-muted-foreground">{row.completions} execuç{row.completions === 1 ? "ão" : "ões"} na rede</span>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-base font-bold text-green-700">{row.avgResult}</p>
+                {row.unit && <p className="text-xs text-muted-foreground leading-tight max-w-[120px] text-right">{row.unit}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
@@ -406,6 +477,8 @@ export default function Dashboard() {
           </Card>
 
           <InitiativeScorePanel franchiseId={franchiseId!} />
+
+          <InitiativeRankingPanel />
 
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
