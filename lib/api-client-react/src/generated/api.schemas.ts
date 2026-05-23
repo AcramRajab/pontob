@@ -794,6 +794,60 @@ export interface MonthlyCheckinInput {
   nextMonthFocus?: string;
 }
 
+export type DailyCheckinUpdateInputExecutedToday =
+  (typeof DailyCheckinUpdateInputExecutedToday)[keyof typeof DailyCheckinUpdateInputExecutedToday];
+
+export const DailyCheckinUpdateInputExecutedToday = {
+  sim: "sim",
+  parcialmente: "parcialmente",
+  nao: "nao",
+} as const;
+
+export interface DailyCheckinUpdateInput {
+  executedToday?: DailyCheckinUpdateInputExecutedToday;
+  progressToday?: number;
+  timeSpent?: string;
+  blocker?: string;
+  nextStep?: string;
+  needsHelp?: boolean;
+  notes?: string;
+}
+
+export type WeeklyCheckinUpdateInputInitiativeDecision =
+  (typeof WeeklyCheckinUpdateInputInitiativeDecision)[keyof typeof WeeklyCheckinUpdateInputInitiativeDecision];
+
+export const WeeklyCheckinUpdateInputInitiativeDecision = {
+  continuar: "continuar",
+  pausar: "pausar",
+  ajustar: "ajustar",
+  concluir: "concluir",
+} as const;
+
+export interface WeeklyCheckinUpdateInput {
+  planned?: string;
+  executed?: string;
+  progressSummary?: string;
+  blockers?: string;
+  adjustments?: string;
+  nextWeekPriority?: string;
+  needsRegionalSupport?: boolean;
+  initiativeDecision?: WeeklyCheckinUpdateInputInitiativeDecision;
+  executionPercentage?: number;
+  checkinDaysCount?: number;
+}
+
+export interface MonthlyCheckinUpdateInput {
+  kriProgress?: string;
+  improvedKpis?: string;
+  worsenedKpis?: string;
+  initiativesThatWorked?: string;
+  initiativesThatDidNotWork?: string;
+  continueDoing?: string;
+  stopDoing?: string;
+  startDoing?: string;
+  nextMonthFocus?: string;
+}
+
 export type AlertSeverity = (typeof AlertSeverity)[keyof typeof AlertSeverity];
 
 export const AlertSeverity = {

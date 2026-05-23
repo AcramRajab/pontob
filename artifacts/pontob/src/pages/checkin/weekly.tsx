@@ -1,4 +1,4 @@
-import { useListGoals, useCreateWeeklyCheckin, getListWeeklyCheckinsQueryKey, getListGoalsQueryKey, WeeklyCheckinInputInitiativeDecision } from "@workspace/api-client-react";
+import { useListGoals, useCreateWeeklyCheckin, useUpdateWeeklyCheckin, useListWeeklyCheckins, getListWeeklyCheckinsQueryKey, getListGoalsQueryKey, WeeklyCheckinInputInitiativeDecision } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,8 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Target } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Target, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -52,42 +52,86 @@ export default function WeeklyCheckin() {
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
-  const create = useCreateWeeklyCheckin();
+  const weeklyParams = { franchiseId: franchiseId ?? undefined };
+  const { data: weeklyCheckins = [] } = useListWeeklyCheckins(
+    weeklyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListWeeklyCheckinsQueryKey(weeklyParams) } }
+  );
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<WeeklyForm>({
+  const existingCheckin = (weeklyCheckins as any[]).find((c: any) => c.weekStartDate === week.start) ?? null;
+
+  const create = useCreateWeeklyCheckin();
+  const update = useUpdateWeeklyCheckin();
+
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<WeeklyForm>({
     defaultValues: {
       needsRegionalSupport: false,
     },
   });
 
+  useEffect(() => {
+    if (existingCheckin) {
+      reset({
+        goalId: String(existingCheckin.goalId),
+        planned: existingCheckin.planned ?? "",
+        executed: existingCheckin.executed ?? "",
+        progressSummary: existingCheckin.progressSummary ?? "",
+        blockers: existingCheckin.blockers ?? "",
+        adjustments: existingCheckin.adjustments ?? "",
+        nextWeekPriority: existingCheckin.nextWeekPriority ?? "",
+        needsRegionalSupport: existingCheckin.needsRegionalSupport ?? false,
+        initiativeDecision: existingCheckin.initiativeDecision ?? "",
+      });
+    }
+  }, [existingCheckin?.id]);
+
   const onSubmit = async (data: WeeklyForm) => {
     if (!franchiseId) return;
     try {
-      const result = await create.mutateAsync({
-        data: {
-          goalId: parseInt(data.goalId),
-          franchiseId,
-          weekStartDate: week.start,
-          weekEndDate: week.end,
-          planned: data.planned || undefined,
-          executed: data.executed || undefined,
-          progressSummary: data.progressSummary || undefined,
-          blockers: data.blockers || undefined,
-          adjustments: data.adjustments || undefined,
-          nextWeekPriority: data.nextWeekPriority || undefined,
-          needsRegionalSupport: data.needsRegionalSupport,
-          initiativeDecision: (data.initiativeDecision || undefined) as typeof WeeklyCheckinInputInitiativeDecision[keyof typeof WeeklyCheckinInputInitiativeDecision] | undefined,
-        },
-      });
-      qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
-      setSubmitted(true);
-      if ((result as any).conflict) {
-        toast({ title: "Check-in já registrado", description: "Você já fez o check-in desta semana. O registro anterior foi mantido." });
+      if (existingCheckin) {
+        await update.mutateAsync({
+          id: existingCheckin.id,
+          data: {
+            planned: data.planned || undefined,
+            executed: data.executed || undefined,
+            progressSummary: data.progressSummary || undefined,
+            blockers: data.blockers || undefined,
+            adjustments: data.adjustments || undefined,
+            nextWeekPriority: data.nextWeekPriority || undefined,
+            needsRegionalSupport: data.needsRegionalSupport,
+            initiativeDecision: (data.initiativeDecision || undefined) as typeof WeeklyCheckinInputInitiativeDecision[keyof typeof WeeklyCheckinInputInitiativeDecision] | undefined,
+          },
+        });
+        qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
+        setSubmitted(true);
+        toast({ title: "Check-in semanal atualizado", description: "Suas alterações foram salvas." });
       } else {
-        toast({ title: "Check-in semanal registrado" });
+        const result = await create.mutateAsync({
+          data: {
+            goalId: parseInt(data.goalId),
+            franchiseId,
+            weekStartDate: week.start,
+            weekEndDate: week.end,
+            planned: data.planned || undefined,
+            executed: data.executed || undefined,
+            progressSummary: data.progressSummary || undefined,
+            blockers: data.blockers || undefined,
+            adjustments: data.adjustments || undefined,
+            nextWeekPriority: data.nextWeekPriority || undefined,
+            needsRegionalSupport: data.needsRegionalSupport,
+            initiativeDecision: (data.initiativeDecision || undefined) as typeof WeeklyCheckinInputInitiativeDecision[keyof typeof WeeklyCheckinInputInitiativeDecision] | undefined,
+          },
+        });
+        qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
+        setSubmitted(true);
+        if ((result as any).conflict) {
+          toast({ title: "Check-in já registrado", description: "Você já fez o check-in desta semana. O registro anterior foi mantido." });
+        } else {
+          toast({ title: "Check-in semanal registrado" });
+        }
       }
     } catch {
-      toast({ title: "Erro ao registrar", variant: "destructive" });
+      toast({ title: "Erro ao salvar", variant: "destructive" });
     }
   };
 
@@ -95,8 +139,12 @@ export default function WeeklyCheckin() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
         <CheckCircle2 className="h-16 w-16 text-green-500" />
-        <h2 className="text-xl font-bold">Check-in semanal registrado!</h2>
-        <Button variant="outline" onClick={() => setSubmitted(false)}>Novo check-in</Button>
+        <h2 className="text-xl font-bold">
+          {existingCheckin ? "Check-in semanal atualizado!" : "Check-in semanal registrado!"}
+        </h2>
+        <Button variant="outline" onClick={() => setSubmitted(false)}>
+          {existingCheckin ? "Editar novamente" : "Novo check-in"}
+        </Button>
       </div>
     );
   }
@@ -143,14 +191,21 @@ export default function WeeklyCheckin() {
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {existingCheckin && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <Pencil className="h-4 w-4 shrink-0" />
+              <span>Você já fez o check-in desta semana. Edite abaixo para atualizar.</span>
+            </div>
+          )}
+
           <Card>
             <CardContent className="pt-5">
               <Controller
                 name="goalId"
                 control={control}
-                rules={{ required: true }}
+                rules={{ required: !existingCheckin }}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={!!existingCheckin}>
                     <SelectTrigger data-testid="select-goal">
                       <SelectValue placeholder="Selecione a meta" />
                     </SelectTrigger>
@@ -202,8 +257,12 @@ export default function WeeklyCheckin() {
             </CardContent>
           </Card>
 
-          <Button type="submit" className="w-full" disabled={create.isPending} data-testid="button-submit">
-            {create.isPending ? "Registrando..." : "Registrar Check-in Semanal"}
+          <Button type="submit" className="w-full" disabled={create.isPending || update.isPending} data-testid="button-submit">
+            {create.isPending || update.isPending
+              ? "Salvando..."
+              : existingCheckin
+              ? "Salvar alterações"
+              : "Registrar Check-in Semanal"}
           </Button>
         </form>
       )}

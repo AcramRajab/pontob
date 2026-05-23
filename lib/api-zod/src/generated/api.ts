@@ -1322,6 +1322,134 @@ export const CreateMonthlyCheckinBody = zod.object({
 });
 
 /**
+ * @summary Update an existing daily check-in
+ */
+export const UpdateDailyCheckinParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDailyCheckinBody = zod.object({
+  executedToday: zod.enum(["sim", "parcialmente", "nao"]).optional(),
+  progressToday: zod.number().optional(),
+  timeSpent: zod.string().optional(),
+  blocker: zod.string().optional(),
+  nextStep: zod.string().optional(),
+  needsHelp: zod.boolean().optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateDailyCheckinResponse = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  goalInitiativeId: zod.number().nullish(),
+  franchiseId: zod.number(),
+  userId: zod.number(),
+  userName: zod.string().nullish(),
+  date: zod.string(),
+  executedToday: zod.enum(["sim", "parcialmente", "nao"]),
+  progressToday: zod.number().nullish(),
+  timeSpent: zod.string().nullish(),
+  blocker: zod.string().nullish(),
+  nextStep: zod.string().nullish(),
+  needsHelp: zod.boolean().optional(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Update an existing weekly check-in
+ */
+export const UpdateWeeklyCheckinParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateWeeklyCheckinBody = zod.object({
+  planned: zod.string().optional(),
+  executed: zod.string().optional(),
+  progressSummary: zod.string().optional(),
+  blockers: zod.string().optional(),
+  adjustments: zod.string().optional(),
+  nextWeekPriority: zod.string().optional(),
+  needsRegionalSupport: zod.boolean().optional(),
+  initiativeDecision: zod
+    .enum(["continuar", "pausar", "ajustar", "concluir"])
+    .optional(),
+  executionPercentage: zod.number().optional(),
+  checkinDaysCount: zod.number().optional(),
+});
+
+export const UpdateWeeklyCheckinResponse = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  franchiseId: zod.number(),
+  userId: zod.number(),
+  userName: zod.string().nullish(),
+  weekStartDate: zod.string(),
+  weekEndDate: zod.string().nullish(),
+  planned: zod.string().nullish(),
+  executed: zod.string().nullish(),
+  progressSummary: zod.string().nullish(),
+  blockers: zod.string().nullish(),
+  adjustments: zod.string().nullish(),
+  nextWeekPriority: zod.string().nullish(),
+  needsRegionalSupport: zod.boolean().optional(),
+  initiativeDecision: zod
+    .union([
+      zod.literal("continuar"),
+      zod.literal("pausar"),
+      zod.literal("ajustar"),
+      zod.literal("concluir"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  executionPercentage: zod.number().nullish(),
+  checkinDaysCount: zod.number().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Update an existing monthly check-in
+ */
+export const UpdateMonthlyCheckinParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMonthlyCheckinBody = zod.object({
+  kriProgress: zod.string().optional(),
+  improvedKpis: zod.string().optional(),
+  worsenedKpis: zod.string().optional(),
+  initiativesThatWorked: zod.string().optional(),
+  initiativesThatDidNotWork: zod.string().optional(),
+  continueDoing: zod.string().optional(),
+  stopDoing: zod.string().optional(),
+  startDoing: zod.string().optional(),
+  nextMonthFocus: zod.string().optional(),
+});
+
+export const UpdateMonthlyCheckinResponse = zod.object({
+  id: zod.number(),
+  goalId: zod.number(),
+  goalTitle: zod.string().nullish(),
+  franchiseId: zod.number(),
+  userId: zod.number(),
+  userName: zod.string().nullish(),
+  month: zod.number(),
+  year: zod.number(),
+  kriProgress: zod.string().nullish(),
+  improvedKpis: zod.string().nullish(),
+  worsenedKpis: zod.string().nullish(),
+  initiativesThatWorked: zod.string().nullish(),
+  initiativesThatDidNotWork: zod.string().nullish(),
+  continueDoing: zod.string().nullish(),
+  stopDoing: zod.string().nullish(),
+  startDoing: zod.string().nullish(),
+  nextMonthFocus: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary List alerts
  */
 export const ListAlertsQueryParams = zod.object({

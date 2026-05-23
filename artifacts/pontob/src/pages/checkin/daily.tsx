@@ -1,4 +1,4 @@
-import { useListGoals, useCreateDailyCheckin, getListDailyCheckinsQueryKey, getListGoalsQueryKey } from "@workspace/api-client-react";
+import { useListGoals, useCreateDailyCheckin, useUpdateDailyCheckin, useListDailyCheckins, getListDailyCheckinsQueryKey, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,8 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Target } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, Target, Pencil } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -32,15 +32,26 @@ export default function DailyCheckin() {
   const [submitted, setSubmitted] = useState(false);
   const { franchiseId, isAdmin, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
 
+  const today = new Date().toISOString().split("T")[0];
+
   const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
     goalParams,
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
 
-  const create = useCreateDailyCheckin();
+  const dailyParams = { franchiseId: franchiseId ?? undefined, date: today };
+  const { data: todaysCheckins = [] } = useListDailyCheckins(
+    dailyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListDailyCheckinsQueryKey(dailyParams) } }
+  );
 
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<DailyForm>({
+  const existingCheckin = todaysCheckins[0] ?? null;
+
+  const create = useCreateDailyCheckin();
+  const update = useUpdateDailyCheckin();
+
+  const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<DailyForm>({
     defaultValues: {
       executedToday: "sim",
       progressToday: 0,
@@ -52,35 +63,67 @@ export default function DailyCheckin() {
     },
   });
 
+  useEffect(() => {
+    if (existingCheckin) {
+      reset({
+        goalId: String(existingCheckin.goalId),
+        executedToday: existingCheckin.executedToday as "sim" | "parcialmente" | "nao",
+        progressToday: existingCheckin.progressToday ?? 0,
+        blocker: existingCheckin.blocker ?? "",
+        nextStep: existingCheckin.nextStep ?? "",
+        timeSpent: existingCheckin.timeSpent ?? "",
+        needsHelp: existingCheckin.needsHelp ?? false,
+        notes: existingCheckin.notes ?? "",
+      });
+    }
+  }, [existingCheckin?.id]);
+
   const executedToday = watch("executedToday");
 
   const onSubmit = async (data: DailyForm) => {
     if (!franchiseId) return;
-    const today = new Date().toISOString().split("T")[0];
     try {
-      const result = await create.mutateAsync({
-        data: {
-          goalId: parseInt(data.goalId),
-          franchiseId,
-          date: today,
-          executedToday: data.executedToday,
-          progressToday: data.progressToday,
-          blocker: data.blocker || undefined,
-          nextStep: data.nextStep || undefined,
-          timeSpent: data.timeSpent || undefined,
-          needsHelp: data.needsHelp,
-          notes: data.notes || undefined,
-        },
-      });
-      qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
-      setSubmitted(true);
-      if ((result as any).conflict) {
-        toast({ title: "Check-in já registrado", description: "Você já fez o check-in de hoje. O registro anterior foi mantido." });
+      if (existingCheckin) {
+        await update.mutateAsync({
+          id: existingCheckin.id,
+          data: {
+            executedToday: data.executedToday,
+            progressToday: data.progressToday,
+            blocker: data.blocker || undefined,
+            nextStep: data.nextStep || undefined,
+            timeSpent: data.timeSpent || undefined,
+            needsHelp: data.needsHelp,
+            notes: data.notes || undefined,
+          },
+        });
+        qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
+        setSubmitted(true);
+        toast({ title: "Check-in atualizado", description: "Suas alterações foram salvas." });
       } else {
-        toast({ title: "Check-in registrado", description: "Seu progresso de hoje foi salvo." });
+        const result = await create.mutateAsync({
+          data: {
+            goalId: parseInt(data.goalId),
+            franchiseId,
+            date: today,
+            executedToday: data.executedToday,
+            progressToday: data.progressToday,
+            blocker: data.blocker || undefined,
+            nextStep: data.nextStep || undefined,
+            timeSpent: data.timeSpent || undefined,
+            needsHelp: data.needsHelp,
+            notes: data.notes || undefined,
+          },
+        });
+        qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
+        setSubmitted(true);
+        if ((result as any).conflict) {
+          toast({ title: "Check-in já registrado", description: "Você já fez o check-in de hoje. O registro anterior foi mantido." });
+        } else {
+          toast({ title: "Check-in registrado", description: "Seu progresso de hoje foi salvo." });
+        }
       }
     } catch {
-      toast({ title: "Erro ao registrar", description: "Tente novamente.", variant: "destructive" });
+      toast({ title: "Erro ao salvar", description: "Tente novamente.", variant: "destructive" });
     }
   };
 
@@ -88,9 +131,11 @@ export default function DailyCheckin() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
         <CheckCircle2 className="h-16 w-16 text-green-500" />
-        <h2 className="text-xl font-bold">Check-in registrado!</h2>
+        <h2 className="text-xl font-bold">{existingCheckin ? "Check-in atualizado!" : "Check-in registrado!"}</h2>
         <p className="text-muted-foreground max-w-xs">Seu progresso de hoje foi salvo. Continue amanhã.</p>
-        <Button variant="outline" onClick={() => setSubmitted(false)} data-testid="button-new-checkin">Novo check-in</Button>
+        <Button variant="outline" onClick={() => setSubmitted(false)} data-testid="button-new-checkin">
+          {existingCheckin ? "Editar novamente" : "Novo check-in"}
+        </Button>
       </div>
     );
   }
@@ -127,6 +172,13 @@ export default function DailyCheckin() {
         </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {existingCheckin && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <Pencil className="h-4 w-4 shrink-0" />
+              <span>Você já fez o check-in de hoje. Edite abaixo para atualizar.</span>
+            </div>
+          )}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Meta</CardTitle>
@@ -137,7 +189,7 @@ export default function DailyCheckin() {
                 control={control}
                 rules={{ required: true }}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={!!existingCheckin}>
                     <SelectTrigger data-testid="select-goal">
                       <SelectValue placeholder="Selecione uma meta" />
                     </SelectTrigger>
@@ -264,10 +316,14 @@ export default function DailyCheckin() {
           <Button
             type="submit"
             className="w-full"
-            disabled={create.isPending}
+            disabled={create.isPending || update.isPending}
             data-testid="button-submit-checkin"
           >
-            {create.isPending ? "Registrando..." : "Registrar Check-in"}
+            {create.isPending || update.isPending
+              ? "Salvando..."
+              : existingCheckin
+              ? "Salvar alterações"
+              : "Registrar Check-in"}
           </Button>
         </form>
       )}

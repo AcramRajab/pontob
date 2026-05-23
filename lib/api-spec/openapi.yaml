@@ -1102,6 +1102,87 @@ paths:
               schema:
                 $ref: "#/components/schemas/MonthlyCheckin"
 
+  /daily-checkins/{id}:
+    patch:
+      operationId: updateDailyCheckin
+      tags: [dailyCheckins]
+      summary: Update an existing daily check-in
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyCheckinUpdateInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyCheckin"
+        "404":
+          description: Not found
+
+  /weekly-checkins/{id}:
+    patch:
+      operationId: updateWeeklyCheckin
+      tags: [weeklyCheckins]
+      summary: Update an existing weekly check-in
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WeeklyCheckinUpdateInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyCheckin"
+        "404":
+          description: Not found
+
+  /monthly-checkins/{id}:
+    patch:
+      operationId: updateMonthlyCheckin
+      tags: [monthlyCheckins]
+      summary: Update an existing monthly check-in
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonthlyCheckinUpdateInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlyCheckin"
+        "404":
+          description: Not found
+
   /alerts:
     get:
       operationId: listAlerts
@@ -2474,6 +2555,72 @@ components:
           type: integer
         year:
           type: integer
+        kriProgress:
+          type: string
+        improvedKpis:
+          type: string
+        worsenedKpis:
+          type: string
+        initiativesThatWorked:
+          type: string
+        initiativesThatDidNotWork:
+          type: string
+        continueDoing:
+          type: string
+        stopDoing:
+          type: string
+        startDoing:
+          type: string
+        nextMonthFocus:
+          type: string
+
+    DailyCheckinUpdateInput:
+      type: object
+      properties:
+        executedToday:
+          type: string
+          enum: [sim, parcialmente, nao]
+        progressToday:
+          type: number
+        timeSpent:
+          type: string
+        blocker:
+          type: string
+        nextStep:
+          type: string
+        needsHelp:
+          type: boolean
+        notes:
+          type: string
+
+    WeeklyCheckinUpdateInput:
+      type: object
+      properties:
+        planned:
+          type: string
+        executed:
+          type: string
+        progressSummary:
+          type: string
+        blockers:
+          type: string
+        adjustments:
+          type: string
+        nextWeekPriority:
+          type: string
+        needsRegionalSupport:
+          type: boolean
+        initiativeDecision:
+          type: string
+          enum: [continuar, pausar, ajustar, concluir]
+        executionPercentage:
+          type: number
+        checkinDaysCount:
+          type: integer
+
+    MonthlyCheckinUpdateInput:
+      type: object
+      properties:
         kriProgress:
           type: string
         improvedKpis:

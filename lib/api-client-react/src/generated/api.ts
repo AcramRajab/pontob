@@ -27,6 +27,7 @@ import type {
   CatalogToggleResult,
   DailyCheckin,
   DailyCheckinInput,
+  DailyCheckinUpdateInput,
   Dimension,
   ExportCheckinsCsvParams,
   ExportGoalsCsvParams,
@@ -77,6 +78,7 @@ import type {
   LoginInput,
   MonthlyCheckin,
   MonthlyCheckinInput,
+  MonthlyCheckinUpdateInput,
   ProgressHistoryItem,
   RegionalDashboard,
   RegionalVision,
@@ -96,6 +98,7 @@ import type {
   VagaUpdate,
   WeeklyCheckin,
   WeeklyCheckinInput,
+  WeeklyCheckinUpdateInput,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -4628,6 +4631,269 @@ export const useCreateMonthlyCheckin = <
   TContext
 > => {
   return useMutation(getCreateMonthlyCheckinMutationOptions(options));
+};
+
+/**
+ * @summary Update an existing daily check-in
+ */
+export const getUpdateDailyCheckinUrl = (id: number) => {
+  return `/api/daily-checkins/${id}`;
+};
+
+export const updateDailyCheckin = async (
+  id: number,
+  dailyCheckinUpdateInput: DailyCheckinUpdateInput,
+  options?: RequestInit,
+): Promise<DailyCheckin> => {
+  return customFetch<DailyCheckin>(getUpdateDailyCheckinUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(dailyCheckinUpdateInput),
+  });
+};
+
+export const getUpdateDailyCheckinMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDailyCheckin>>,
+    TError,
+    { id: number; data: BodyType<DailyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateDailyCheckin>>,
+  TError,
+  { id: number; data: BodyType<DailyCheckinUpdateInput> },
+  TContext
+> => {
+  const mutationKey = ["updateDailyCheckin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateDailyCheckin>>,
+    { id: number; data: BodyType<DailyCheckinUpdateInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateDailyCheckin(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateDailyCheckinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateDailyCheckin>>
+>;
+export type UpdateDailyCheckinMutationBody = BodyType<DailyCheckinUpdateInput>;
+export type UpdateDailyCheckinMutationError = ErrorType<void>;
+
+/**
+ * @summary Update an existing daily check-in
+ */
+export const useUpdateDailyCheckin = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDailyCheckin>>,
+    TError,
+    { id: number; data: BodyType<DailyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateDailyCheckin>>,
+  TError,
+  { id: number; data: BodyType<DailyCheckinUpdateInput> },
+  TContext
+> => {
+  return useMutation(getUpdateDailyCheckinMutationOptions(options));
+};
+
+/**
+ * @summary Update an existing weekly check-in
+ */
+export const getUpdateWeeklyCheckinUrl = (id: number) => {
+  return `/api/weekly-checkins/${id}`;
+};
+
+export const updateWeeklyCheckin = async (
+  id: number,
+  weeklyCheckinUpdateInput: WeeklyCheckinUpdateInput,
+  options?: RequestInit,
+): Promise<WeeklyCheckin> => {
+  return customFetch<WeeklyCheckin>(getUpdateWeeklyCheckinUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(weeklyCheckinUpdateInput),
+  });
+};
+
+export const getUpdateWeeklyCheckinMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWeeklyCheckin>>,
+    TError,
+    { id: number; data: BodyType<WeeklyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateWeeklyCheckin>>,
+  TError,
+  { id: number; data: BodyType<WeeklyCheckinUpdateInput> },
+  TContext
+> => {
+  const mutationKey = ["updateWeeklyCheckin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateWeeklyCheckin>>,
+    { id: number; data: BodyType<WeeklyCheckinUpdateInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateWeeklyCheckin(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateWeeklyCheckinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateWeeklyCheckin>>
+>;
+export type UpdateWeeklyCheckinMutationBody =
+  BodyType<WeeklyCheckinUpdateInput>;
+export type UpdateWeeklyCheckinMutationError = ErrorType<void>;
+
+/**
+ * @summary Update an existing weekly check-in
+ */
+export const useUpdateWeeklyCheckin = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateWeeklyCheckin>>,
+    TError,
+    { id: number; data: BodyType<WeeklyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateWeeklyCheckin>>,
+  TError,
+  { id: number; data: BodyType<WeeklyCheckinUpdateInput> },
+  TContext
+> => {
+  return useMutation(getUpdateWeeklyCheckinMutationOptions(options));
+};
+
+/**
+ * @summary Update an existing monthly check-in
+ */
+export const getUpdateMonthlyCheckinUrl = (id: number) => {
+  return `/api/monthly-checkins/${id}`;
+};
+
+export const updateMonthlyCheckin = async (
+  id: number,
+  monthlyCheckinUpdateInput: MonthlyCheckinUpdateInput,
+  options?: RequestInit,
+): Promise<MonthlyCheckin> => {
+  return customFetch<MonthlyCheckin>(getUpdateMonthlyCheckinUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(monthlyCheckinUpdateInput),
+  });
+};
+
+export const getUpdateMonthlyCheckinMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMonthlyCheckin>>,
+    TError,
+    { id: number; data: BodyType<MonthlyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMonthlyCheckin>>,
+  TError,
+  { id: number; data: BodyType<MonthlyCheckinUpdateInput> },
+  TContext
+> => {
+  const mutationKey = ["updateMonthlyCheckin"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMonthlyCheckin>>,
+    { id: number; data: BodyType<MonthlyCheckinUpdateInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateMonthlyCheckin(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMonthlyCheckinMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMonthlyCheckin>>
+>;
+export type UpdateMonthlyCheckinMutationBody =
+  BodyType<MonthlyCheckinUpdateInput>;
+export type UpdateMonthlyCheckinMutationError = ErrorType<void>;
+
+/**
+ * @summary Update an existing monthly check-in
+ */
+export const useUpdateMonthlyCheckin = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMonthlyCheckin>>,
+    TError,
+    { id: number; data: BodyType<MonthlyCheckinUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMonthlyCheckin>>,
+  TError,
+  { id: number; data: BodyType<MonthlyCheckinUpdateInput> },
+  TContext
+> => {
+  return useMutation(getUpdateMonthlyCheckinMutationOptions(options));
 };
 
 /**

@@ -84,6 +84,32 @@ router.post("/daily-checkins", requireAuth, requireWriteAccess, async (req, res)
   }
 });
 
+router.patch("/daily-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { executedToday, progressToday, timeSpent, blocker, nextStep, needsHelp, notes } = req.body;
+
+    const [existing] = await db.select().from(dailyCheckinsTable).where(eq(dailyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const updates: Record<string, unknown> = {};
+    if (executedToday !== undefined) updates.executedToday = executedToday;
+    if (progressToday !== undefined) updates.progressToday = progressToday;
+    if (timeSpent !== undefined) updates.timeSpent = timeSpent;
+    if (blocker !== undefined) updates.blocker = blocker;
+    if (nextStep !== undefined) updates.nextStep = nextStep;
+    if (needsHelp !== undefined) updates.needsHelp = needsHelp;
+    if (notes !== undefined) updates.notes = notes;
+
+    const [updated] = await db.update(dailyCheckinsTable).set(updates).where(eq(dailyCheckinsTable.id, id)).returning();
+    res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Weekly check-ins
 router.get("/weekly-checkins", requireAuth, async (req, res) => {
   try {
@@ -154,6 +180,35 @@ router.post("/weekly-checkins", requireAuth, requireWriteAccess, async (req, res
       initiativeDecision, executionPercentage, checkinDaysCount,
     }).returning();
     res.status(201).json({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/weekly-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { planned, executed, progressSummary, blockers, adjustments, nextWeekPriority, needsRegionalSupport, initiativeDecision, executionPercentage, checkinDaysCount } = req.body;
+
+    const [existing] = await db.select().from(weeklyCheckinsTable).where(eq(weeklyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const updates: Record<string, unknown> = {};
+    if (planned !== undefined) updates.planned = planned;
+    if (executed !== undefined) updates.executed = executed;
+    if (progressSummary !== undefined) updates.progressSummary = progressSummary;
+    if (blockers !== undefined) updates.blockers = blockers;
+    if (adjustments !== undefined) updates.adjustments = adjustments;
+    if (nextWeekPriority !== undefined) updates.nextWeekPriority = nextWeekPriority;
+    if (needsRegionalSupport !== undefined) updates.needsRegionalSupport = needsRegionalSupport;
+    if (initiativeDecision !== undefined) updates.initiativeDecision = initiativeDecision;
+    if (executionPercentage !== undefined) updates.executionPercentage = executionPercentage;
+    if (checkinDaysCount !== undefined) updates.checkinDaysCount = checkinDaysCount;
+
+    const [updated] = await db.update(weeklyCheckinsTable).set(updates).where(eq(weeklyCheckinsTable.id, id)).returning();
+    res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -233,6 +288,34 @@ router.post("/monthly-checkins", requireAuth, requireWriteAccess, async (req, re
       continueDoing, stopDoing, startDoing, nextMonthFocus,
     }).returning();
     res.status(201).json({ ...c, goalTitle: null, userName: null, createdAt: c.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/monthly-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { kriProgress, improvedKpis, worsenedKpis, initiativesThatWorked, initiativesThatDidNotWork, continueDoing, stopDoing, startDoing, nextMonthFocus } = req.body;
+
+    const [existing] = await db.select().from(monthlyCheckinsTable).where(eq(monthlyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const updates: Record<string, unknown> = {};
+    if (kriProgress !== undefined) updates.kriProgress = kriProgress;
+    if (improvedKpis !== undefined) updates.improvedKpis = improvedKpis;
+    if (worsenedKpis !== undefined) updates.worsenedKpis = worsenedKpis;
+    if (initiativesThatWorked !== undefined) updates.initiativesThatWorked = initiativesThatWorked;
+    if (initiativesThatDidNotWork !== undefined) updates.initiativesThatDidNotWork = initiativesThatDidNotWork;
+    if (continueDoing !== undefined) updates.continueDoing = continueDoing;
+    if (stopDoing !== undefined) updates.stopDoing = stopDoing;
+    if (startDoing !== undefined) updates.startDoing = startDoing;
+    if (nextMonthFocus !== undefined) updates.nextMonthFocus = nextMonthFocus;
+
+    const [updated] = await db.update(monthlyCheckinsTable).set(updates).where(eq(monthlyCheckinsTable.id, id)).returning();
+    res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
