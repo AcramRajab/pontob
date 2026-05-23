@@ -363,8 +363,11 @@ export default function NewGoalInitiative() {
   }
 
   if (mode === "catalog-select") {
+    const goalKeyProcessName = keyProcesses.find((kp: any) => String(kp.id) === keyProcessId)?.name ?? (goal as any)?.keyProcessName ?? "";
+    const isShowingAll = !keyProcessId;
+
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-xl mx-auto space-y-5">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setMode("choose")} data-testid="button-back">
             <ArrowLeft className="h-4 w-4" />
@@ -372,55 +375,56 @@ export default function NewGoalInitiative() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Selecionar Iniciativa</h1>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Iniciativas do catálogo para a dimensão <span className="font-semibold text-foreground">{goalDimensionName}</span>
+              {isShowingAll
+                ? <>{goalDimensionName} — todos os processos</>
+                : <>{goalDimensionName} · <span className="font-medium text-foreground">{goalKeyProcessName}</span></>
+              }
             </p>
           </div>
         </div>
 
-        {/* Key-process filter — stays within the goal's dimension */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <Select
-            value={keyProcessId || "all"}
-            onValueChange={v => setKeyProcessId(v === "all" ? "" : v)}
-          >
-            <SelectTrigger className="w-64" data-testid="select-key-process">
-              <SelectValue placeholder="Todos os processos-chave" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os processos-chave</SelectItem>
-              {keyProcesses.map((kp: any) => (
-                <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="space-y-2">
           {!dimensionId && (
-            <p className="text-sm text-muted-foreground text-center py-8">Carregando iniciativas…</p>
+            <p className="text-sm text-muted-foreground text-center py-8">Carregando…</p>
           )}
           {dimensionId && initiatives.map((ini: any) => (
-            <Card
+            <button
               key={ini.id}
               data-testid={`card-initiative-${ini.id}`}
-              className="cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-all"
+              type="button"
+              className="w-full text-left rounded-lg border px-4 py-3 hover:border-primary/40 hover:bg-primary/[0.02] transition-all flex items-center justify-between gap-3 bg-background"
               onClick={() => { setSelectedInitiative(ini); setMode("catalog-configure"); }}
             >
-              <CardContent className="pt-3 pb-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm">{ini.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ini.keyProcessName}</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
+              <div className="min-w-0">
+                <p className="font-medium text-sm">{ini.name}</p>
+                {isShowingAll && <p className="text-xs text-muted-foreground mt-0.5">{ini.keyProcessName}</p>}
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
           ))}
           {dimensionId && initiatives.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">Nenhuma iniciativa encontrada.</p>
           )}
         </div>
+
+        {dimensionId && !isShowingAll && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline w-full text-center py-1"
+            onClick={() => setKeyProcessId("")}
+          >
+            Ver todas as iniciativas de {goalDimensionName}
+          </button>
+        )}
+        {dimensionId && isShowingAll && keyProcessId === "" && (goal as any)?.keyProcessId && (
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline w-full text-center py-1"
+            onClick={() => setKeyProcessId(String((goal as any).keyProcessId))}
+          >
+            Mostrar apenas {(goal as any)?.keyProcessName}
+          </button>
+        )}
       </div>
     );
   }
