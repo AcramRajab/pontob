@@ -274,6 +274,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/InviteToken"
+    post:
+      operationId: createInvite
+      tags: [invites]
+      summary: Generate a new invite link (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteCreateInput"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCreateOutput"
+        "400":
+          description: Validation error
+        "404":
+          description: Franchise not found
 
   /invites/{id}:
     delete:
@@ -1789,6 +1810,36 @@ components:
           type: string
         active:
           type: boolean
+
+    InviteCreateInput:
+      type: object
+      required: [franchiseId, role]
+      properties:
+        franchiseId:
+          type: integer
+        role:
+          type: string
+          enum: [franqueado, responsavel_interno]
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 30
+
+    InviteCreateOutput:
+      type: object
+      required: [token, link, franchiseName, role, expiresAt]
+      properties:
+        token:
+          type: string
+        link:
+          type: string
+        franchiseName:
+          type: string
+        role:
+          type: string
+        expiresAt:
+          type: string
 
     InviteToken:
       type: object

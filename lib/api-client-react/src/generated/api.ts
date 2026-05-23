@@ -55,6 +55,8 @@ import type {
   HelpRequest,
   HelpRequestInput,
   HelpRequestUpdate,
+  InviteCreateInput,
+  InviteCreateOutput,
   InviteToken,
   KeyProcess,
   Kpi,
@@ -1250,6 +1252,92 @@ export function useListInvites<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Generate a new invite link (admin only)
+ */
+export const getCreateInviteUrl = () => {
+  return `/api/invites`;
+};
+
+export const createInvite = async (
+  inviteCreateInput: InviteCreateInput,
+  options?: RequestInit,
+): Promise<InviteCreateOutput> => {
+  return customFetch<InviteCreateOutput>(getCreateInviteUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inviteCreateInput),
+  });
+};
+
+export const getCreateInviteMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInvite>>,
+    TError,
+    { data: BodyType<InviteCreateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInvite>>,
+  TError,
+  { data: BodyType<InviteCreateInput> },
+  TContext
+> => {
+  const mutationKey = ["createInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInvite>>,
+    { data: BodyType<InviteCreateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createInvite(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInvite>>
+>;
+export type CreateInviteMutationBody = BodyType<InviteCreateInput>;
+export type CreateInviteMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate a new invite link (admin only)
+ */
+export const useCreateInvite = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInvite>>,
+    TError,
+    { data: BodyType<InviteCreateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createInvite>>,
+  TError,
+  { data: BodyType<InviteCreateInput> },
+  TContext
+> => {
+  return useMutation(getCreateInviteMutationOptions(options));
+};
 
 /**
  * @summary Revoke an unused invite token (admin only)

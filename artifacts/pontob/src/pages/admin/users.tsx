@@ -63,13 +63,26 @@ function InviteStatusBadge({ user }: { user: any }) {
   );
 }
 
+const EXPIRY_OPTIONS = [
+  { value: 7, label: "7 dias" },
+  { value: 30, label: "30 dias" },
+  { value: 60, label: "60 dias" },
+  { value: 90, label: "90 dias" },
+];
+
+interface GeneratedInviteWithExpiry extends GeneratedInvite {
+  expiresInDays: number;
+  expiresAt: string;
+}
+
 function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGenerated?: () => void }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [generated, setGenerated] = useState<GeneratedInvite | null>(null);
+  const [generated, setGenerated] = useState<GeneratedInviteWithExpiry | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteRole, setInviteRole] = useState("franqueado");
   const [inviteFranchise, setInviteFranchise] = useState<string>("");
+  const [inviteExpiry, setInviteExpiry] = useState<number>(30);
   const [loading, setLoading] = useState(false);
 
   const handleOpen = (v: boolean) => {
@@ -79,6 +92,7 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
       setCopied(false);
       setInviteRole("franqueado");
       setInviteFranchise("");
+      setInviteExpiry(30);
     }
   };
 
@@ -93,11 +107,11 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ franchiseId: parseInt(inviteFranchise), role: inviteRole }),
+        body: JSON.stringify({ franchiseId: parseInt(inviteFranchise), role: inviteRole, expiresInDays: inviteExpiry }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao gerar convite");
-      setGenerated({ link: data.link, franchiseName: data.franchiseName, role: data.role });
+      setGenerated({ link: data.link, franchiseName: data.franchiseName, role: data.role, expiresInDays: inviteExpiry, expiresAt: data.expiresAt });
       onGenerated?.();
     } catch (err: any) {
       toast({ title: err.message, variant: "destructive" });
@@ -116,7 +130,8 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
 
   const handleWhatsApp = () => {
     if (!generated) return;
-    const text = `Olá! Você foi convidado para acessar a plataforma Método Ponto B.\n\nFranquia: ${generated.franchiseName}\nAcesso: ${roleLabel[generated.role] ?? generated.role}\n\nClique no link abaixo para criar sua conta:\n${generated.link}\n\nO link é válido por 30 dias.`;
+    const expiryLabel = EXPIRY_OPTIONS.find(o => o.value === generated.expiresInDays)?.label ?? `${generated.expiresInDays} dias`;
+    const text = `Olá! Você foi convidado para acessar a plataforma Método Ponto B.\n\nFranquia: ${generated.franchiseName}\nAcesso: ${roleLabel[generated.role] ?? generated.role}\n\nClique no link abaixo para criar sua conta:\n${generated.link}\n\nO link é válido por ${expiryLabel}.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -134,7 +149,7 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
         {!generated ? (
           <div className="space-y-4 mt-2">
             <p className="text-sm text-muted-foreground">
-              Gere um link único para que um responsável ou franqueado crie sua própria conta. O link expira em 30 dias.
+              Gere um link único para que um responsável ou franqueado crie sua própria conta.
             </p>
             <div className="space-y-1.5">
               <Label>Franquia *</Label>
@@ -161,6 +176,19 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Validade do link *</Label>
+              <Select value={String(inviteExpiry)} onValueChange={v => setInviteExpiry(parseInt(v))}>
+                <SelectTrigger data-testid="select-invite-expiry">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPIRY_OPTIONS.map(o => (
+                    <SelectItem key={o.value} value={String(o.value)}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="outline" onClick={() => handleOpen(false)}>Cancelar</Button>
               <Button onClick={generate} disabled={loading || !inviteFranchise}>
@@ -175,7 +203,9 @@ function InviteLinkDialog({ franchises, onGenerated }: { franchises: any[]; onGe
               <p className="text-xs text-green-700">
                 Franquia: <strong>{generated.franchiseName}</strong> · Acesso: <strong>{roleLabel[generated.role] ?? generated.role}</strong>
               </p>
-              <p className="text-xs text-green-600">Válido por 30 dias · Uso único</p>
+              <p className="text-xs text-green-600">
+                Válido por {EXPIRY_OPTIONS.find(o => o.value === generated.expiresInDays)?.label ?? `${generated.expiresInDays} dias`} · Expira em {new Date(generated.expiresAt).toLocaleDateString("pt-BR")} · Uso único
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Link de cadastro</Label>

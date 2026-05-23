@@ -263,6 +263,22 @@ export const ListInvitesResponseItem = zod.object({
 export const ListInvitesResponse = zod.array(ListInvitesResponseItem);
 
 /**
+ * @summary Generate a new invite link (admin only)
+ */
+export const createInviteBodyExpiresInDaysDefault = 30;
+export const createInviteBodyExpiresInDaysMax = 90;
+
+export const CreateInviteBody = zod.object({
+  franchiseId: zod.number(),
+  role: zod.enum(["franqueado", "responsavel_interno"]),
+  expiresInDays: zod
+    .number()
+    .min(1)
+    .max(createInviteBodyExpiresInDaysMax)
+    .default(createInviteBodyExpiresInDaysDefault),
+});
+
+/**
  * @summary Revoke an unused invite token (admin only)
  */
 export const RevokeInviteParams = zod.object({

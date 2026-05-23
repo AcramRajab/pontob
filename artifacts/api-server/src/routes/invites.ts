@@ -153,13 +153,19 @@ router.delete("/invites/:id", requireAuth, requireRole("master_admin", "staff_re
 
 router.post("/invites", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
-    const { franchiseId, role } = req.body;
+    const { franchiseId, role, expiresInDays } = req.body;
     if (!franchiseId || !role) {
       res.status(400).json({ error: "franchiseId e role são obrigatórios." });
       return;
     }
     if (!["franqueado", "responsavel_interno"].includes(role)) {
       res.status(400).json({ error: "role deve ser 'franqueado' ou 'responsavel_interno'." });
+      return;
+    }
+
+    const days = expiresInDays !== undefined ? parseInt(String(expiresInDays)) : 30;
+    if (isNaN(days) || days < 1 || days > 90) {
+      res.status(400).json({ error: "expiresInDays deve ser um número entre 1 e 90." });
       return;
     }
 
@@ -175,7 +181,7 @@ router.post("/invites", requireAuth, requireRole("master_admin", "staff_regional
     }
 
     const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
     await db.insert(inviteTokensTable).values({
       token,

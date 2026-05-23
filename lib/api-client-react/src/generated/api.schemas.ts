@@ -72,6 +72,32 @@ export interface FranchiseUpdate {
   active?: boolean;
 }
 
+export type InviteCreateInputRole =
+  (typeof InviteCreateInputRole)[keyof typeof InviteCreateInputRole];
+
+export const InviteCreateInputRole = {
+  franqueado: "franqueado",
+  responsavel_interno: "responsavel_interno",
+} as const;
+
+export interface InviteCreateInput {
+  franchiseId: number;
+  role: InviteCreateInputRole;
+  /**
+   * @minimum 1
+   * @maximum 90
+   */
+  expiresInDays?: number;
+}
+
+export interface InviteCreateOutput {
+  token: string;
+  link: string;
+  franchiseName: string;
+  role: string;
+  expiresAt: string;
+}
+
 export type InviteTokenRole =
   (typeof InviteTokenRole)[keyof typeof InviteTokenRole];
 
