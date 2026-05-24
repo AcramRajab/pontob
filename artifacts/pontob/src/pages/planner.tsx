@@ -755,7 +755,7 @@ export default function Planner() {
             const r = monthlySummary?.realizado ?? {};
             const p = monthlySummary?.planejado ?? {};
             const n = (key: string) => Number(r[key] ?? 0);
-            const fmtBrl = (v: number) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            const fmtBrl = (v: number) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             const fmtN = (v: number, sign = false) => (sign && v > 0 ? "+" : "") + Math.round(v);
             const metaPct = (key: string) => {
               const meta = Number(p[key] ?? 0);
