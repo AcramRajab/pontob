@@ -1,4 +1,4 @@
-import { useListGoals, useCreateDailyCheckin, useUpdateDailyCheckin, useListDailyCheckins, getListDailyCheckinsQueryKey, getListGoalsQueryKey } from "@workspace/api-client-react";
+import { useListGoals, useCreateDailyCheckin, useUpdateDailyCheckin, useListDailyCheckins, useListGoalKpis, useUpdateKpi, getListDailyCheckinsQueryKey, getListGoalsQueryKey, getListGoalKpisQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,10 +8,11 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Target, Pencil, Clock, HelpingHand, History } from "lucide-react";
+import { CheckCircle2, Target, Pencil, Clock, HelpingHand, History, BarChart2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
@@ -151,16 +152,7 @@ export default function DailyCheckin() {
   );
   const dailyGoals = (goals as any[]).filter(g => g.frequency === "diario");
 
-  const dailyParams = { franchiseId: franchiseId ?? undefined, date: today };
-  const { data: todaysCheckins = [], isLoading: isLoadingCheckins } = useListDailyCheckins(
-    dailyParams,
-    { query: { enabled: !!franchiseId, queryKey: getListDailyCheckinsQueryKey(dailyParams) } }
-  );
-
-  const existingCheckin = todaysCheckins[0] ?? null;
-
-  const create = useCreateDailyCheckin();
-  const update = useUpdateDailyCheckin();
+  const [kpiValues, setKpiValues] = useState<Record<number, string>>({});
 
   const { register, handleSubmit, control, watch, reset, formState: { errors } } = useForm<DailyForm>({
     defaultValues: {
@@ -173,6 +165,28 @@ export default function DailyCheckin() {
       notes: "",
     },
   });
+
+  const selectedGoalId = watch("goalId");
+  const selectedGoalIdNum = selectedGoalId ? parseInt(selectedGoalId) : 0;
+
+  const { data: allGoalKpis = [] } = useListGoalKpis(
+    selectedGoalIdNum,
+    { query: { enabled: !!selectedGoalIdNum, queryKey: getListGoalKpisQueryKey(selectedGoalIdNum) } }
+  );
+  const dailyKpis = (allGoalKpis as any[]).filter((k: any) => k.frequency === "diario" && !k.deletedAt);
+
+  const updateKpiMutation = useUpdateKpi();
+
+  const dailyParams = { franchiseId: franchiseId ?? undefined, date: today };
+  const { data: todaysCheckins = [], isLoading: isLoadingCheckins } = useListDailyCheckins(
+    dailyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListDailyCheckinsQueryKey(dailyParams) } }
+  );
+
+  const existingCheckin = todaysCheckins[0] ?? null;
+
+  const create = useCreateDailyCheckin();
+  const update = useUpdateDailyCheckin();
 
   useEffect(() => {
     if (existingCheckin) {
@@ -191,9 +205,26 @@ export default function DailyCheckin() {
 
   const executedToday = watch("executedToday");
 
+  const saveKpiValues = async () => {
+    await Promise.all(
+      dailyKpis
+        .filter((k: any) => kpiValues[k.id] !== undefined && kpiValues[k.id] !== "")
+        .map((k: any) =>
+          updateKpiMutation.mutateAsync({
+            id: k.id,
+            data: { currentValue: parseFloat(kpiValues[k.id]) },
+          })
+        )
+    );
+    if (selectedGoalIdNum) {
+      qc.invalidateQueries({ queryKey: getListGoalKpisQueryKey(selectedGoalIdNum) });
+    }
+  };
+
   const onSubmit = async (data: DailyForm) => {
     if (!franchiseId) return;
     try {
+      await saveKpiValues();
       if (existingCheckin) {
         await update.mutateAsync({
           id: existingCheckin.id,
@@ -346,6 +377,44 @@ export default function DailyCheckin() {
               {errors.goalId && <p className="text-xs text-destructive mt-1">Selecione uma meta</p>}
             </CardContent>
           </Card>
+
+          {dailyKpis.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart2 className="h-4 w-4 text-primary" />
+                  KPIs do dia
+                </CardTitle>
+                <CardDescription>Insira o valor de hoje para cada indicador diário.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {dailyKpis.map((k: any) => (
+                  <div key={k.id} className="space-y-1.5">
+                    <div className="flex items-baseline justify-between">
+                      <Label htmlFor={`kpi-${k.id}`} className="text-sm font-medium">{k.name}</Label>
+                      {k.targetValue != null && (
+                        <span className="text-xs text-muted-foreground">
+                          Meta: {k.targetValue}{k.unit ? ` ${k.unit}` : ""} &nbsp;|&nbsp; Atual: {k.currentValue ?? 0}{k.unit ? ` ${k.unit}` : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`kpi-${k.id}`}
+                        type="number"
+                        step="any"
+                        placeholder={String(k.currentValue ?? 0)}
+                        value={kpiValues[k.id] ?? ""}
+                        onChange={e => setKpiValues(prev => ({ ...prev, [k.id]: e.target.value }))}
+                        className="w-36"
+                      />
+                      {k.unit && <span className="text-sm text-muted-foreground">{k.unit}</span>}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-3">
