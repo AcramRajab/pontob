@@ -46,6 +46,7 @@ type PendingDeactivation = {
   id: number;
   name: string;
   activeGoalCount: number;
+  affectedFranchises?: string[];
 };
 
 export default function Catalog() {
@@ -160,7 +161,13 @@ export default function Catalog() {
     try {
       const impact = await getStrategicInitiativeDeactivationImpact(init.id);
       if (impact.activeGoalCount > 0) {
-        setPendingDeactivation({ type: "strategicInitiative", id: init.id, name: init.name, activeGoalCount: impact.activeGoalCount });
+        setPendingDeactivation({
+          type: "strategicInitiative",
+          id: init.id,
+          name: init.name,
+          activeGoalCount: impact.activeGoalCount,
+          affectedFranchises: impact.affectedFranchises,
+        });
       } else {
         toggleInit.mutate({ id: init.id });
       }
@@ -354,11 +361,21 @@ export default function Catalog() {
                 <>
                   {pendingDeactivation.type === "strategicInitiative" ? (
                     <>
-                      Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                      <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
                       {pendingDeactivation.activeGoalCount === 1
-                        ? "iniciativa de meta ativa que referencia"
-                        : "iniciativas de meta ativas que referenciam"}{" "}
-                      esta iniciativa do catálogo. Desativá-la fará com que apareça como "(inativo)" para as franquias afetadas.
+                        ? "franquia ainda tem esta iniciativa ativa em uma de suas metas"
+                        : "franquias ainda têm esta iniciativa ativa em suas metas"}
+                      :
+                      {pendingDeactivation.affectedFranchises && pendingDeactivation.affectedFranchises.length > 0 && (
+                        <ul className="mt-2 space-y-1 list-disc list-inside text-sm">
+                          {pendingDeactivation.affectedFranchises.map(name => (
+                            <li key={name} className="font-medium text-foreground">{name}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-3">
+                        Desativar esta iniciativa fará com que apareça como "(inativo)" para essas franquias.
+                      </p>
                     </>
                   ) : (
                     <>

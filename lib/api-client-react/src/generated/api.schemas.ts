@@ -248,6 +248,13 @@ export interface StrategicInitiativeToggleResult {
   activeGoalCount: number;
 }
 
+export interface StrategicInitiativeDeactivationImpact {
+  /** Number of distinct franchises with active goal initiatives referencing this catalog item */
+  activeGoalCount: number;
+  /** Names of franchises that have active goal initiatives referencing this catalog item */
+  affectedFranchises: string[];
+}
+
 export interface CatalogDeactivationImpact {
   /** Number of active goals that reference this catalog item */
   activeGoalCount: number;

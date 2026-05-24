@@ -114,6 +114,7 @@ export * from "./regionalVisionQuarter";
 export * from "./rejectInvite200";
 export * from "./revokeInvite200";
 export * from "./strategicInitiative";
+export * from "./strategicInitiativeDeactivationImpact";
 export * from "./strategicInitiativeToggleResult";
 export * from "./todayOverview";
 export * from "./toggleGoalInitiativeToday200";

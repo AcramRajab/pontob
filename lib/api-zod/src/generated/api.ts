@@ -451,7 +451,7 @@ export const ToggleKeyProcessActiveResponse = zod.object({
 });
 
 /**
- * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ * @summary Count active goal initiatives that reference a strategic initiative and list affected franchises (admin/staff only)
  */
 export const GetStrategicInitiativeDeactivationImpactParams = zod.object({
   id: zod.coerce.number(),
@@ -460,7 +460,14 @@ export const GetStrategicInitiativeDeactivationImpactParams = zod.object({
 export const GetStrategicInitiativeDeactivationImpactResponse = zod.object({
   activeGoalCount: zod
     .number()
-    .describe("Number of active goals that reference this catalog item"),
+    .describe(
+      "Number of distinct franchises with active goal initiatives referencing this catalog item",
+    ),
+  affectedFranchises: zod
+    .array(zod.string())
+    .describe(
+      "Names of franchises that have active goal initiatives referencing this catalog item",
+    ),
 });
 
 /**

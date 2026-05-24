@@ -89,6 +89,7 @@ import type {
   RejectInvite200,
   RevokeInvite200,
   StrategicInitiative,
+  StrategicInitiativeDeactivationImpact,
   StrategicInitiativeToggleResult,
   TodayOverview,
   ToggleGoalInitiativeToday200,
@@ -2425,7 +2426,7 @@ export const useToggleKeyProcessActive = <
 };
 
 /**
- * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ * @summary Count active goal initiatives that reference a strategic initiative and list affected franchises (admin/staff only)
  */
 export const getGetStrategicInitiativeDeactivationImpactUrl = (id: number) => {
   return `/api/strategic-initiatives/${id}/deactivation-impact`;
@@ -2434,8 +2435,8 @@ export const getGetStrategicInitiativeDeactivationImpactUrl = (id: number) => {
 export const getStrategicInitiativeDeactivationImpact = async (
   id: number,
   options?: RequestInit,
-): Promise<CatalogDeactivationImpact> => {
-  return customFetch<CatalogDeactivationImpact>(
+): Promise<StrategicInitiativeDeactivationImpact> => {
+  return customFetch<StrategicInitiativeDeactivationImpact>(
     getGetStrategicInitiativeDeactivationImpactUrl(id),
     {
       ...options,
@@ -2494,7 +2495,7 @@ export type GetStrategicInitiativeDeactivationImpactQueryError =
   ErrorType<void>;
 
 /**
- * @summary Count active goal initiatives that reference a strategic initiative (admin/staff only)
+ * @summary Count active goal initiatives that reference a strategic initiative and list affected franchises (admin/staff only)
  */
 
 export function useGetStrategicInitiativeDeactivationImpact<

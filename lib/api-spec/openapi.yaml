@@ -583,7 +583,7 @@ paths:
     get:
       operationId: getStrategicInitiativeDeactivationImpact
       tags: [strategicInitiatives]
-      summary: Count active goal initiatives that reference a strategic initiative (admin/staff only)
+      summary: Count active goal initiatives that reference a strategic initiative and list affected franchises (admin/staff only)
       parameters:
         - name: id
           in: path
@@ -592,11 +592,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Impact count
+          description: Impact count with affected franchise names
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CatalogDeactivationImpact"
+                $ref: "#/components/schemas/StrategicInitiativeDeactivationImpact"
         "404":
           description: Not found
 
@@ -2051,6 +2051,19 @@ components:
         activeGoalCount:
           type: integer
           description: Number of active goal initiatives still referencing this catalog item (0 when toggling to active)
+
+    StrategicInitiativeDeactivationImpact:
+      type: object
+      required: [activeGoalCount, affectedFranchises]
+      properties:
+        activeGoalCount:
+          type: integer
+          description: Number of distinct franchises with active goal initiatives referencing this catalog item
+        affectedFranchises:
+          type: array
+          items:
+            type: string
+          description: Names of franchises that have active goal initiatives referencing this catalog item
 
     CatalogDeactivationImpact:
       type: object

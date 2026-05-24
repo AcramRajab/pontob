@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, auditLogsTable } from "@workspace/db";
-import { goalsTable, goalInitiativesTable } from "@workspace/db";
+import { goalsTable, goalInitiativesTable, franchisesTable } from "@workspace/db";
 import { and, eq, notInArray, count, inArray, desc, isNotNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -357,16 +357,19 @@ router.get(
     try {
       const [row] = await db.select().from(strategicInitiativesTable).where(eq(strategicInitiativesTable.id, id));
       if (!row) { res.status(404).json({ error: "Not found" }); return; }
-      const [result] = await db
-        .select({ activeGoalCount: count() })
+      const rows = await db
+        .selectDistinct({ franchiseName: franchisesTable.name })
         .from(goalInitiativesTable)
+        .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+        .innerJoin(franchisesTable, eq(goalsTable.franchiseId, franchisesTable.id))
         .where(
           and(
             eq(goalInitiativesTable.strategicInitiativeId, id),
             notInArray(goalInitiativesTable.status, ["concluida", "cancelada"]),
           ),
         );
-      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+      const affectedFranchises = rows.map(r => r.franchiseName);
+      res.json({ activeGoalCount: affectedFranchises.length, affectedFranchises });
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Internal server error" });
