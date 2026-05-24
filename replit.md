@@ -11,6 +11,7 @@ Strategic execution SaaS platform for RE/MAX SC franchises. Franchises set goals
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/db run seed` — seed database with franchises, users, dimensions, key processes, and strategic initiatives
 - `pnpm --filter @workspace/db run migrate:deactivate-placeholders` — one-time migration to deactivate old placeholder accounts (admin@remaxsc.com.br, regional@remaxsc.com.br) on any DB seeded before the real-account migration
+- `pnpm --filter @workspace/db run migrate:drop-catalog-audit-logs` — one-time migration to drop the now-deprecated `catalog_audit_logs` table (catalog changes are now written to `audit_logs` instead)
 - Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — express-session secret
 
 ## Stack

@@ -1,7 +1,6 @@
 import { pgTable, serial, text, boolean, integer, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { usersTable } from "./users";
 
 export const dimensionsTable = pgTable("dimensions", {
   id: serial("id").primaryKey(),
@@ -55,15 +54,3 @@ export const insertStrategicInitiativeSchema = createInsertSchema(strategicIniti
 export type InsertStrategicInitiative = z.infer<typeof insertStrategicInitiativeSchema>;
 export type StrategicInitiative = typeof strategicInitiativesTable.$inferSelect;
 
-export const catalogAuditLogTable = pgTable("catalog_audit_logs", {
-  id: serial("id").primaryKey(),
-  itemType: text("item_type").notNull(),
-  itemId: integer("item_id").notNull(),
-  action: text("action").notNull(),
-  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
-  userName: text("user_name").notNull(),
-  userEmail: text("user_email").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export type CatalogAuditLog = typeof catalogAuditLogTable.$inferSelect;

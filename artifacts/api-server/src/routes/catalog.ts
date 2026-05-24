@@ -1,30 +1,34 @@
 import { Router } from "express";
-import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, catalogAuditLogTable } from "@workspace/db";
+import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, auditLogsTable } from "@workspace/db";
 import { goalsTable, goalInitiativesTable } from "@workspace/db";
-import { and, eq, notInArray, count, inArray, desc } from "drizzle-orm";
+import { and, eq, notInArray, count, inArray, desc, isNotNull } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
 
+const CATALOG_ENTITY_TYPES = ["dimension", "key_process", "strategic_initiative"] as const;
+type CatalogEntityType = typeof CATALOG_ENTITY_TYPES[number];
+
 const isAdminOrStaff = (role: string) =>
   role === "master_admin" || role === "staff_regional";
 
-async function getLastChangedByItemType(itemType: string, ids: number[]) {
+async function getLastChangedByItemType(entityType: CatalogEntityType, ids: number[]) {
   if (ids.length === 0) return new Map<number, { changedAt: Date; changedBy: string }>();
   const logs = await db
     .select()
-    .from(catalogAuditLogTable)
+    .from(auditLogsTable)
     .where(
       and(
-        eq(catalogAuditLogTable.itemType, itemType),
-        inArray(catalogAuditLogTable.itemId, ids),
+        eq(auditLogsTable.entityType, entityType),
+        isNotNull(auditLogsTable.entityId),
+        inArray(auditLogsTable.entityId, ids),
       ),
     )
-    .orderBy(desc(catalogAuditLogTable.createdAt));
+    .orderBy(desc(auditLogsTable.createdAt));
   const seen = new Map<number, { changedAt: Date; changedBy: string }>();
   for (const log of logs) {
-    if (!seen.has(log.itemId)) {
-      seen.set(log.itemId, { changedAt: log.createdAt, changedBy: log.userName });
+    if (log.entityId !== null && !seen.has(log.entityId)) {
+      seen.set(log.entityId, { changedAt: log.createdAt, changedBy: log.userName });
     }
   }
   return seen;
@@ -175,12 +179,13 @@ router.get(
     try {
       const logs = await db
         .select()
-        .from(catalogAuditLogTable)
-        .orderBy(desc(catalogAuditLogTable.createdAt));
+        .from(auditLogsTable)
+        .where(inArray(auditLogsTable.entityType, [...CATALOG_ENTITY_TYPES]))
+        .orderBy(desc(auditLogsTable.createdAt));
 
-      const dimIds = [...new Set(logs.filter(l => l.itemType === "dimension").map(l => l.itemId))];
-      const kpIds = [...new Set(logs.filter(l => l.itemType === "key_process").map(l => l.itemId))];
-      const siIds = [...new Set(logs.filter(l => l.itemType === "strategic_initiative").map(l => l.itemId))];
+      const dimIds = [...new Set(logs.filter(l => l.entityType === "dimension" && l.entityId !== null).map(l => l.entityId as number))];
+      const kpIds = [...new Set(logs.filter(l => l.entityType === "key_process" && l.entityId !== null).map(l => l.entityId as number))];
+      const siIds = [...new Set(logs.filter(l => l.entityType === "strategic_initiative" && l.entityId !== null).map(l => l.entityId as number))];
 
       const [dims, kps, sis] = await Promise.all([
         dimIds.length > 0
@@ -209,10 +214,11 @@ router.get(
         deactivated: "Desativado",
       };
 
-      function getItemName(itemType: string, itemId: number): string {
-        if (itemType === "dimension") return dimMap.get(itemId) ?? `ID ${itemId}`;
-        if (itemType === "key_process") return kpMap.get(itemId) ?? `ID ${itemId}`;
-        return siMap.get(itemId) ?? `ID ${itemId}`;
+      function getItemName(entityType: string, entityId: number | null): string {
+        if (entityId === null) return "—";
+        if (entityType === "dimension") return dimMap.get(entityId) ?? `ID ${entityId}`;
+        if (entityType === "key_process") return kpMap.get(entityId) ?? `ID ${entityId}`;
+        return siMap.get(entityId) ?? `ID ${entityId}`;
       }
 
       function csvCell(val: string): string {
@@ -224,8 +230,8 @@ router.get(
 
       const headers = ["Tipo", "Nome", "Ação", "Alterado por", "Email", "Data/Hora"];
       const rows = logs.map(l => [
-        typeLabel[l.itemType] ?? l.itemType,
-        getItemName(l.itemType, l.itemId),
+        typeLabel[l.entityType] ?? l.entityType,
+        getItemName(l.entityType, l.entityId),
         actionLabel[l.action] ?? l.action,
         l.userName,
         l.userEmail,
@@ -250,14 +256,14 @@ router.get(
   "/catalog-audit-logs",
   requireRole("master_admin", "staff_regional"),
   async (req, res) => {
-    const itemType = req.query.itemType as string | undefined;
-    const itemId = req.query.itemId ? parseInt(req.query.itemId as string) : undefined;
+    const entityType = req.query.itemType as string | undefined;
+    const entityId = req.query.itemId ? parseInt(req.query.itemId as string) : undefined;
 
-    if (!itemType || !["dimension", "key_process", "strategic_initiative"].includes(itemType)) {
+    if (!entityType || !(CATALOG_ENTITY_TYPES as readonly string[]).includes(entityType)) {
       res.status(400).json({ error: "itemType must be one of: dimension, key_process, strategic_initiative" });
       return;
     }
-    if (!itemId || isNaN(itemId)) {
+    if (!entityId || isNaN(entityId)) {
       res.status(400).json({ error: "itemId must be a valid integer" });
       return;
     }
@@ -265,14 +271,14 @@ router.get(
     try {
       const logs = await db
         .select()
-        .from(catalogAuditLogTable)
+        .from(auditLogsTable)
         .where(
           and(
-            eq(catalogAuditLogTable.itemType, itemType),
-            eq(catalogAuditLogTable.itemId, itemId),
+            eq(auditLogsTable.entityType, entityType),
+            eq(auditLogsTable.entityId, entityId),
           ),
         )
-        .orderBy(desc(catalogAuditLogTable.createdAt));
+        .orderBy(desc(auditLogsTable.createdAt));
 
       res.json(logs.map(l => ({
         id: l.id,
@@ -384,9 +390,10 @@ router.patch(
         .set({ active: !row.active })
         .where(eq(dimensionsTable.id, id))
         .returning();
-      await db.insert(catalogAuditLogTable).values({
-        itemType: "dimension",
-        itemId: id,
+      await db.insert(auditLogsTable).values({
+        entityType: "dimension",
+        entityId: id,
+        entityName: updated.name,
         action: updated.active ? "activated" : "deactivated",
         userId: req.session.userId ?? null,
         userName: req.session.userName ?? "unknown",
@@ -414,9 +421,10 @@ router.patch(
         .set({ active: !row.active })
         .where(eq(keyProcessesTable.id, id))
         .returning();
-      await db.insert(catalogAuditLogTable).values({
-        itemType: "key_process",
-        itemId: id,
+      await db.insert(auditLogsTable).values({
+        entityType: "key_process",
+        entityId: id,
+        entityName: updated.name,
         action: updated.active ? "activated" : "deactivated",
         userId: req.session.userId ?? null,
         userName: req.session.userName ?? "unknown",
@@ -444,9 +452,10 @@ router.patch(
         .set({ active: !row.active })
         .where(eq(strategicInitiativesTable.id, id))
         .returning();
-      await db.insert(catalogAuditLogTable).values({
-        itemType: "strategic_initiative",
-        itemId: id,
+      await db.insert(auditLogsTable).values({
+        entityType: "strategic_initiative",
+        entityId: id,
+        entityName: updated.name,
         action: updated.active ? "activated" : "deactivated",
         userId: req.session.userId ?? null,
         userName: req.session.userName ?? "unknown",
