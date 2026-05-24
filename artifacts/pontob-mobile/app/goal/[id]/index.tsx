@@ -53,7 +53,9 @@ interface Initiative {
 interface GoalDetail {
   id: number;
   title: string;
+  dimensionId: number | null;
   dimensionName: string | null;
+  keyProcessId: number | null;
   keyProcessName: string | null;
   kriDescription: string | null;
   currentValue: number | null;
@@ -703,7 +705,18 @@ export default function GoalDetailScreen() {
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Iniciativas</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Iniciativas</Text>
+            {(user?.role === "franqueado" || user?.role === "responsavel_interno") && data.activeInitiativesCount < 3 && (
+              <Pressable
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: colors.primary + "14", borderRadius: colors.radius }}
+                onPress={() => router.push(`/goal/${id}/initiative-new` as Parameters<typeof router.push>[0])}
+              >
+                <Ionicons name="add" size={14} color={colors.primary} />
+                <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.primary }}>Adicionar</Text>
+              </Pressable>
+            )}
+          </View>
           {data.initiatives.length === 0 ? (
             <Text style={s.emptyText}>Nenhuma iniciativa vinculada</Text>
           ) : (
