@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
-  CheckSquare, CalendarCheck, Target, ArrowRightCircle, LayoutDashboard,
+  CheckSquare, CalendarCheck, Target, ArrowRightCircle,
   Bot, X, ChevronRight, ChevronLeft, SkipForward, Clock, ListChecks,
-  Trophy, TrendingUp, AlertCircle, Lightbulb,
+  Trophy, TrendingUp, AlertCircle, Lightbulb, Flag, BarChart3, Layers,
 } from "lucide-react";
 
 interface TourStep {
@@ -13,77 +13,85 @@ interface TourStep {
   description: string;
   tip?: string;
   badge?: string;
+  step?: string;
 }
 
 const STEPS: TourStep[] = [
   {
     icon: <img src="/remax-sc-logo.jpg" alt="Ponto B" className="h-16 mx-auto object-contain" />,
     title: "Bem-vindo ao Método Ponto B!",
-    description: "Plataforma de execução estratégica da RE/MAX SC. Ela transforma metas em hábitos — você registra o que executa, e a plataforma mostra o quanto isso está movendo seus resultados.",
+    description: "Plataforma de execução estratégica da RE/MAX SC. Aqui você transforma o planejamento anual em ações diárias mensuráveis — e seus resultados servem de benchmarking para toda a rede.",
     tip: "O tutorial leva menos de 3 minutos. Pode pular e voltar quando quiser.",
   },
   {
-    icon: <CheckSquare className="h-12 w-12 text-primary mx-auto" />,
-    title: "Rotina diária: comece pela tela Hoje",
-    badge: "Todo dia",
-    description: "Cada manhã, abra a tela Hoje. Ela mostra suas iniciativas programadas para o dia, alertas pendentes e sua pontuação da semana. Em dois minutos você já sabe exatamente o que precisa fazer.",
-    tip: "Tela Hoje → veja o que está no seu radar → execute durante o dia.",
+    icon: <Flag className="h-12 w-12 text-primary mx-auto" />,
+    title: "1º PASSO: Defina sua Visão Anual",
+    badge: "Faça isso primeiro",
+    step: "Planejamento Anual → Visão Anual",
+    description: "Antes de qualquer coisa, acesse Planejamento Anual e registre os números atuais e as metas de final de cada trimestre para os 3 KRIs da rede: Corretores ativos, CREs (contratos de representação) e VGH (volume de vendas em R$).",
+    tip: "Os valores do 4º trimestre (31/Dez) são a sua visão final do ano. Todos os demais indicadores da plataforma se orientam por eles.",
   },
   {
     icon: <Target className="h-12 w-12 text-blue-500 mx-auto" />,
-    title: "Metas: seus grandes objetivos do ciclo",
+    title: "2º PASSO: Crie Metas ligadas à Visão",
     badge: "1x por ciclo",
-    description: "Em Metas você cria os objetivos estratégicos da franquia, ligados a uma dimensão (Pessoas ou Real Estate) e a um KRI — Corretores, CREs ou VGH. Cada meta tem um valor-alvo e um prazo.",
-    tip: "Crie metas realistas com metas numéricas claras. Exemplo: 'Chegar a 25 corretores ativos até dezembro'.",
+    step: "Metas → Nova Meta",
+    description: "Com a visão definida, crie metas estratégicas para cada dimensão (Pessoas ou Real Estate). Cada meta é vinculada a um KRI (Corretores, CREs ou VGH) e a um processo-chave. Defina o valor-alvo e o prazo — a meta é o 'o quê', as iniciativas são o 'como'.",
+    tip: "Exemplo: 'Chegar a 25 corretores ativos até dezembro' → KRI: Corretores → Dimensão: Pessoas → Processo: Recrutamento.",
   },
   {
-    icon: <ListChecks className="h-12 w-12 text-violet-500 mx-auto" />,
-    title: "Iniciativas: as ações que levam às metas",
-    badge: "Máximo 3 ativas",
-    description: "Para cada meta, escolha até 3 iniciativas do Cardápio — atividades comprovadas que movem seus KRIs. Com foco em 3 por vez você executa com mais profundidade. Ao concluir uma, documente o resultado e libere um novo slot.",
-    tip: "Menos iniciativas, mais execução. Qualidade > quantidade.",
-  },
-  {
-    icon: <CalendarCheck className="h-12 w-12 text-emerald-500 mx-auto" />,
-    title: "Check-in Diário: 2 minutos no fim do dia",
-    badge: "Todo dia",
-    description: "Antes de fechar o dia, registre seu check-in diário. Marque quais iniciativas você executou, coloque uma nota sobre o dia e responda às perguntas de reflexão. Vale 20% da sua pontuação — cada dia conta.",
-    tip: "Crie o hábito: todo dia, antes de sair, 2 minutos de check-in.",
+    icon: <Layers className="h-12 w-12 text-violet-500 mx-auto" />,
+    title: "3º PASSO: Priorize no máximo 3 Iniciativas",
+    badge: "Foco é o segredo",
+    step: "Metas → [sua meta] → Adicionar iniciativa",
+    description: "Para cada meta, escolha até 3 iniciativas do Cardápio — ações comprovadas pela rede que movem seus KRIs. Foco em 3 por vez gera execução mais profunda. Ao concluir uma, registre o resultado numérico e libere um novo slot.",
+    tip: "Menos iniciativas, mais resultado. A ciência mostra que atenção dividida por muitas atividades reduz a capacidade de execução em até 40%.",
   },
   {
     icon: <ArrowRightCircle className="h-12 w-12 text-amber-500 mx-auto" />,
-    title: "Planner Semanal: planeje toda segunda-feira",
+    title: "4º PASSO: Planeje a semana toda segunda",
     badge: "Toda semana",
-    description: "Toda segunda, use o Planner Semanal para decidir quais iniciativas você vai priorizar nos próximos 5 dias. Distribua tarefas pelos dias da semana e tenha clareza antes de começar a agir.",
-    tip: "Planner na segunda + check-in diário = semana com direção e registro.",
+    step: "Semana → Planner Semanal",
+    description: "Toda segunda-feira, abra o Planner Semanal. Registre os indicadores diários (Corretores, CREs, VGH) por dia da semana e defina a meta mensal de cada KRI. Ao final da semana, finalize o planner com os gaps identificados e as ações para a próxima semana.",
+    tip: "Planner na segunda + check-in diário = semana com direção e registro completo.",
+  },
+  {
+    icon: <CalendarCheck className="h-12 w-12 text-emerald-500 mx-auto" />,
+    title: "5º PASSO: Check-in diário — 2 min no fim do dia",
+    badge: "Todo dia",
+    step: "Rotina → Check-in Diário",
+    description: "Antes de fechar o dia, registre quais iniciativas você executou, atualize os KPIs e deixe uma nota de reflexão. Vale 20% da sua pontuação — cada dia sem registro conta negativamente na consistência.",
+    tip: "Crie o hábito: todo dia, antes de sair, 2 minutos de check-in. Consistência bate intensidade.",
   },
   {
     icon: <CalendarCheck className="h-12 w-12 text-blue-400 mx-auto" />,
-    title: "Check-in Semanal: revise sexta-feira",
+    title: "Check-in Semanal: revise na sexta",
     badge: "Toda semana",
-    description: "Na sexta (ou fim de semana), faça o check-in semanal. Reflita sobre o que avançou, o que travou e ajuste o plano para a semana seguinte. É o momento de conectar execução com estratégia.",
-    tip: "Responda honestamente — são seus dados, eles contam a história real da semana.",
+    step: "Semana → Check-in Semanal",
+    description: "Na sexta (ou fim de semana), faça o check-in semanal. Reflita sobre o progresso das iniciativas, o que travou e ajuste o plano. É o momento de conectar execução semanal com a estratégia anual.",
+    tip: "Responda honestamente — são seus dados, eles constroem o histórico real da sua franquia.",
   },
   {
     icon: <Clock className="h-12 w-12 text-rose-500 mx-auto" />,
-    title: "Check-in Mensal: obrigatório antes do próximo mês",
+    title: "Check-in Mensal: feche cada mês",
     badge: "Todo mês",
-    description: "No fechamento do mês, registre o check-in mensal antes de avançar para o próximo período. Registre os resultados das iniciativas concluídas, analise os KRIs (Corretores, CREs, VGH) e defina os focos do mês seguinte.",
-    tip: "Ao concluir uma iniciativa no check-in mensal, documente o resultado numérico — isso gera o ranking de melhores iniciativas da rede.",
+    step: "Metas → Check-in Mensal",
+    description: "No fechamento do mês, registre os resultados das iniciativas concluídas com o valor numérico alcançado, analise os KRIs versus as metas do trimestre e defina os focos do mês seguinte.",
+    tip: "Ao registrar o resultado de uma iniciativa concluída, esse dado entra no benchmarking da rede — ajudando outras franquias a escolherem as melhores iniciativas.",
   },
   {
-    icon: <TrendingUp className="h-12 w-12 text-emerald-600 mx-auto" />,
+    icon: <BarChart3 className="h-12 w-12 text-emerald-600 mx-auto" />,
     title: "Sua pontuação: como é calculada",
     badge: "Entenda o score",
-    description: "Sua nota final combina 4 fatores: progresso nos KRIs (40%), execução de iniciativas (30%), regularidade nos check-ins (20%) e atualização de KPIs (10%). Quem executa consistentemente mês após mês atinge as maiores pontuações.",
+    description: "Sua nota combina 4 fatores: progresso nos KRIs (40%), execução de iniciativas (30%), regularidade nos check-ins (20%) e atualização de KPIs (10%). Quem mantém a rotina mês a mês alcança as maiores pontuações.",
     tip: "Consistência bate intensidade. Check-ins todos os dias valem mais do que uma semana intensa seguida de silêncio.",
   },
   {
     icon: <Trophy className="h-12 w-12 text-amber-400 mx-auto" />,
-    title: "Dashboard e Ranking: acompanhe sua evolução",
-    badge: "Visão geral",
-    description: "O Dashboard mostra sua pontuação geral, histórico mensal e comparativo com as metas. O Ranking mostra como sua franquia se posiciona na rede RE/MAX SC — use como motivação, não como pressão.",
-    tip: "Acesse o Histórico para ver sua evolução ao longo dos meses. Tendência importa mais do que a nota de hoje.",
+    title: "Ranking e Benchmarking da rede",
+    badge: "Visão comparativa",
+    description: "O Ranking mostra como sua franquia se posiciona na rede RE/MAX SC em pontuação, execução e consistência. Os resultados que você registra nos check-ins alimentam o benchmarking de iniciativas — mostrando quais ações geraram mais resultado em cada KRI para todas as franquias.",
+    tip: "Use o ranking como aprendizado: as franquias líderes mostram quais iniciativas funcionam melhor para cada KRI da rede.",
   },
   {
     icon: <AlertCircle className="h-12 w-12 text-orange-500 mx-auto" />,
@@ -96,15 +104,21 @@ const STEPS: TourStep[] = [
     icon: <Lightbulb className="h-12 w-12 text-yellow-500 mx-auto" />,
     title: "Cardápio: iniciativas comprovadas pela rede",
     badge: "Escolha com estratégia",
-    description: "O Cardápio reúne todas as iniciativas disponíveis, organizadas por dimensão e processo-chave. Cada iniciativa tem uma descrição, o KRI que impacta e o esforço estimado. Escolha as que mais se encaixam no momento da sua franquia.",
-    tip: "Priorize iniciativas com alto impacto no KRI que está mais abaixo da meta.",
+    description: "O Cardápio reúne todas as iniciativas disponíveis, organizadas por dimensão e processo-chave. Cada uma descreve o KRI que impacta e o esforço estimado. As iniciativas com mais resultados registrados na rede aparecem com destaque.",
+    tip: "Priorize iniciativas com alto impacto no KRI que está mais abaixo da sua meta do trimestre.",
   },
   {
     icon: <Bot className="h-12 w-12 text-rose-500 mx-auto" />,
     title: "Assistente IA: dúvida? Pergunte!",
     badge: "Sempre disponível",
-    description: "O Assistente IA (botão no rodapé do menu) está disponível a qualquer hora. Pergunte sobre funcionalidades, peça sugestões de iniciativas, entenda sua pontuação ou tire qualquer dúvida sobre a plataforma.",
-    tip: "Dica: pergunte 'Qual iniciativa devo priorizar para aumentar meu VGH este mês?'",
+    description: "O Assistente IA está disponível a qualquer hora no menu lateral. Pergunte sobre funcionalidades, peça sugestões de iniciativas para o seu momento ou entenda sua pontuação.",
+    tip: "Dica: pergunte 'Qual iniciativa devo priorizar para aumentar meu VGH este trimestre?'",
+  },
+  {
+    icon: <ListChecks className="h-12 w-12 text-primary mx-auto" />,
+    title: "Resumo: o fluxo completo",
+    description: "① Visão Anual com metas por trimestre → ② Metas ligadas aos KRIs → ③ Máx. 3 iniciativas com foco → ④ Planner toda segunda → ⑤ Check-in todo dia → ⑥ Check-in semanal na sexta → ⑦ Check-in mensal no fechamento → ⑧ Resultado alimenta o ranking da rede.",
+    tip: "Comece pela Visão Anual agora. Leva menos de 5 minutos e orienta tudo o que vem depois.",
   },
 ];
 
@@ -119,7 +133,7 @@ export function useTour() {
 }
 
 function getTourKey(userId: number) {
-  return `pontob_tour_v2_${userId}`;
+  return `pontob_tour_v3_${userId}`;
 }
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
@@ -204,7 +218,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                 </span>
               )}
               <h2 className="text-lg font-bold text-foreground leading-snug">{current.title}</h2>
-              <p className="text-muted-foreground text-sm leading-relaxed">{current.description}</p>
+              {current.step && (
+                <p className="text-[10px] font-mono font-medium text-muted-foreground/60 bg-muted/40 rounded px-2 py-0.5 inline-block">
+                  {current.step}
+                </p>
+              )}
+              <p className="text-muted-foreground text-sm leading-relaxed mt-1">{current.description}</p>
             </div>
             {current.tip && (
               <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-left">

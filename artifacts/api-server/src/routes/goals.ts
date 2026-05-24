@@ -967,4 +967,101 @@ router.get("/trash", requireAuth, async (req, res) => {
   }
 });
 
+// GET /ranking/initiatives — benchmarking of catalog initiatives across all franchises
+router.get("/ranking/initiatives", requireAuth, async (req, res) => {
+  try {
+    const { kri, keyProcessId } = req.query;
+
+    const kriFilter = kri ? sql`AND si.kri = ${kri as string}` : sql``;
+    const kpFilter = keyProcessId ? sql`AND si.key_process_id = ${parseInt(keyProcessId as string)}` : sql``;
+
+    const rows = await db.execute(sql`
+      SELECT
+        gi.strategic_initiative_id,
+        COALESCE(si.name, gi.custom_name)          AS initiative_name,
+        si.kri,
+        si.kpi,
+        kp.name                                    AS key_process_name,
+        d.name                                     AS dimension_name,
+        COUNT(DISTINCT g.franchise_id)             AS adoption_count,
+        COUNT(CASE WHEN gi.status = 'concluida' THEN 1 END) AS completion_count,
+        ROUND(AVG(gi.result_value) FILTER (WHERE gi.result_value IS NOT NULL)::numeric, 2) AS avg_result_value,
+        MAX(gi.result_value)                       AS top_result_value,
+        si.key_process_id
+      FROM goal_initiatives gi
+      JOIN goals g ON gi.goal_id = g.id
+      LEFT JOIN strategic_initiatives si ON gi.strategic_initiative_id = si.id
+      LEFT JOIN key_processes kp ON si.key_process_id = kp.id
+      LEFT JOIN dimensions d ON kp.dimension_id = d.id
+      WHERE gi.deleted_at IS NULL
+        AND g.deleted_at IS NULL
+        AND gi.strategic_initiative_id IS NOT NULL
+        ${kriFilter}
+        ${kpFilter}
+      GROUP BY
+        gi.strategic_initiative_id, si.name, gi.custom_name,
+        si.kri, si.kpi, kp.name, d.name, si.key_process_id
+      ORDER BY adoption_count DESC, completion_count DESC
+      LIMIT 60
+    `);
+
+    const initiativeIds = (rows.rows as any[])
+      .map((r: any) => r.strategic_initiative_id)
+      .filter(Boolean);
+
+    let franchiseRows: any[] = [];
+    if (initiativeIds.length > 0) {
+      const fr = await db.execute(sql`
+        SELECT
+          gi.strategic_initiative_id,
+          f.name  AS franchise_name,
+          gi.result_value,
+          gi.result_unit,
+          gi.actual_result,
+          gi.status
+        FROM goal_initiatives gi
+        JOIN goals g    ON gi.goal_id = g.id
+        JOIN franchises f ON g.franchise_id = f.id
+        WHERE gi.deleted_at IS NULL
+          AND g.deleted_at IS NULL
+          AND gi.strategic_initiative_id = ANY(ARRAY[${sql.join(initiativeIds.map(id => sql`${id}`), sql`, `)}]::int[])
+        ORDER BY gi.result_value DESC NULLS LAST
+      `);
+      franchiseRows = fr.rows as any[];
+    }
+
+    const byInit = new Map<number, any[]>();
+    for (const r of franchiseRows) {
+      const id = r.strategic_initiative_id;
+      if (!byInit.has(id)) byInit.set(id, []);
+      byInit.get(id)!.push(r);
+    }
+
+    const result = (rows.rows as any[]).map((r: any) => ({
+      initiativeId: r.strategic_initiative_id,
+      initiativeName: r.initiative_name,
+      kri: r.kri ?? null,
+      kpi: r.kpi ?? null,
+      keyProcessName: r.key_process_name ?? null,
+      dimensionName: r.dimension_name ?? null,
+      adoptionCount: parseInt(r.adoption_count) || 0,
+      completionCount: parseInt(r.completion_count) || 0,
+      avgResultValue: r.avg_result_value != null ? parseFloat(r.avg_result_value) : null,
+      topResultValue: r.top_result_value != null ? parseFloat(r.top_result_value) : null,
+      franchiseResults: (byInit.get(r.strategic_initiative_id) ?? []).map((fr: any) => ({
+        franchiseName: fr.franchise_name,
+        resultValue: fr.result_value != null ? parseFloat(fr.result_value) : null,
+        resultUnit: fr.result_unit ?? null,
+        actualResult: fr.actual_result ?? null,
+        status: fr.status,
+      })),
+    }));
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
