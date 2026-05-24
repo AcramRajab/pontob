@@ -452,6 +452,20 @@ paths:
                 items:
                   $ref: "#/components/schemas/StrategicInitiative"
 
+  /catalog-audit-logs/export:
+    get:
+      operationId: exportCatalogAuditLogs
+      tags: [dimensions]
+      summary: Export full catalog audit log as CSV (admin/staff only)
+      responses:
+        "200":
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
   /catalog-audit-logs:
     get:
       operationId: listCatalogAuditLogs

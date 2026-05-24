@@ -166,6 +166,84 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
   }
 });
 
+// ── Admin: catalog audit log CSV export ──────────────────────────────────────
+
+router.get(
+  "/catalog-audit-logs/export",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    try {
+      const logs = await db
+        .select()
+        .from(catalogAuditLogTable)
+        .orderBy(desc(catalogAuditLogTable.createdAt));
+
+      const dimIds = [...new Set(logs.filter(l => l.itemType === "dimension").map(l => l.itemId))];
+      const kpIds = [...new Set(logs.filter(l => l.itemType === "key_process").map(l => l.itemId))];
+      const siIds = [...new Set(logs.filter(l => l.itemType === "strategic_initiative").map(l => l.itemId))];
+
+      const [dims, kps, sis] = await Promise.all([
+        dimIds.length > 0
+          ? db.select({ id: dimensionsTable.id, name: dimensionsTable.name }).from(dimensionsTable).where(inArray(dimensionsTable.id, dimIds))
+          : Promise.resolve([]),
+        kpIds.length > 0
+          ? db.select({ id: keyProcessesTable.id, name: keyProcessesTable.name }).from(keyProcessesTable).where(inArray(keyProcessesTable.id, kpIds))
+          : Promise.resolve([]),
+        siIds.length > 0
+          ? db.select({ id: strategicInitiativesTable.id, name: strategicInitiativesTable.name }).from(strategicInitiativesTable).where(inArray(strategicInitiativesTable.id, siIds))
+          : Promise.resolve([]),
+      ]);
+
+      const dimMap = new Map(dims.map(d => [d.id, d.name]));
+      const kpMap = new Map(kps.map(k => [k.id, k.name]));
+      const siMap = new Map(sis.map(s => [s.id, s.name]));
+
+      const typeLabel: Record<string, string> = {
+        dimension: "Dimensão",
+        key_process: "Processo-chave",
+        strategic_initiative: "Iniciativa Estratégica",
+      };
+
+      const actionLabel: Record<string, string> = {
+        activated: "Ativado",
+        deactivated: "Desativado",
+      };
+
+      function getItemName(itemType: string, itemId: number): string {
+        if (itemType === "dimension") return dimMap.get(itemId) ?? `ID ${itemId}`;
+        if (itemType === "key_process") return kpMap.get(itemId) ?? `ID ${itemId}`;
+        return siMap.get(itemId) ?? `ID ${itemId}`;
+      }
+
+      function csvCell(val: string): string {
+        if (val.includes(",") || val.includes('"') || val.includes("\n") || val.includes("\r")) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }
+
+      const headers = ["Tipo", "Nome", "Ação", "Alterado por", "Email", "Data/Hora"];
+      const rows = logs.map(l => [
+        typeLabel[l.itemType] ?? l.itemType,
+        getItemName(l.itemType, l.itemId),
+        actionLabel[l.action] ?? l.action,
+        l.userName,
+        l.userEmail,
+        l.createdAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+      ]);
+
+      const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", 'attachment; filename="historico-catalogo.csv"');
+      res.send("\uFEFF" + csv);
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
 // ── Admin: catalog audit log history ─────────────────────────────────────────
 
 router.get(

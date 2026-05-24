@@ -1888,6 +1888,82 @@ export function useListStrategicInitiatives<
 }
 
 /**
+ * @summary Export full catalog audit log as CSV (admin/staff only)
+ */
+export const getExportCatalogAuditLogsUrl = () => {
+  return `/api/catalog-audit-logs/export`;
+};
+
+export const exportCatalogAuditLogs = async (
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getExportCatalogAuditLogsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportCatalogAuditLogsQueryKey = () => {
+  return [`/api/catalog-audit-logs/export`] as const;
+};
+
+export const getExportCatalogAuditLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getExportCatalogAuditLogsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportCatalogAuditLogs>>
+  > = ({ signal }) => exportCatalogAuditLogs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportCatalogAuditLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportCatalogAuditLogs>>
+>;
+export type ExportCatalogAuditLogsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Export full catalog audit log as CSV (admin/staff only)
+ */
+
+export function useExportCatalogAuditLogs<
+  TData = Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportCatalogAuditLogsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary List full audit log history for a catalog item (admin/staff only)
  */
 export const getListCatalogAuditLogsUrl = (

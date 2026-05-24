@@ -33,7 +33,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
-import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock, History } from "lucide-react";
+import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock, History, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -167,6 +167,20 @@ export default function Catalog() {
     } finally {
       setImpactCheckingId(null);
     }
+  }
+
+  async function handleExportCsv() {
+    const res = await fetch("/api/catalog-audit-logs/export", { credentials: "include" });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "historico-catalogo.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   function confirmDeactivation() {
@@ -524,8 +538,20 @@ export default function Catalog() {
         {/* ── Catalog Management Tab (admin only) ── */}
         {isAdmin && (
           <TabsContent value="management" className="mt-6 space-y-6">
-            <div className="rounded-lg border bg-amber-50 border-amber-200 p-4 text-sm text-amber-800">
-              Aqui você pode ver todos os itens do catálogo, incluindo os inativos, e reativar qualquer item desativado por engano.
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="rounded-lg border bg-amber-50 border-amber-200 p-4 text-sm text-amber-800 flex-1">
+                Aqui você pode ver todos os itens do catálogo, incluindo os inativos, e reativar qualquer item desativado por engano.
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={handleExportCsv}
+                data-testid="export-audit-log-btn"
+              >
+                <Download className="h-4 w-4" />
+                Exportar CSV
+              </Button>
             </div>
 
             <div className="flex flex-col gap-3">
