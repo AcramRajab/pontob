@@ -194,6 +194,9 @@ export default function Planner() {
   const franchiseId: number | null = ctxFranchiseId ?? null;
   const weekKey = `${franchiseId}-${weekStartStr}`;
   const currentYear = new Date().getFullYear();
+  const plannerYear = weekStart.getFullYear();
+  const plannerMonth = weekStart.getMonth() + 1;
+  const plannerMonthName = weekStart.toLocaleString("pt-BR", { month: "long", year: "numeric" });
 
   const { data: ytdData } = useQuery({
     queryKey: ["planner-ytd", franchiseId, currentYear],
@@ -205,6 +208,20 @@ export default function Planner() {
         ytd: { corretores: number; contratos: number; vendas: number };
         targets: { corretores: number | null; contratos: number | null; vendas: number | null };
       }>;
+    },
+    enabled: !!franchiseId,
+  });
+
+  const { data: monthlySummary } = useQuery<{
+    year: number; month: number;
+    realizado: Record<string, number>;
+    planejado: Record<string, number | null>;
+  }>({
+    queryKey: ["planner-monthly", franchiseId, plannerYear, plannerMonth],
+    queryFn: async () => {
+      const res = await fetch(`/api/planner/monthly-summary?franchiseId=${franchiseId}&year=${plannerYear}&month=${plannerMonth}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
     },
     enabled: !!franchiseId,
   });
@@ -720,6 +737,69 @@ export default function Planner() {
               </div>
             </div>
           ))}
+
+          {/* Resultado do Mês */}
+          {franchiseId && (
+            <div className="rounded-2xl border bg-card overflow-hidden">
+              <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold capitalize">Resultado de {plannerMonthName}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Realizado vs Meta mensal</span>
+              </div>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { key: "corretores_entraram", label: "Corretores entraram", Icon: Users, barClass: "bg-blue-400", overClass: "bg-blue-500", textClass: "text-blue-600" },
+                  { key: "novos_contratos_representacao", label: "Novos CREs", Icon: Building2, barClass: "bg-violet-400", overClass: "bg-violet-500", textClass: "text-violet-600" },
+                  { key: "venda_assinada", label: "VGH (Vendas)", Icon: TrendingUp, barClass: "bg-emerald-400", overClass: "bg-emerald-500", textClass: "text-emerald-600" },
+                ].map(({ key, label, Icon, barClass, overClass, textClass }) => {
+                  const isVghKey = key === "venda_assinada";
+                  const realizado = monthlySummary?.realizado?.[key] ?? 0;
+                  const planejado = monthlySummary?.planejado?.[key] ?? null;
+                  const p = planejado && planejado > 0 ? Math.min(Math.round((realizado / planejado) * 100), 100) : null;
+                  const fmt = (n: number) => isVghKey
+                    ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+                    : String(Math.round(n));
+                  const isOver = p !== null && p >= 100;
+                  return (
+                    <div key={key} className="rounded-xl border bg-muted/20 p-4 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+                      </div>
+                      <div className="text-2xl font-bold tabular-nums">
+                        {realizado > 0 ? fmt(realizado) : <span className="text-muted-foreground/40 text-xl">—</span>}
+                      </div>
+                      {planejado !== null ? (
+                        <>
+                          <div className="text-xs text-muted-foreground">Meta: {fmt(planejado)}</div>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2">
+                            <div
+                              className={cn("h-full rounded-full transition-all", isOver ? overClass : barClass)}
+                              style={{ width: `${p ?? 0}%` }}
+                            />
+                          </div>
+                          {p !== null && (
+                            <div className={cn("text-xs font-semibold", isOver ? textClass : "text-muted-foreground")}>
+                              {p}% da meta{isOver ? " ✓" : ""}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-xs text-muted-foreground/60 italic">Meta não definida</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="px-5 py-2 border-t bg-muted/20">
+                <p className="text-[11px] text-muted-foreground">
+                  Atualizado automaticamente a cada registro de evento · Semanas com segunda-feira em {plannerMonthName.split(" ")[0]}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Gaps & Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">

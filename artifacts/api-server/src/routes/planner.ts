@@ -578,4 +578,68 @@ router.get("/planner/history", requireAuth, async (req, res) => {
   }
 });
 
+// GET /planner/monthly-summary?franchiseId=&year=&month=
+router.get("/planner/monthly-summary", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    const now = new Date();
+    const year = req.query.year ? parseInt(req.query.year as string) : now.getFullYear();
+    const month = req.query.month ? parseInt(req.query.month as string) : now.getMonth() + 1;
+    const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
+
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional" || role === "socio")
+      ? paramFranchiseId
+      : req.session.franchiseId ?? undefined;
+
+    if (!effectiveFranchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
+    if (!canAccessFranchise(req, effectiveFranchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const firstDay = `${year}-${String(month).padStart(2, "0")}-01`;
+    const lastDayDate = new Date(year, month, 0);
+    const lastDay = `${year}-${String(month).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
+
+    const [sumRows, metaRows] = await Promise.all([
+      db
+        .select({
+          indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+          total: sql<number>`COALESCE(SUM(${weeklyPlannerEntriesTable.value}), 0)`.as("total"),
+        })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+          gte(weeklyPlannerEntriesTable.weekStartDate, firstDay),
+          lte(weeklyPlannerEntriesTable.weekStartDate, lastDay),
+        ))
+        .groupBy(weeklyPlannerEntriesTable.indicatorKey),
+      db
+        .select({
+          indicatorKey: weeklyPlannerEntriesTable.indicatorKey,
+          meta: weeklyPlannerEntriesTable.meta,
+        })
+        .from(weeklyPlannerEntriesTable)
+        .where(and(
+          eq(weeklyPlannerEntriesTable.franchiseId, effectiveFranchiseId),
+          gte(weeklyPlannerEntriesTable.weekStartDate, firstDay),
+          lte(weeklyPlannerEntriesTable.weekStartDate, lastDay),
+        ))
+        .orderBy(weeklyPlannerEntriesTable.weekStartDate),
+    ]);
+
+    const realizado: Record<string, number> = {};
+    for (const row of sumRows) {
+      realizado[row.indicatorKey] = Number(row.total);
+    }
+
+    const planejado: Record<string, number | null> = {};
+    for (const row of metaRows) {
+      if (row.meta != null) planejado[row.indicatorKey] = Number(row.meta);
+    }
+
+    res.json({ year, month, franchiseId: effectiveFranchiseId, realizado, planejado });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
