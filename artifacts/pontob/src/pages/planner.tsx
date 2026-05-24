@@ -816,40 +816,52 @@ export default function Planner() {
                 <div className="p-4 space-y-3">
 
                   {/* BLOCO 1 — PESSOAS */}
-                  <div className="rounded-xl border border-blue-200/60 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-800/40 overflow-hidden">
-                    <div className="px-4 py-2 border-b border-blue-200/60 dark:border-blue-800/40 flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400">Pessoas</span>
-                    </div>
-                    <div className="p-3 grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
-                      {/* Entradas */}
-                      <StatCell label="Corretores ↑" value={corrEntram} Icon={ArrowUp} colorClass="text-blue-500" />
-                      <StatCell label="Estagiários ↑" value={estEntram} Icon={ArrowUp} colorClass="text-sky-500" />
-                      {/* Saídas */}
-                      <StatCell label="Corretores ↓" value={corrSaem} Icon={ArrowDown} colorClass="text-red-500" />
-                      <StatCell label="Estagiários ↓" value={estSaem} Icon={ArrowDown} colorClass="text-rose-400" />
-                      {/* Net Gain */}
+                  {(() => {
+                    const netCorr = corrEntram - corrSaem;
+                    const netEst = estEntram - estSaem;
+                    const netTotal = netCorr + netEst;
+                    const NetChip = ({ label, value, sub }: { label: string; value: number; sub: string }) => (
                       <div className={cn(
-                        "rounded-lg px-3 py-2 border col-span-2 sm:col-span-1 flex flex-col gap-0.5",
-                        netGain > 0 ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40"
-                          : netGain < 0 ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800/40"
+                        "rounded-lg px-3 py-2 border flex flex-col gap-0.5",
+                        value > 0 ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40"
+                          : value < 0 ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800/40"
                             : "bg-muted/30 border-border"
                       )}>
                         <div className={cn("flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
-                          netGain > 0 ? "text-emerald-600" : netGain < 0 ? "text-red-600" : "text-muted-foreground"
+                          value > 0 ? "text-emerald-600" : value < 0 ? "text-red-600" : "text-muted-foreground"
                         )}>
-                          <Minus className="h-3 w-3" />
-                          Net Gain
+                          <Minus className="h-3 w-3" />{label}
                         </div>
                         <span className={cn("text-2xl font-bold tabular-nums",
-                          netGain > 0 ? "text-emerald-600" : netGain < 0 ? "text-red-600" : "text-muted-foreground"
-                        )}>
-                          {fmtN(netGain, true)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">saldo líquido</span>
+                          value > 0 ? "text-emerald-600" : value < 0 ? "text-red-600" : "text-muted-foreground"
+                        )}>{fmtN(value, true)}</span>
+                        <span className="text-[10px] text-muted-foreground">{sub}</span>
                       </div>
-                    </div>
-                  </div>
+                    );
+                    return (
+                      <div className="rounded-xl border border-blue-200/60 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-800/40 overflow-hidden">
+                        <div className="px-4 py-2 border-b border-blue-200/60 dark:border-blue-800/40 flex items-center gap-2">
+                          <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400">Pessoas</span>
+                        </div>
+                        <div className="p-3 space-y-3">
+                          {/* Linha 1: movimentação */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <StatCell label="Corretores ↑" value={corrEntram} Icon={ArrowUp} colorClass="text-blue-500" />
+                            <StatCell label="Corretores ↓" value={corrSaem} Icon={ArrowDown} colorClass="text-red-500" />
+                            <StatCell label="Estagiários ↑" value={estEntram} Icon={ArrowUp} colorClass="text-sky-500" />
+                            <StatCell label="Estagiários ↓" value={estSaem} Icon={ArrowDown} colorClass="text-rose-400" />
+                          </div>
+                          {/* Linha 2: saldos */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <NetChip label="Net Gain Corretores" value={netCorr} sub="entradas − saídas" />
+                            <NetChip label="Net Gain Estagiários" value={netEst} sub="entradas − saídas" />
+                            <NetChip label="Net Gain Força de Vendas" value={netTotal} sub="corretores + estagiários" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* BLOCO 2 — CREs */}
                   <div className="rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-950/20 dark:border-violet-800/40 overflow-hidden">
