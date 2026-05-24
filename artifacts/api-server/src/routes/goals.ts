@@ -70,14 +70,38 @@ function calcRisk(goal: any) {
 }
 
 async function enrichGoal(g: any) {
-  const activeInitiatives = await db
-    .select({ count: sql<number>`count(*)`.mapWith(Number) })
-    .from(goalInitiativesTable)
-    .where(and(
-      eq(goalInitiativesTable.goalId, g.id),
-      eq(goalInitiativesTable.status, "ativa"),
-      isNull(goalInitiativesTable.deletedAt),
-    ));
+  const [activeInitiativesResult, kpisResult, initiativesResult] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)`.mapWith(Number) })
+      .from(goalInitiativesTable)
+      .where(and(
+        eq(goalInitiativesTable.goalId, g.id),
+        eq(goalInitiativesTable.status, "ativa"),
+        isNull(goalInitiativesTable.deletedAt),
+      )),
+    db
+      .select({
+        id: kpisTable.id,
+        name: kpisTable.name,
+        currentValue: kpisTable.currentValue,
+        targetValue: kpisTable.targetValue,
+        unit: kpisTable.unit,
+      })
+      .from(kpisTable)
+      .where(and(eq(kpisTable.goalId, g.id), isNull(kpisTable.deletedAt)))
+      .orderBy(kpisTable.createdAt),
+    db
+      .select({
+        id: goalInitiativesTable.id,
+        initiativeName: strategicInitiativesTable.name,
+        status: goalInitiativesTable.status,
+        progressPercentage: goalInitiativesTable.progressPercentage,
+      })
+      .from(goalInitiativesTable)
+      .leftJoin(strategicInitiativesTable, eq(goalInitiativesTable.strategicInitiativeId, strategicInitiativesTable.id))
+      .where(and(eq(goalInitiativesTable.goalId, g.id), isNull(goalInitiativesTable.deletedAt)))
+      .orderBy(goalInitiativesTable.createdAt),
+  ]);
 
   return {
     id: g.id,
@@ -101,7 +125,9 @@ async function enrichGoal(g: any) {
     progressPercentage: calcProgress(g.currentValue, g.targetValue),
     riskStatus: calcRisk(g),
     score: g.score,
-    activeInitiativesCount: activeInitiatives[0]?.count ?? 0,
+    activeInitiativesCount: activeInitiativesResult[0]?.count ?? 0,
+    kpis: kpisResult,
+    initiatives: initiativesResult,
     createdAt: g.createdAt instanceof Date ? g.createdAt.toISOString() : g.createdAt,
   };
 }

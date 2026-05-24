@@ -1,7 +1,7 @@
 import { useAuth } from "@/lib/auth";
 import { useListGoals, getListGoalsQueryKey, useDeleteGoal } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Target, Trash2 } from "lucide-react";
+import { Loader2, Plus, Target, Trash2, BarChart2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -205,6 +205,78 @@ export default function Goals() {
                           </span>
                         </div>
                       </div>
+
+                      {/* KPIs & Initiatives panel */}
+                      {(() => {
+                        const kpis = (goal as any).kpis ?? [];
+                        const initiatives = (goal as any).initiatives ?? [];
+                        if (kpis.length === 0 && initiatives.length === 0) return null;
+                        return (
+                          <div className="border-t pt-3 space-y-2.5">
+                            {kpis.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <BarChart2 className="h-3 w-3 text-muted-foreground/60" />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">KPIs salvos</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {kpis.map((k: any) => (
+                                    <span
+                                      key={k.id}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/5 border border-primary/15 text-[11px] text-foreground"
+                                    >
+                                      <span className="font-medium">{k.name}</span>
+                                      {k.targetValue != null && (
+                                        <span className="text-muted-foreground">
+                                          · {k.currentValue ?? 0}/{k.targetValue}{k.unit ? ` ${k.unit}` : ""}
+                                        </span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {initiatives.length > 0 && (
+                              <div>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <Zap className="h-3 w-3 text-muted-foreground/60" />
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Iniciativas salvas</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {initiatives.map((i: any) => {
+                                    const statusCls: Record<string, string> = {
+                                      ativa: "bg-primary/5 border-primary/15 text-primary",
+                                      em_andamento: "bg-blue-50 border-blue-200 text-blue-700",
+                                      concluida: "bg-green-50 border-green-200 text-green-700",
+                                      pausada: "bg-yellow-50 border-yellow-200 text-yellow-700",
+                                      cancelada: "bg-red-50 border-red-200 text-red-600",
+                                    };
+                                    const statusLbl: Record<string, string> = {
+                                      ativa: "Ativa", em_andamento: "Em andamento",
+                                      concluida: "Concluída", pausada: "Pausada", cancelada: "Cancelada",
+                                    };
+                                    return (
+                                      <span
+                                        key={i.id}
+                                        className={cn(
+                                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px]",
+                                          statusCls[i.status] ?? "bg-muted border-border text-muted-foreground"
+                                        )}
+                                      >
+                                        <span className="font-medium truncate max-w-[200px]">{i.initiativeName ?? "Iniciativa"}</span>
+                                        <span className="opacity-60">· {statusLbl[i.status] ?? i.status}</span>
+                                        {i.progressPercentage != null && (
+                                          <span className="opacity-60">· {i.progressPercentage}%</span>
+                                        )}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                     </div>
                   </CardContent>
