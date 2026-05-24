@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Pencil, History } from "lucide-react";
+import { CheckCircle2, Target, Pencil, History } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
