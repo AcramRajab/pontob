@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -44,6 +45,7 @@ export default function GoalsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
@@ -200,7 +202,10 @@ export default function GoalsScreen() {
     const statusColor = getStatusColor(g.status, g.riskStatus);
     const pct = Math.min(g.progressPercentage, 100);
     return (
-      <View style={s.goalCard}>
+      <Pressable
+        style={({ pressed }) => [s.goalCard, pressed && { opacity: 0.75 }]}
+        onPress={() => router.push(`/goal/${g.id}` as Parameters<typeof router.push>[0])}
+      >
         <View style={s.goalTop}>
           <Text style={s.goalTitle} numberOfLines={2}>
             {g.title}
@@ -237,7 +242,7 @@ export default function GoalsScreen() {
             <Text style={s.scoreText}>{g.score}</Text>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 

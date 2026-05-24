@@ -46,6 +46,7 @@ function AuthGate() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="goal/[id]" options={{ headerShown: false }} />
     </Stack>
   );
 }
