@@ -19,10 +19,6 @@ const SEED_USER_EMAILS = USER_SEED_CONFIG.map(u => u.email);
 async function seed() {
   console.log(`Seeding database${RESET ? " (reset mode — tables will be cleared first)" : ""}...`);
 
-  // ── Pre-seed validation (runs before any DB writes) ─────────────────────────
-  // Validates the same data that will be written — same object, no drift risk.
-  validateSeedData(USER_SEED_CONFIG, PERMANENTLY_DEACTIVATED_EMAILS);
-
   if (RESET) {
     console.log("Clearing catalog tables with cascade...");
     await db.execute(
@@ -70,8 +66,7 @@ async function seed() {
     hashMap.set(pw, await bcrypt.hash(pw, 10));
   }
 
-  // Derive DB insert rows directly from USER_SEED_CONFIG — the same source
-  // that was validated above. There is no separate copy that could diverge.
+  // Build the exact rows that will be written to the users table.
   const userData = USER_SEED_CONFIG.map(u => ({
     name:         u.name,
     email:        u.email,
@@ -82,6 +77,10 @@ async function seed() {
       : null,
     active:       u.active,
   }));
+
+  // Validate against the actual insert rows — not a separate copy — so there
+  // is no way for the validated data to diverge from what reaches the DB.
+  validateSeedData(userData, PERMANENTLY_DEACTIVATED_EMAILS);
 
   for (const u of userData) {
     await db
