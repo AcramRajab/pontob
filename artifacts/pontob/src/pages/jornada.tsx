@@ -105,10 +105,10 @@ export default function Jornada() {
   const [feedbackMap, setFeedbackMap] = useState<Record<number, string>>({});
 
   const fetchData = useCallback(async () => {
+    if (!franchiseId) return;
     setLoading(true); setError(null);
     try {
-      const params = new URLSearchParams({ year: String(year) });
-      if (franchiseId) params.set("franchiseId", String(franchiseId));
+      const params = new URLSearchParams({ year: String(year), franchiseId: String(franchiseId) });
       const r = await fetch(`/api/journey?${params}`, { credentials: "include" });
       if (!r.ok) throw new Error(await r.text());
       setData(await r.json());

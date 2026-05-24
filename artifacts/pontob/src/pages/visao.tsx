@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -257,7 +259,7 @@ export default function Visao() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const franchiseId = user?.franchiseId;
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const [year, setYear] = useState(new Date().getFullYear());
   const [editingStatement, setEditingStatement] = useState(false);
   const [statementDraft, setStatementDraft] = useState("");
@@ -369,7 +371,10 @@ export default function Visao() {
     [franchiseId, year, getActual, saveActual]
   );
 
-  const franchiseName = user?.franchiseName ?? "Franquia";
+  const franchiseName =
+    (isAdmin || isSocio)
+      ? ((franchises as any[]).find((f: any) => f.id === franchiseId)?.name ?? "Selecione uma franquia")
+      : (user?.franchiseName ?? "Franquia");
   const hasStatement = !!data?.visao?.statement;
   const currentYear = new Date().getFullYear();
 
@@ -418,6 +423,19 @@ export default function Visao() {
           </Button>
         </div>
       </div>
+
+      {/* Franchise picker (admin / sócio com múltiplas franquias) */}
+      {(isAdmin || isSocio) && (franchises as any[]).length > 1 && (
+        <FranchisePicker
+          franchises={franchises as any[]}
+          value={isSocio ? socioFranchiseId : adminFranchiseId}
+          onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId}
+        />
+      )}
+
+      {!franchiseId && (
+        <AdminEmptyState message="Selecione uma franquia acima para visualizar a Visão." />
+      )}
 
       {/* ── Vision Statement ── */}
       <div className={cn(
