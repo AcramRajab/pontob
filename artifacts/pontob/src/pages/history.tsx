@@ -3,15 +3,25 @@ import {
   useListDailyCheckins, getListDailyCheckinsQueryKey,
   useListWeeklyCheckins, getListWeeklyCheckinsQueryKey,
   useListMonthlyCheckins, getListMonthlyCheckinsQueryKey,
+  useUpdateDailyCheckin, useUpdateWeeklyCheckin, useUpdateMonthlyCheckin,
+  WeeklyCheckinInputInitiativeDecision,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useForm, Controller } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   History, TrendingUp, TrendingDown, CheckSquare, Calendar, BarChart2,
-  CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand,
+  CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand, Pencil,
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -57,9 +67,61 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
+interface DailyEditForm {
+  executedToday: "sim" | "parcialmente" | "nao";
+  progressToday: number;
+  blocker: string;
+  nextStep: string;
+  timeSpent: string;
+  needsHelp: boolean;
+  notes: string;
+}
+
 function DailyDetailSheet({ item, open, onClose }: { item: any; open: boolean; onClose: () => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const update = useUpdateDailyCheckin();
+
+  const { register, handleSubmit, control, watch } = useForm<DailyEditForm>({
+    defaultValues: {
+      executedToday: item.executedToday ?? "sim",
+      progressToday: item.progressToday ?? 0,
+      blocker: item.blocker ?? "",
+      nextStep: item.nextStep ?? "",
+      timeSpent: item.timeSpent ?? "",
+      needsHelp: item.needsHelp ?? false,
+      notes: item.notes ?? "",
+    },
+  });
+
+  const executedToday = watch("executedToday");
+
+  const onSubmit = async (data: DailyEditForm) => {
+    try {
+      await update.mutateAsync({
+        id: item.id,
+        data: {
+          executedToday: data.executedToday,
+          progressToday: data.progressToday,
+          blocker: data.blocker || undefined,
+          nextStep: data.nextStep || undefined,
+          timeSpent: data.timeSpent || undefined,
+          needsHelp: data.needsHelp,
+          notes: data.notes || undefined,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
+      toast({ title: "Check-in atualizado", description: "Suas alterações foram salvas." });
+      setIsEditing(false);
+      onClose();
+    } catch {
+      toast({ title: "Erro ao salvar", description: "Tente novamente.", variant: "destructive" });
+    }
+  };
+
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+    <Sheet open={open} onOpenChange={v => { if (!v) { setIsEditing(false); onClose(); } }}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -67,60 +129,248 @@ function DailyDetailSheet({ item, open, onClose }: { item: any; open: boolean; o
             Check-in Diário
           </SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
-          {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
-          <DetailRow label="Data" value={item.date ? formatDateOnly(item.date) : formatDate(item.createdAt)} />
-          {item.executedToday && (
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Executou hoje?</p>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <div className="flex items-center gap-2">
-                <ExecutionIcon v={item.executedToday} />
-                <Badge variant="outline" className={executionColor[item.executedToday] ?? ""}>
-                  {executionLabel[item.executedToday] ?? item.executedToday}
-                </Badge>
+                <Pencil className="h-4 w-4 shrink-0" />
+                <span>Editando check-in</span>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-amber-800 hover:bg-amber-100 h-auto py-0.5 px-2"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
             </div>
-          )}
-          {item.progressToday != null && (
+
+            {item.goalTitle && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Meta</p>
+                <p className="text-sm font-medium">{item.goalTitle}</p>
+              </div>
+            )}
+
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Progresso de hoje</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.progressToday}%` }} />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Data</p>
+              <p className="text-sm">{item.date ? formatDateOnly(item.date) : formatDate(item.createdAt)}</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Executou hoje?</Label>
+              <Controller
+                name="executedToday"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex gap-2">
+                    {(["sim", "parcialmente", "nao"] as const).map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => field.onChange(v)}
+                        className={`flex-1 py-2.5 rounded-md text-sm font-medium border transition-colors ${
+                          field.value === v
+                            ? v === "sim" ? "bg-green-600 text-white border-green-600"
+                              : v === "parcialmente" ? "bg-yellow-500 text-white border-yellow-500"
+                              : "bg-destructive text-white border-destructive"
+                            : "bg-background border-border text-muted-foreground hover:border-primary"
+                        }`}
+                      >
+                        {v === "sim" ? "Sim" : v === "parcialmente" ? "Parcialmente" : "Não"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Progresso de hoje (%)</Label>
+              <Controller
+                name="progressToday"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <Slider
+                      min={0} max={100} step={5}
+                      value={[field.value]}
+                      onValueChange={([v]) => field.onChange(v)}
+                    />
+                    <div className="text-right text-sm font-mono font-medium">{field.value}%</div>
+                  </div>
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-blocker">Bloqueio ou dificuldade</Label>
+              <Textarea id="edit-blocker" {...register("blocker")} rows={2} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-nextStep">Próximo passo</Label>
+              <Textarea id="edit-nextStep" {...register("nextStep")} rows={2} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-timeSpent">Tempo dedicado</Label>
+              <input
+                id="edit-timeSpent"
+                type="text"
+                placeholder="Ex: 1h30"
+                {...register("timeSpent")}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-notes">Notas</Label>
+              <Textarea id="edit-notes" {...register("notes")} rows={2} />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Controller
+                name="needsHelp"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox id="edit-needsHelp" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+              <Label htmlFor="edit-needsHelp" className="cursor-pointer">Preciso de apoio da regional</Label>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={update.isPending}>
+              {update.isPending ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </form>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
+            <DetailRow label="Data" value={item.date ? formatDateOnly(item.date) : formatDate(item.createdAt)} />
+            {item.executedToday && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Executou hoje?</p>
+                <div className="flex items-center gap-2">
+                  <ExecutionIcon v={item.executedToday} />
+                  <Badge variant="outline" className={executionColor[item.executedToday] ?? ""}>
+                    {executionLabel[item.executedToday] ?? item.executedToday}
+                  </Badge>
                 </div>
-                <span className="text-sm font-mono font-medium w-10 text-right">{item.progressToday}%</span>
               </div>
-            </div>
-          )}
-          <DetailRow label="Bloqueio ou dificuldade" value={item.blocker} />
-          <DetailRow label="Próximo passo" value={item.nextStep} />
-          {item.timeSpent && (
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Tempo dedicado</p>
-              <div className="flex items-center gap-1.5 text-sm">
-                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{item.timeSpent}</span>
+            )}
+            {item.progressToday != null && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Progresso de hoje</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.progressToday}%` }} />
+                  </div>
+                  <span className="text-sm font-mono font-medium w-10 text-right">{item.progressToday}%</span>
+                </div>
               </div>
-            </div>
-          )}
-          {item.needsHelp && (
-            <div className="flex items-center gap-1.5 text-sm text-amber-700 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-              <HelpingHand className="h-4 w-4 shrink-0" />
-              <span>Solicitou apoio da regional</span>
-            </div>
-          )}
-          <DetailRow label="Notas" value={item.notes} />
-          {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
-          <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
-        </div>
+            )}
+            <DetailRow label="Bloqueio ou dificuldade" value={item.blocker} />
+            <DetailRow label="Próximo passo" value={item.nextStep} />
+            {item.timeSpent && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Tempo dedicado</p>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{item.timeSpent}</span>
+                </div>
+              </div>
+            )}
+            {item.needsHelp && (
+              <div className="flex items-center gap-1.5 text-sm text-amber-700 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <HelpingHand className="h-4 w-4 shrink-0" />
+                <span>Solicitou apoio da regional</span>
+              </div>
+            )}
+            <DetailRow label="Notas" value={item.notes} />
+            {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
+            <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
+
+            <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Editar check-in
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
+interface WeeklyEditForm {
+  planned: string;
+  executed: string;
+  progressSummary: string;
+  blockers: string;
+  adjustments: string;
+  nextWeekPriority: string;
+  initiativeDecision: string;
+  needsRegionalSupport: boolean;
+}
+
 function WeeklyDetailSheet({ item, open, onClose }: { item: any; open: boolean; onClose: () => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const update = useUpdateWeeklyCheckin();
+
+  const { register, handleSubmit, control } = useForm<WeeklyEditForm>({
+    defaultValues: {
+      planned: item.planned ?? "",
+      executed: item.executed ?? "",
+      progressSummary: item.progressSummary ?? "",
+      blockers: item.blockers ?? "",
+      adjustments: item.adjustments ?? "",
+      nextWeekPriority: item.nextWeekPriority ?? "",
+      initiativeDecision: item.initiativeDecision ?? "",
+      needsRegionalSupport: item.needsRegionalSupport ?? false,
+    },
+  });
+
+  const onSubmit = async (data: WeeklyEditForm) => {
+    try {
+      await update.mutateAsync({
+        id: item.id,
+        data: {
+          planned: data.planned || undefined,
+          executed: data.executed || undefined,
+          progressSummary: data.progressSummary || undefined,
+          blockers: data.blockers || undefined,
+          adjustments: data.adjustments || undefined,
+          nextWeekPriority: data.nextWeekPriority || undefined,
+          initiativeDecision: (data.initiativeDecision || undefined) as typeof WeeklyCheckinInputInitiativeDecision[keyof typeof WeeklyCheckinInputInitiativeDecision] | undefined,
+          needsRegionalSupport: data.needsRegionalSupport,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
+      toast({ title: "Check-in semanal atualizado", description: "Suas alterações foram salvas." });
+      setIsEditing(false);
+      onClose();
+    } catch {
+      toast({ title: "Erro ao salvar", description: "Tente novamente.", variant: "destructive" });
+    }
+  };
+
+  const weeklyFields: { field: keyof WeeklyEditForm; label: string; placeholder: string }[] = [
+    { field: "planned", label: "O que foi planejado para essa semana?", placeholder: "Descreva as iniciativas e ações planejadas" },
+    { field: "executed", label: "O que foi efetivamente executado?", placeholder: "O que realmente aconteceu?" },
+    { field: "progressSummary", label: "Resumo do progresso desta semana", placeholder: "Como avançou em relação ao objetivo?" },
+    { field: "blockers", label: "Quais foram os principais bloqueios?", placeholder: "O que impediu a execução plena?" },
+    { field: "adjustments", label: "Que ajustes são necessários?", placeholder: "O que deve mudar na próxima semana?" },
+    { field: "nextWeekPriority", label: "Qual é a prioridade para a próxima semana?", placeholder: "O que mais importa executar?" },
+    { field: "initiativeDecision", label: "Decisão sobre iniciativas", placeholder: "Continuar, pausar, cancelar..." },
+  ];
+
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+    <Sheet open={open} onOpenChange={v => { if (!v) { setIsEditing(false); onClose(); } }}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -128,45 +378,179 @@ function WeeklyDetailSheet({ item, open, onClose }: { item: any; open: boolean; 
             Check-in Semanal
           </SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
-          {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
-          {item.weekStartDate && <DetailRow label="Semana de" value={formatDateOnly(item.weekStartDate)} />}
-          <DetailRow label="O que foi planejado" value={item.planned} />
-          <DetailRow label="O que foi executado" value={item.executed} />
-          {item.executionPercentage != null && (
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Percentual executado</p>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.executionPercentage}%` }} />
-                </div>
-                <span className="text-sm font-mono font-medium w-10 text-right">{item.executionPercentage}%</span>
+                <Pencil className="h-4 w-4 shrink-0" />
+                <span>Editando check-in</span>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-amber-800 hover:bg-amber-100 h-auto py-0.5 px-2"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
             </div>
-          )}
-          <DetailRow label="Resumo do progresso" value={item.progressSummary} />
-          <DetailRow label="Principais bloqueios" value={item.blockers} />
-          <DetailRow label="Ajustes necessários" value={item.adjustments} />
-          <DetailRow label="Prioridade da próxima semana" value={item.nextWeekPriority} />
-          <DetailRow label="Decisão sobre iniciativas" value={item.initiativeDecision} />
-          {item.needsRegionalSupport && (
-            <div className="flex items-center gap-1.5 text-sm text-amber-700 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>Solicitou suporte da equipe regional</span>
+
+            {item.goalTitle && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Meta</p>
+                <p className="text-sm font-medium">{item.goalTitle}</p>
+              </div>
+            )}
+            {item.weekStartDate && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Semana de</p>
+                <p className="text-sm">{formatDateOnly(item.weekStartDate)}</p>
+              </div>
+            )}
+
+            {weeklyFields.map(q => (
+              <div key={q.field} className="space-y-1.5">
+                <Label htmlFor={`edit-weekly-${q.field}`} className="text-sm font-medium">{q.label}</Label>
+                <Textarea
+                  id={`edit-weekly-${q.field}`}
+                  placeholder={q.placeholder}
+                  {...register(q.field as any)}
+                  rows={3}
+                />
+              </div>
+            ))}
+
+            <div className="flex items-center gap-2">
+              <Controller
+                name="needsRegionalSupport"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox id="edit-weekly-support" checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+              <Label htmlFor="edit-weekly-support" className="cursor-pointer">Preciso de suporte da equipe regional</Label>
             </div>
-          )}
-          {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
-          <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
-        </div>
+
+            <Button type="submit" className="w-full" disabled={update.isPending}>
+              {update.isPending ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </form>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
+            {item.weekStartDate && <DetailRow label="Semana de" value={formatDateOnly(item.weekStartDate)} />}
+            <DetailRow label="O que foi planejado" value={item.planned} />
+            <DetailRow label="O que foi executado" value={item.executed} />
+            {item.executionPercentage != null && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Percentual executado</p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${item.executionPercentage}%` }} />
+                  </div>
+                  <span className="text-sm font-mono font-medium w-10 text-right">{item.executionPercentage}%</span>
+                </div>
+              </div>
+            )}
+            <DetailRow label="Resumo do progresso" value={item.progressSummary} />
+            <DetailRow label="Principais bloqueios" value={item.blockers} />
+            <DetailRow label="Ajustes necessários" value={item.adjustments} />
+            <DetailRow label="Prioridade da próxima semana" value={item.nextWeekPriority} />
+            <DetailRow label="Decisão sobre iniciativas" value={item.initiativeDecision} />
+            {item.needsRegionalSupport && (
+              <div className="flex items-center gap-1.5 text-sm text-amber-700 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Solicitou suporte da equipe regional</span>
+              </div>
+            )}
+            {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
+            <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
+
+            <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Editar check-in
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
 }
 
+interface MonthlyEditForm {
+  kriProgress: string;
+  improvedKpis: string;
+  worsenedKpis: string;
+  initiativesThatWorked: string;
+  initiativesThatDidNotWork: string;
+  continueDoing: string;
+  stopDoing: string;
+  startDoing: string;
+  nextMonthFocus: string;
+}
+
 function MonthlyDetailSheet({ item, open, onClose }: { item: any; open: boolean; onClose: () => void }) {
   const monthLabel = item.month && item.year ? `${MONTHS[(item.month as number) - 1]} ${item.year}` : null;
+  const [isEditing, setIsEditing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const update = useUpdateMonthlyCheckin();
+
+  const { register, handleSubmit } = useForm<MonthlyEditForm>({
+    defaultValues: {
+      kriProgress: item.kriProgress ?? "",
+      improvedKpis: item.improvedKpis ?? "",
+      worsenedKpis: item.worsenedKpis ?? "",
+      initiativesThatWorked: item.initiativesThatWorked ?? "",
+      initiativesThatDidNotWork: item.initiativesThatDidNotWork ?? "",
+      continueDoing: item.continueDoing ?? "",
+      stopDoing: item.stopDoing ?? "",
+      startDoing: item.startDoing ?? "",
+      nextMonthFocus: item.nextMonthFocus ?? "",
+    },
+  });
+
+  const onSubmit = async (data: MonthlyEditForm) => {
+    try {
+      await update.mutateAsync({
+        id: item.id,
+        data: {
+          kriProgress: data.kriProgress || undefined,
+          improvedKpis: data.improvedKpis || undefined,
+          worsenedKpis: data.worsenedKpis || undefined,
+          initiativesThatWorked: data.initiativesThatWorked || undefined,
+          initiativesThatDidNotWork: data.initiativesThatDidNotWork || undefined,
+          continueDoing: data.continueDoing || undefined,
+          stopDoing: data.stopDoing || undefined,
+          startDoing: data.startDoing || undefined,
+          nextMonthFocus: data.nextMonthFocus || undefined,
+        },
+      });
+      qc.invalidateQueries({ queryKey: getListMonthlyCheckinsQueryKey({}) });
+      toast({ title: "Check-in mensal atualizado", description: "Suas alterações foram salvas." });
+      setIsEditing(false);
+      onClose();
+    } catch {
+      toast({ title: "Erro ao salvar", description: "Tente novamente.", variant: "destructive" });
+    }
+  };
+
+  const monthlyFields: { field: keyof MonthlyEditForm; label: string; placeholder: string }[] = [
+    { field: "kriProgress", label: "Como o KRI evoluiu este mês?", placeholder: "Descreva o progresso em relação ao resultado esperado" },
+    { field: "improvedKpis", label: "Quais KPIs melhoraram?", placeholder: "Liste os indicadores que avançaram" },
+    { field: "worsenedKpis", label: "Quais KPIs pioraram ou ficaram estagnados?", placeholder: "Liste os indicadores que regrediu ou não moveu" },
+    { field: "initiativesThatWorked", label: "Quais iniciativas funcionaram bem?", placeholder: "O que gerou resultado real?" },
+    { field: "initiativesThatDidNotWork", label: "Quais iniciativas não funcionaram?", placeholder: "O que não trouxe o resultado esperado?" },
+    { field: "continueDoing", label: "O que continuar fazendo?", placeholder: "Práticas que valem manter" },
+    { field: "stopDoing", label: "O que parar de fazer?", placeholder: "O que está consumindo energia sem resultado" },
+    { field: "startDoing", label: "O que começar a fazer?", placeholder: "Novas ações para o próximo mês" },
+    { field: "nextMonthFocus", label: "Qual o foco principal do próximo mês?", placeholder: "A prioridade absoluta do próximo período" },
+  ];
+
   return (
-    <Sheet open={open} onOpenChange={v => !v && onClose()}>
+    <Sheet open={open} onOpenChange={v => { if (!v) { setIsEditing(false); onClose(); } }}>
       <SheetContent className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -174,21 +558,78 @@ function MonthlyDetailSheet({ item, open, onClose }: { item: any; open: boolean;
             Check-in Mensal
           </SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
-          {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
-          {monthLabel && <DetailRow label="Mês" value={monthLabel} />}
-          <DetailRow label="Evolução do KRI" value={item.kriProgress} />
-          <DetailRow label="KPIs que melhoraram" value={item.improvedKpis} />
-          <DetailRow label="KPIs que pioraram ou estagnaram" value={item.worsenedKpis} />
-          <DetailRow label="Iniciativas que funcionaram" value={item.initiativesThatWorked} />
-          <DetailRow label="Iniciativas que não funcionaram" value={item.initiativesThatDidNotWork} />
-          <DetailRow label="Continuar fazendo" value={item.continueDoing} />
-          <DetailRow label="Parar de fazer" value={item.stopDoing} />
-          <DetailRow label="Começar a fazer" value={item.startDoing} />
-          <DetailRow label="Foco do próximo mês" value={item.nextMonthFocus} />
-          {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
-          <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
-        </div>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+            <div className="flex items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <div className="flex items-center gap-2">
+                <Pencil className="h-4 w-4 shrink-0" />
+                <span>Editando check-in{monthLabel ? ` de ${monthLabel}` : ""}</span>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-amber-800 hover:bg-amber-100 h-auto py-0.5 px-2"
+                onClick={() => setIsEditing(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+
+            {item.goalTitle && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Meta</p>
+                <p className="text-sm font-medium">{item.goalTitle}</p>
+              </div>
+            )}
+            {monthLabel && (
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Mês</p>
+                <p className="text-sm">{monthLabel}</p>
+              </div>
+            )}
+
+            {monthlyFields.map((q, i) => (
+              <div key={q.field} className="space-y-1.5">
+                <Label htmlFor={`edit-monthly-${q.field}`} className="text-sm font-medium">
+                  <span className="text-muted-foreground mr-1">{i + 1}.</span>{q.label}
+                </Label>
+                <Textarea
+                  id={`edit-monthly-${q.field}`}
+                  placeholder={q.placeholder}
+                  {...register(q.field)}
+                  rows={3}
+                />
+              </div>
+            ))}
+
+            <Button type="submit" className="w-full" disabled={update.isPending}>
+              {update.isPending ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </form>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {item.goalTitle && <DetailRow label="Meta" value={<span className="font-medium">{item.goalTitle}</span>} />}
+            {monthLabel && <DetailRow label="Mês" value={monthLabel} />}
+            <DetailRow label="Evolução do KRI" value={item.kriProgress} />
+            <DetailRow label="KPIs que melhoraram" value={item.improvedKpis} />
+            <DetailRow label="KPIs que pioraram ou estagnaram" value={item.worsenedKpis} />
+            <DetailRow label="Iniciativas que funcionaram" value={item.initiativesThatWorked} />
+            <DetailRow label="Iniciativas que não funcionaram" value={item.initiativesThatDidNotWork} />
+            <DetailRow label="Continuar fazendo" value={item.continueDoing} />
+            <DetailRow label="Parar de fazer" value={item.stopDoing} />
+            <DetailRow label="Começar a fazer" value={item.startDoing} />
+            <DetailRow label="Foco do próximo mês" value={item.nextMonthFocus} />
+            {item.userName && <DetailRow label="Registrado por" value={item.userName} />}
+            <DetailRow label="Criado em" value={formatDate(item.createdAt)} />
+
+            <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1.5" />
+              Editar check-in
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
