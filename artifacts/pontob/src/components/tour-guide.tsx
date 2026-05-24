@@ -52,7 +52,7 @@ const STEPS: TourStep[] = [
     title: "4º PASSO: Planeje a semana toda segunda",
     badge: "Toda semana",
     step: "Semana → Planner Semanal",
-    description: "Toda segunda-feira, abra o Planner Semanal. Registre os indicadores diários (Corretores, CREs, VGH) por dia da semana e defina a meta mensal de cada KRI. Ao final da semana, finalize o planner com os gaps identificados e as ações para a próxima semana.",
+    description: "Toda segunda-feira, abra o Planner Semanal. Registre os indicadores diários (Corretores, CREs, VGH) por dia da semana, defina a meta semanal de cada KRI e acompanhe o gap em relação à meta mensal. Ao final da semana, finalize o planner com os gaps identificados e as ações para a próxima semana.",
     tip: "Planner na segunda + check-in diário = semana com direção e registro completo.",
   },
   {
