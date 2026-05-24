@@ -12,6 +12,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -173,7 +174,17 @@ export default function Planner() {
   const [localGaps, setLocalGaps] = useState<Record<string, string>>({});
   const [localActions, setLocalActions] = useState<Record<string, string>>({});
 
-  const franchiseId = user?.franchiseId;
+  const isSocio = (user as any)?.role === "socio";
+  const socioFranchises: Array<{ id: number; name: string }> = isSocio
+    ? ((user as any)?.linkedFranchises ?? []).slice().sort((a: any, b: any) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
+    : [];
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | null>(
+    isSocio ? null : null
+  );
+  const franchiseId: number | null = isSocio
+    ? selectedFranchiseId
+    : (user?.franchiseId ?? null);
   const weekKey = `${franchiseId}-${weekStartStr}`;
   const currentYear = new Date().getFullYear();
 
@@ -340,6 +351,23 @@ export default function Planner() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Planner Semanal</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Indicadores diários — KRIs e KPIs</p>
+          {isSocio && (
+            <div className="mt-2">
+              <Select
+                value={selectedFranchiseId ? String(selectedFranchiseId) : ""}
+                onValueChange={v => setSelectedFranchiseId(v ? Number(v) : null)}
+              >
+                <SelectTrigger className="w-64 h-8 text-sm">
+                  <SelectValue placeholder="Selecione uma franquia…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {socioFranchises.map(f => (
+                    <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
