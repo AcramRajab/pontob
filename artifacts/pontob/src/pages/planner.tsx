@@ -239,7 +239,10 @@ export default function Planner() {
   const mutation = useMutation({
     mutationFn: saveEntry,
     onError: () => toast({ title: "Erro ao salvar", variant: "destructive" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] });
+      queryClient.invalidateQueries({ queryKey: ["planner-monthly", franchiseId] });
+    },
   });
 
   const weekMutation = useMutation({
