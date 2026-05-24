@@ -38,6 +38,8 @@ interface Kpi {
 interface Initiative {
   id: number;
   goalId: number;
+  strategicInitiativeId: number | null;
+  catalogActive: boolean | null;
   initiativeName: string | null;
   customName: string | null;
   progressPercentage: number;
@@ -385,6 +387,30 @@ export default function GoalDetailScreen() {
       color: colors.mutedForeground,
       textAlign: "right",
     },
+    deactivatedBanner: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 6,
+      backgroundColor: "#fffbeb",
+      borderWidth: 1,
+      borderColor: "#fde68a",
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      marginBottom: 8,
+    },
+    deactivatedBannerText: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: "#92400e",
+      lineHeight: 17,
+    },
+    deactivatedBannerLink: {
+      fontSize: 12,
+      fontFamily: "Inter_600SemiBold",
+      color: "#92400e",
+      textDecorationLine: "underline",
+    },
     emptyText: {
       fontSize: 13,
       fontFamily: "Inter_400Regular",
@@ -701,6 +727,23 @@ export default function GoalDetailScreen() {
                       <Ionicons name="chevron-down" size={10} color={iniStatusColor} />
                     </Pressable>
                   </View>
+
+                  {ini.strategicInitiativeId && ini.catalogActive === false && (
+                    <View style={s.deactivatedBanner}>
+                      <Ionicons name="warning-outline" size={13} color="#d97706" style={{ marginTop: 1 }} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.deactivatedBannerText}>
+                          Esta iniciativa foi desativada do catálogo.{" "}
+                          <Text
+                            style={s.deactivatedBannerLink}
+                            onPress={() => router.push("/(tabs)/goals")}
+                          >
+                            Adicionar substituta
+                          </Text>
+                        </Text>
+                      </View>
+                    </View>
+                  )}
 
                   <View style={s.initiativeBarBg}>
                     <View style={[s.initiativeBarFill, { width: `${iniPct}%`, backgroundColor: iniStatusColor }]} />
