@@ -266,6 +266,19 @@ export default function Dashboard() {
     { query: { enabled: !!franchiseId, queryKey: kriQueryKey } }
   );
 
+  const { data: ytdData } = useQuery<{
+    ytd: { corretores: number; contratos: number; vendas: number };
+    targets: { corretores: number | null; contratos: number | null; vendas: number | null };
+  } | null>({
+    queryKey: ["planner-ytd-dashboard", franchiseId, currentYear],
+    queryFn: async () => {
+      const r = await fetch(`/api/planner/ytd?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!franchiseId,
+  });
+
   const currentKri = krisData.find(k => k.year === currentYear && k.month === currentMonth);
   const upsert = useUpsertFranchiseKri();
 
@@ -371,6 +384,90 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold text-destructive">{data?.delayedGoals || 0}</div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* ── Visão Anual KRI Progress ── */}
+          <div className="rounded-2xl border bg-card overflow-hidden">
+            <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Visão Anual {currentYear} — Progresso até agora</span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">meta Q4 (31/Dez)</span>
+              </div>
+              <a href="/visao" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                <Trophy className="h-3 w-3" />
+                {(ytdData?.targets.corretores || ytdData?.targets.contratos || ytdData?.targets.vendas) ? "Editar metas" : "Definir metas anuais →"}
+              </a>
+            </div>
+            {(!ytdData?.targets.corretores && !ytdData?.targets.contratos && !ytdData?.targets.vendas) ? (
+              <div className="px-5 py-6 text-center">
+                <p className="text-sm text-muted-foreground">Nenhuma meta anual definida ainda.</p>
+                <a href="/visao" className="text-xs text-primary hover:underline mt-1 inline-block">
+                  Definir metas de Corretores, CREs e VGH para {currentYear} →
+                </a>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+                {[
+                  {
+                    icon: Users,
+                    label: "Corretores novos",
+                    ytd: ytdData?.ytd.corretores ?? 0,
+                    target: ytdData?.targets.corretores ?? null,
+                    accentColor: "text-blue-600",
+                    bar: "bg-blue-500",
+                    fmt: (v: number) => String(v),
+                  },
+                  {
+                    icon: FileSignature,
+                    label: "Novos contratos CRE",
+                    ytd: ytdData?.ytd.contratos ?? 0,
+                    target: ytdData?.targets.contratos ?? null,
+                    accentColor: "text-violet-600",
+                    bar: "bg-violet-500",
+                    fmt: (v: number) => String(v),
+                  },
+                  {
+                    icon: DollarSign,
+                    label: "VGH acumulado",
+                    ytd: ytdData?.ytd.vendas ?? 0,
+                    target: ytdData?.targets.vendas ?? null,
+                    accentColor: "text-emerald-600",
+                    bar: "bg-emerald-500",
+                    fmt: (v: number) =>
+                      v >= 1_000_000
+                        ? `R$${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
+                        : v >= 1_000
+                        ? `R$${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`
+                        : `R$${v.toLocaleString("pt-BR")}`,
+                  },
+                ].map(({ icon: Icon, label, ytd, target, accentColor, bar, fmt }) => {
+                  const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
+                  return (
+                    <div key={label} className="px-5 py-4">
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Icon className={`h-3.5 w-3.5 shrink-0 ${accentColor}`} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mb-2">
+                        <span className="text-2xl font-bold tabular-nums">{fmt(ytd)}</span>
+                        {target != null && (
+                          <span className="text-sm text-muted-foreground">/ {fmt(target)}</span>
+                        )}
+                        {p != null && (
+                          <span className={`text-xs font-semibold ml-auto ${p >= 100 ? "text-green-600" : p >= 75 ? "text-amber-500" : "text-muted-foreground"}`}>{p}%</span>
+                        )}
+                      </div>
+                      {target != null && (
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${p ?? 0}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <Card>

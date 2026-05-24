@@ -74,6 +74,20 @@ export default function Today() {
     { query: { enabled: !!franchiseId, queryKey: getGetTodayOverviewQueryKey(params) } }
   );
 
+  const currentYear = new Date().getFullYear();
+  const { data: ytdData } = useQuery<{
+    ytd: { corretores: number; contratos: number; vendas: number };
+    targets: { corretores: number | null; contratos: number | null; vendas: number | null };
+  } | null>({
+    queryKey: ["planner-ytd-today", franchiseId, currentYear],
+    queryFn: async () => {
+      const r = await fetch(`/api/planner/ytd?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!franchiseId,
+  });
+
   const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: allGoals = [] } = useListGoals(
     goalParams,
@@ -199,6 +213,72 @@ export default function Today() {
               </div>
             ))}
           </div>
+
+          {/* ── Visão Anual KRI strip ───────────────────────────── */}
+          {ytdData && (ytdData.targets.corretores || ytdData.targets.contratos || ytdData.targets.vendas) && (
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <TrendingUp className="h-3 w-3 text-primary" />
+                  Visão {new Date().getFullYear()} — meta Q4
+                </span>
+                <a href="/visao" className="text-[10px] text-primary/70 hover:text-primary transition-colors">editar →</a>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-border">
+                {[
+                  {
+                    label: "Corretores",
+                    ytd: ytdData.ytd.corretores,
+                    target: ytdData.targets.corretores,
+                    color: "bg-blue-500",
+                    fmt: (v: number) => String(v),
+                  },
+                  {
+                    label: "CREs",
+                    ytd: ytdData.ytd.contratos,
+                    target: ytdData.targets.contratos,
+                    color: "bg-violet-500",
+                    fmt: (v: number) => String(v),
+                  },
+                  {
+                    label: "VGH",
+                    ytd: ytdData.ytd.vendas,
+                    target: ytdData.targets.vendas,
+                    color: "bg-emerald-500",
+                    fmt: (v: number) =>
+                      v >= 1_000_000
+                        ? `R$${(v / 1_000_000).toFixed(1)}M`
+                        : v >= 1_000
+                        ? `R$${Math.round(v / 1_000)}k`
+                        : `R$${v}`,
+                  },
+                ].map(({ label, ytd, target, color, fmt }) => {
+                  const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
+                  return (
+                    <div key={label} className="px-3 py-2.5">
+                      <p className="text-[10px] font-medium text-muted-foreground mb-1">{label}</p>
+                      <div className="flex items-baseline gap-1 mb-1.5">
+                        <span className="text-base font-bold tabular-nums">{fmt(ytd)}</span>
+                        {target != null && <span className="text-[10px] text-muted-foreground">/{fmt(target)}</span>}
+                      </div>
+                      {p != null && (
+                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${color}`} style={{ width: `${p}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {ytdData && !ytdData.targets.corretores && !ytdData.targets.contratos && !ytdData.targets.vendas && (
+            <a href="/visao" className="flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/3 px-4 py-3 text-sm text-primary/80 hover:bg-primary/5 transition-colors">
+              <Target className="h-4 w-4 shrink-0" />
+              <span><strong>Defina sua Visão Anual</strong> — registre as metas de Corretores, CREs e VGH para {new Date().getFullYear()}</span>
+              <ChevronRight className="h-4 w-4 ml-auto shrink-0" />
+            </a>
+          )}
 
           {/* ── Priorities ──────────────────────────────────────── */}
           <div>
