@@ -357,9 +357,9 @@ export default function Planner() {
 
   const isVgh = (key: string) => key.includes("venda");
   const fmtNum = (n: number, key: string) =>
-    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : String(n);
+    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(Math.round(n));
   const fmtWeekly = (n: number, key: string) =>
-    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + "/sem" : `~${Math.round(n)}/sem`;
+    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "/sem" : `~${Math.round(n)}/sem`;
 
   const today = new Date();
   const isCurrentWeek = formatDate(getMondayOfWeek(today)) === weekStartStr;
@@ -504,12 +504,7 @@ export default function Planner() {
                 target: ytdData?.targets.vendas ?? null,
                 accentColor: "text-emerald-600",
                 bar: "bg-emerald-500",
-                fmt: (v: number) =>
-                  v >= 1_000_000
-                    ? `R$${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`
-                    : v >= 1_000
-                    ? `R$${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`
-                    : `R$${v.toLocaleString("pt-BR")}`,
+                fmt: (v: number) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
               },
             ].map(({ icon: Icon, label, ytd, target, accentColor, bar, fmt }) => {
               const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;

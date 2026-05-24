@@ -105,9 +105,7 @@ function getMondayOfWeek(d: Date): Date {
 }
 
 function fmtBRL(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(2).replace(".", ",")}M`;
-  if (Math.abs(v) >= 1_000) return `R$${Math.round(v / 1_000)}k`;
-  return `R$${v.toLocaleString("pt-BR")}`;
+  return "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtTime(iso: string) {
