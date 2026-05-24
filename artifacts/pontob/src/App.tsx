@@ -42,6 +42,7 @@ import PlannerHistorico from "@/pages/planner-historico";
 import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
 import Convite from "@/pages/convite";
+import SolicitarAcesso from "@/pages/solicitar-acesso";
 import Agents from "@/pages/agents";
 import Jornada from "@/pages/jornada";
 import Coaching from "@/pages/coaching";
@@ -66,6 +67,7 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/convite/:token" component={Convite} />
+        <Route path="/solicitar-acesso" component={SolicitarAcesso} />
         <Route path="/login" component={Login} />
         <Route path="/today">
           <ProtectedRoute><Today /></ProtectedRoute>

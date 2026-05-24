@@ -415,46 +415,70 @@ export async function sendPlannerWeekReopened(opts: {
   });
 }
 
+const pontoBSummaryHtml = `
+  <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:18px 20px;margin:20px 0;">
+    <p style="margin:0 0 8px;font-size:13px;color:#0369a1;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">O que é o Método Ponto B?</p>
+    <p style="margin:0 0 10px;font-size:14px;color:#374151;line-height:1.6;">
+      O <strong>Método Ponto B</strong> é uma plataforma de execução estratégica criada para franquias RE/MAX SC.
+      Ela conecta as metas da franquia às dimensões estratégicas — <strong>Pessoas</strong> e <strong>Real Estate</strong> —
+      e permite acompanhar iniciativas, registrar check-ins diários, semanais e mensais, e monitorar a consistência
+      de execução em tempo real.
+    </p>
+    <p style="margin:0;font-size:13px;color:#0369a1;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Resumo do tutorial</p>
+    <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;color:#374151;line-height:1.8;">
+      <li><strong>Metas</strong> — Defina metas estratégicas vinculadas às dimensões, com KRIs e KPIs.</li>
+      <li><strong>Iniciativas</strong> — Adicione até 3 iniciativas por meta a partir do catálogo de 54 opções.</li>
+      <li><strong>Check-in Diário</strong> — Registre eventos e contatos executados no dia.</li>
+      <li><strong>Planner Semanal</strong> — Preencha indicadores da semana (visitas, captações, vendas…) e finalize.</li>
+      <li><strong>Check-in Mensal</strong> — Avalie o progresso das iniciativas e o resultado do mês.</li>
+      <li><strong>Dashboard &amp; Ranking</strong> — Acompanhe sua pontuação e compare com outras franquias da rede.</li>
+    </ol>
+  </div>
+`;
+
 export async function sendApprovalRequest(opts: {
   userName: string;
   userEmail: string;
   franchiseName: string;
   role: string;
+  roleDisplay?: string;
   approveUrl: string;
   rejectUrl: string;
 }) {
   if (!isEmailConfigured()) return;
 
   const roleLabel: Record<string, string> = {
-    franqueado: "Franqueado (acesso completo com edição)",
-    responsavel_interno: "Responsável Interno (somente visualização)",
+    franqueado: "Franqueado(a)",
+    responsavel_interno: "Responsável Interno",
   };
+
+  const displayRole = opts.roleDisplay ?? roleLabel[opts.role] ?? opts.role;
 
   await getTransporter().sendMail({
     from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
     to: "acramrajab@remax.com.br",
     subject: `🔔 Novo cadastro aguardando aprovação — ${opts.userName} (${opts.franchiseName})`,
     html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+      <div style="font-family:sans-serif;max-width:580px;margin:0 auto;color:#111;">
         <div style="background:#1e40af;padding:28px 24px;border-radius:8px 8px 0 0;text-align:center;">
           <h1 style="color:white;margin:0;font-size:20px;">Método Ponto B</h1>
           <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">Aprovação de novo usuário</p>
         </div>
         <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
           <h2 style="font-size:18px;margin-top:0;color:#111;">Novo cadastro aguardando aprovação</h2>
-          <p style="color:#374151;line-height:1.6;">Um novo responsável se cadastrou via link de convite e aguarda sua aprovação antes de poder acessar a plataforma.</p>
+          <p style="color:#374151;line-height:1.6;">Um novo usuário se cadastrou e aguarda sua aprovação antes de poder acessar a plataforma.</p>
 
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0;">
             <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Dados do cadastro</p>
             <p style="margin:0 0 8px;font-size:15px;"><strong>Nome:</strong> ${opts.userName}</p>
             <p style="margin:0 0 8px;font-size:15px;"><strong>E-mail:</strong> ${opts.userEmail}</p>
             <p style="margin:0 0 8px;font-size:15px;"><strong>Franquia:</strong> ${opts.franchiseName}</p>
-            <p style="margin:0;font-size:15px;"><strong>Perfil:</strong> ${roleLabel[opts.role] ?? opts.role}</p>
+            <p style="margin:0;font-size:15px;"><strong>Cargo:</strong> ${displayRole}</p>
           </div>
 
-          <p style="color:#374151;font-size:14px;font-weight:500;">Você precisa verificar se os dados estão corretos e aprovar o acesso:</p>
+          <p style="color:#374151;font-size:14px;font-weight:500;">Verifique os dados e aprove ou rejeite o acesso:</p>
 
-          <div style="display:flex;gap:12px;margin:24px 0;text-align:center;">
+          <div style="margin:24px 0;text-align:center;">
             <a href="${opts.approveUrl}"
                style="background:#16a34a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;display:inline-block;margin-right:12px;">
               ✅ Aprovar acesso
@@ -465,12 +489,14 @@ export async function sendApprovalRequest(opts: {
             </a>
           </div>
 
-          <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin-top:20px;">
+          <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
             <p style="margin:0;font-size:13px;color:#92400e;">
-              <strong>⚠️ Atenção:</strong> Cada botão é de uso único. Ao clicar em Aprovar, o usuário receberá acesso imediatamente e um e-mail de boas-vindas.
-              Ao clicar em Rejeitar, o cadastro será removido permanentemente.
+              <strong>⚠️ Atenção:</strong> Cada botão é de uso único. Ao aprovar, o usuário recebe acesso e e-mail de boas-vindas imediatamente.
+              Ao rejeitar, o cadastro é removido permanentemente.
             </p>
           </div>
+
+          ${pontoBSummaryHtml}
 
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
           <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
@@ -490,7 +516,7 @@ export async function sendApprovalGranted(opts: {
   if (!isEmailConfigured()) return;
 
   const roleLabel: Record<string, string> = {
-    franqueado: "Franqueado",
+    franqueado: "Franqueado(a)",
     responsavel_interno: "Responsável Interno",
   };
 
@@ -501,7 +527,7 @@ export async function sendApprovalGranted(opts: {
     to: opts.toEmail,
     subject: `✅ Seu acesso ao Método Ponto B foi aprovado — ${opts.franchiseName}`,
     html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+      <div style="font-family:sans-serif;max-width:580px;margin:0 auto;color:#111;">
         <div style="background:#16a34a;padding:28px 24px;border-radius:8px 8px 0 0;text-align:center;">
           <h1 style="color:white;margin:0;font-size:20px;">✅ Acesso Aprovado!</h1>
           <p style="color:#bbf7d0;margin:4px 0 0;font-size:13px;">Método Ponto B — RE/MAX Santa Catarina</p>
@@ -523,6 +549,8 @@ export async function sendApprovalGranted(opts: {
               Acessar o Método Ponto B →
             </a>
           </div>
+
+          ${pontoBSummaryHtml}
 
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
           <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>

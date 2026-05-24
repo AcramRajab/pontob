@@ -6,6 +6,20 @@ import { logAudit, shouldAudit } from "../services/audit";
 
 const router = Router();
 
+router.get("/franchises/public", async (req, res) => {
+  try {
+    const rows = await db
+      .select({ id: franchisesTable.id, name: franchisesTable.name })
+      .from(franchisesTable)
+      .where(eq(franchisesTable.active, true))
+      .orderBy(franchisesTable.name);
+    res.json(rows);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/franchises", requireAuth, async (req, res) => {
   try {
     const role = req.session.userRole!;

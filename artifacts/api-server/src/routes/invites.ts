@@ -45,6 +45,108 @@ const approvalHtml = (ok: boolean, title: string, body: string) => `
 </body>
 </html>`;
 
+const roleLabelMap: Record<string, string> = {
+  franqueado: "franqueado",
+  broker: "responsavel_interno",
+  staff: "responsavel_interno",
+};
+
+const roleLabelDisplay: Record<string, string> = {
+  franqueado: "Franqueado(a)",
+  broker: "Broker / Corretor",
+  staff: "Staff / Equipe Interna",
+};
+
+router.post("/trial-requests", async (req, res) => {
+  try {
+    const { name, email, password, franchiseId, roleLabel } = req.body;
+
+    if (!name || !email || !password || !franchiseId || !roleLabel) {
+      res.status(400).json({ error: "Todos os campos são obrigatórios." });
+      return;
+    }
+    if (password.length < 8) {
+      res.status(400).json({ error: "A senha deve ter no mínimo 8 caracteres." });
+      return;
+    }
+
+    const systemRole = roleLabelMap[roleLabel as string];
+    if (!systemRole) {
+      res.status(400).json({ error: "Cargo inválido." });
+      return;
+    }
+
+    const [franchise] = await db
+      .select({ id: franchisesTable.id, name: franchisesTable.name })
+      .from(franchisesTable)
+      .where(eq(franchisesTable.id, parseInt(franchiseId)))
+      .limit(1);
+
+    if (!franchise) {
+      res.status(404).json({ error: "Franquia não encontrada." });
+      return;
+    }
+
+    const existing = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, (email as string).toLowerCase()))
+      .limit(1);
+
+    if (existing[0]) {
+      res.status(409).json({ error: "Este e-mail já está cadastrado. Faça login ou use outro e-mail." });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const approvalToken = crypto.randomBytes(24).toString("hex");
+    const now = new Date();
+
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        name,
+        email: (email as string).toLowerCase(),
+        passwordHash,
+        role: systemRole,
+        franchiseId: franchise.id,
+        active: false,
+        invitedAt: now,
+      })
+      .returning();
+
+    await db.insert(inviteTokensTable).values({
+      token: crypto.randomBytes(32).toString("hex"),
+      franchiseId: franchise.id,
+      role: systemRole,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      usedAt: now,
+      usedByUserId: user.id,
+      approvalToken,
+    });
+
+    const base = process.env.BASE_PATH ?? "";
+    const appUrl = getAppUrl(req);
+    const approveUrl = `${appUrl}${base}/api/invites/approve/${approvalToken}`;
+    const rejectUrl = `${appUrl}${base}/api/invites/reject/${approvalToken}`;
+
+    sendApprovalRequest({
+      userName: user.name,
+      userEmail: user.email,
+      franchiseName: franchise.name,
+      role: systemRole,
+      roleDisplay: roleLabelDisplay[roleLabel as string],
+      approveUrl,
+      rejectUrl,
+    }).catch(err => req.log.error({ err }, "Failed to send trial approval email"));
+
+    res.status(201).json({ status: "pending_approval" });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/invites", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
     const now = new Date();

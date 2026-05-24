@@ -6,7 +6,7 @@ export const inviteTokensTable = pgTable("invite_tokens", {
   token: text("token").notNull().unique(),
   franchiseId: integer("franchise_id").notNull().references(() => franchisesTable.id),
   role: text("role").notNull(),
-  createdBy: integer("created_by").notNull().references(() => usersTable.id),
+  createdBy: integer("created_by").references(() => usersTable.id),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
   usedByUserId: integer("used_by_user_id").references(() => usersTable.id),
