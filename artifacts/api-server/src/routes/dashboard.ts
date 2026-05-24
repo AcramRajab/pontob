@@ -527,9 +527,12 @@ router.get("/dashboard/ranking", requireAuth, async (req, res) => {
     });
 
     ranking.sort((a, b) => {
-      if (by === "execution") return b.weekExecution - a.weekExecution;
-      if (by === "consistency") return b.checkinConsistency - a.checkinConsistency;
-      return b.score - a.score;
+      let primary: number;
+      if (by === "execution") primary = b.weekExecution - a.weekExecution;
+      else if (by === "consistency") primary = b.checkinConsistency - a.checkinConsistency;
+      else primary = b.score - a.score;
+      if (primary !== 0) return primary;
+      return a.franchiseName.localeCompare(b.franchiseName, "pt-BR", { sensitivity: "base" });
     });
 
     res.json(ranking.map((r, i) => ({ ...r, rank: i + 1 })));
