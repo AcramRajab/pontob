@@ -180,6 +180,15 @@ export default function Catalog() {
   const isLoading = dimsLoading || initsLoading;
   const adminIsLoading = adminDimsLoading || adminKpsLoading || adminInitsLoading;
 
+  const hasFilter = !!(mgmtSearch || mgmtDimensionId || mgmtKeyProcessId || mgmtInactiveOnly);
+
+  const totalActiveDimensions = adminDimensions.filter((d: any) => d.active).length;
+  const totalInactiveDimensions = adminDimensions.filter((d: any) => !d.active).length;
+  const totalActiveKeyProcesses = adminKeyProcesses.filter((kp: any) => kp.active).length;
+  const totalInactiveKeyProcesses = adminKeyProcesses.filter((kp: any) => !kp.active).length;
+  const totalActiveInitiatives = adminInitiatives.filter((init: any) => init.active).length;
+  const totalInactiveInitiatives = adminInitiatives.filter((init: any) => !init.active).length;
+
   const mgmtSearchLower = mgmtSearch.toLowerCase();
 
   const mgmtKeyProcessesForDimension = mgmtDimensionId
@@ -510,7 +519,21 @@ export default function Catalog() {
               <>
                 {/* Dimensions */}
                 <section>
-                  <h2 className="text-base font-semibold mb-3">Dimensões</h2>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <h2 className="text-base font-semibold">Dimensões</h2>
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {hasFilter
+                        ? `${filteredAdminDimensions.filter((d: any) => d.active).length} de ${totalActiveDimensions} ativas`
+                        : `${totalActiveDimensions} ativas`}
+                    </Badge>
+                    {totalInactiveDimensions > 0 && (
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+                        {hasFilter
+                          ? `${filteredAdminDimensions.filter((d: any) => !d.active).length} de ${totalInactiveDimensions} inativas`
+                          : `${totalInactiveDimensions} inativas`}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="rounded-lg border divide-y overflow-hidden">
                     {filteredAdminDimensions.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhuma dimensão encontrada.</p>
@@ -550,7 +573,21 @@ export default function Catalog() {
 
                 {/* Key Processes */}
                 <section>
-                  <h2 className="text-base font-semibold mb-3">Processos-chave</h2>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <h2 className="text-base font-semibold">Processos-chave</h2>
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {hasFilter
+                        ? `${filteredAdminKeyProcesses.filter((kp: any) => kp.active).length} de ${totalActiveKeyProcesses} ativas`
+                        : `${totalActiveKeyProcesses} ativas`}
+                    </Badge>
+                    {totalInactiveKeyProcesses > 0 && (
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+                        {hasFilter
+                          ? `${filteredAdminKeyProcesses.filter((kp: any) => !kp.active).length} de ${totalInactiveKeyProcesses} inativas`
+                          : `${totalInactiveKeyProcesses} inativas`}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="rounded-lg border divide-y overflow-hidden">
                     {filteredAdminKeyProcesses.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhum processo encontrado.</p>
@@ -593,7 +630,21 @@ export default function Catalog() {
 
                 {/* Strategic Initiatives */}
                 <section>
-                  <h2 className="text-base font-semibold mb-3">Iniciativas Estratégicas</h2>
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <h2 className="text-base font-semibold">Iniciativas Estratégicas</h2>
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {hasFilter
+                        ? `${filteredAdminInitiatives.filter((init: any) => init.active).length} de ${totalActiveInitiatives} ativas`
+                        : `${totalActiveInitiatives} ativas`}
+                    </Badge>
+                    {totalInactiveInitiatives > 0 && (
+                      <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+                        {hasFilter
+                          ? `${filteredAdminInitiatives.filter((init: any) => !init.active).length} de ${totalInactiveInitiatives} inativas`
+                          : `${totalInactiveInitiatives} inativas`}
+                      </Badge>
+                    )}
+                  </div>
                   <div className="rounded-lg border divide-y overflow-hidden">
                     {filteredAdminInitiatives.length === 0 ? (
                       <p className="text-sm text-muted-foreground p-4">Nenhuma iniciativa encontrada.</p>
