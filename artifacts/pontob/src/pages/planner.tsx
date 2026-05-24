@@ -242,6 +242,7 @@ export default function Planner() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] });
       queryClient.invalidateQueries({ queryKey: ["planner-monthly", franchiseId] });
+      queryClient.invalidateQueries({ queryKey: ["planner-ytd", franchiseId] });
     },
   });
 

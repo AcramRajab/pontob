@@ -363,6 +363,7 @@ export default function PlannerRegistro() {
       queryClient.invalidateQueries({ queryKey: ["planner-events", franchiseId, weekStartDate] });
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartDate] });
       queryClient.invalidateQueries({ queryKey: ["planner-monthly", franchiseId] });
+      queryClient.invalidateQueries({ queryKey: ["planner-ytd", franchiseId] });
     },
     onError: (err: Error & { status?: number }) =>
       handleFetchError(err.status ?? 0, "Erro ao registrar evento"),
@@ -407,6 +408,7 @@ export default function PlannerRegistro() {
       queryClient.invalidateQueries({ queryKey: ["planner-events", franchiseId, weekStartDate] });
       queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartDate] });
       queryClient.invalidateQueries({ queryKey: ["planner-monthly", franchiseId] });
+      queryClient.invalidateQueries({ queryKey: ["planner-ytd", franchiseId] });
       toast({ title: "Evento removido" });
     },
     onError: (err: Error & { status?: number }) =>

@@ -270,7 +270,7 @@ export default function Dashboard() {
     ytd: { corretores: number; contratos: number; vendas: number };
     targets: { corretores: number | null; contratos: number | null; vendas: number | null };
   } | null>({
-    queryKey: ["planner-ytd-dashboard", franchiseId, currentYear],
+    queryKey: ["planner-ytd", franchiseId, currentYear],
     queryFn: async () => {
       const r = await fetch(`/api/planner/ytd?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
       if (!r.ok) return null;
