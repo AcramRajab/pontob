@@ -141,8 +141,10 @@ export default function Today() {
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-muted-foreground capitalize mb-0.5">{todayLabel()}</p>
-          <h1 className="text-2xl font-bold tracking-tight">Hoje</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Hoje</p>
+          <h1 className="text-2xl font-bold tracking-tight capitalize leading-tight">
+            {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+          </h1>
         </div>
         {!isLoading && !!franchiseId && (
           <div className="flex items-center gap-1.5 shrink-0 mt-1">
