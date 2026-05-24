@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw, ClipboardList } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -391,6 +391,14 @@ export default function Planner() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Back to daily view */}
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/planner-registro">
+              <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
+              Registro diário
+            </Link>
+          </Button>
+
           {/* Week navigator */}
           <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setWeekStart(d => addDays(d, -7))}>
