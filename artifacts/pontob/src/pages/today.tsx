@@ -1,5 +1,11 @@
 import { useAuth } from "@/lib/auth";
-import { useGetTodayOverview, getGetTodayOverviewQueryKey, useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetTodayOverview, getGetTodayOverviewQueryKey,
+  useListGoals, getListGoalsQueryKey,
+  useListDailyCheckins, getListDailyCheckinsQueryKey,
+  useListWeeklyCheckins, getListWeeklyCheckinsQueryKey,
+  useListMonthlyCheckins, getListMonthlyCheckinsQueryKey,
+} from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +36,14 @@ function todayLabel() {
   });
 }
 
+function getWeekStart(): string {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().split("T")[0];
+}
+
 function statusBadge(status: string) {
   if (status === "atrasada") return { label: "Atrasada", cls: "text-red-600 bg-red-50 border-red-200" };
   if (status === "em_andamento") return { label: "Em andamento", cls: "text-blue-600 bg-blue-50 border-blue-200" };
@@ -42,6 +56,125 @@ function progressColor(status: string, pct: number) {
   if (pct >= 80) return "from-green-400 to-green-500";
   if (pct >= 50) return "from-blue-400 to-blue-500";
   return "from-primary to-primary/80";
+}
+
+function executedTodayLabel(value: string): string {
+  if (value === "sim") return "Executou";
+  if (value === "parcialmente") return "Executou parcialmente";
+  return "Não executou";
+}
+
+interface CheckinSummaryProps {
+  dailyCheckins: any[];
+  weeklyCheckins: any[];
+  monthlyCheckins: any[];
+}
+
+function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins }: CheckinSummaryProps) {
+  const dailyDone = dailyCheckins.length > 0;
+  const weeklyDone = weeklyCheckins.length > 0;
+  const monthlyDone = monthlyCheckins.length > 0;
+
+  const firstDaily = dailyCheckins[0];
+  const firstWeekly = weeklyCheckins[0];
+  const firstMonthly = monthlyCheckins[0];
+
+  function dailyDetail(): string {
+    if (!firstDaily) return "";
+    const parts: string[] = [];
+    if (firstDaily.executedToday) parts.push(executedTodayLabel(firstDaily.executedToday));
+    if (firstDaily.progressToday != null) parts.push(`${firstDaily.progressToday}% progresso`);
+    if (dailyCheckins.length > 1) parts.push(`${dailyCheckins.length} metas`);
+    return parts.join(" · ");
+  }
+
+  function weeklyDetail(): string {
+    if (!firstWeekly) return "";
+    const parts: string[] = [];
+    if (firstWeekly.executionPercentage != null) parts.push(`${firstWeekly.executionPercentage}% execução`);
+    if (firstWeekly.checkinDaysCount != null) parts.push(`${firstWeekly.checkinDaysCount} dias`);
+    if (weeklyCheckins.length > 1) parts.push(`${weeklyCheckins.length} metas`);
+    return parts.join(" · ");
+  }
+
+  function monthlyDetail(): string {
+    if (!firstMonthly) return "";
+    const parts: string[] = [];
+    if (firstMonthly.kriProgress) parts.push(firstMonthly.kriProgress.slice(0, 40));
+    if (monthlyCheckins.length > 1) parts.push(`${monthlyCheckins.length} metas`);
+    return parts.join(" · ");
+  }
+
+  const items = [
+    {
+      label: "Diário",
+      done: dailyDone,
+      detail: dailyDetail(),
+      ctaHref: "/checkin/daily",
+      ctaLabel: "Registrar check-in diário",
+    },
+    {
+      label: "Semanal",
+      done: weeklyDone,
+      detail: weeklyDetail(),
+      ctaHref: "/checkin/weekly",
+      ctaLabel: "Registrar check-in semanal",
+    },
+    {
+      label: "Mensal",
+      done: monthlyDone,
+      detail: monthlyDetail(),
+      ctaHref: "/checkin/monthly",
+      ctaLabel: "Registrar check-in mensal",
+    },
+  ];
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-2">
+        <CalendarDays className="h-3.5 w-3.5 text-primary/70" />
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Check-ins de hoje
+        </span>
+      </div>
+      <div className="divide-y divide-border">
+        {items.map(({ label, done, detail, ctaHref, ctaLabel }) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3">
+            <div className={cn(
+              "h-7 w-7 rounded-full flex items-center justify-center shrink-0",
+              done ? "bg-green-50" : "bg-muted/60"
+            )}>
+              {done
+                ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                : <CalendarDays className="h-3.5 w-3.5 text-muted-foreground/40" />
+              }
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold leading-tight">{label}</p>
+              {done && detail && (
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{detail}</p>
+              )}
+              {!done && (
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Pendente</p>
+              )}
+            </div>
+
+            {done ? (
+              <span className="shrink-0 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                Feito
+              </span>
+            ) : (
+              <Link href={ctaHref} className="shrink-0 flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+                {ctaLabel.replace("Registrar ", "")}
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Today() {
@@ -119,6 +252,33 @@ export default function Today() {
     },
     enabled: !!franchiseId && !!user,
   });
+
+  const weekStart = getWeekStart();
+  const currentMonth = new Date().getMonth() + 1;
+
+  const dailyParams = { franchiseId: franchiseId ?? undefined, date: today };
+  const { data: todayDailyCheckins = [] } = useListDailyCheckins(
+    dailyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListDailyCheckinsQueryKey(dailyParams) } }
+  );
+
+  const weeklyParams = { franchiseId: franchiseId ?? undefined };
+  const { data: allWeeklyCheckins = [] } = useListWeeklyCheckins(
+    weeklyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListWeeklyCheckinsQueryKey(weeklyParams) } }
+  );
+  const thisWeekCheckins = (allWeeklyCheckins as any[]).filter(
+    (c: any) => c.weekStartDate === weekStart
+  );
+
+  const monthlyParams = { franchiseId: franchiseId ?? undefined };
+  const { data: allMonthlyCheckins = [] } = useListMonthlyCheckins(
+    monthlyParams,
+    { query: { enabled: !!franchiseId, queryKey: getListMonthlyCheckinsQueryKey(monthlyParams) } }
+  );
+  const thisMonthCheckins = (allMonthlyCheckins as any[]).filter(
+    (c: any) => c.month === currentMonth && c.year === currentYear
+  );
 
   const now = Date.now();
   const in48h = now + 48 * 60 * 60 * 1000;
@@ -214,6 +374,13 @@ export default function Today() {
               </div>
             ))}
           </div>
+
+          {/* ── Check-in status ─────────────────────────────────── */}
+          <CheckinSummary
+            dailyCheckins={todayDailyCheckins as any[]}
+            weeklyCheckins={thisWeekCheckins}
+            monthlyCheckins={thisMonthCheckins}
+          />
 
           {/* ── Visão Anual KRI strip ───────────────────────────── */}
           {ytdData && (ytdData.targets.corretores || ytdData.targets.contratos || ytdData.targets.vendas) && (
