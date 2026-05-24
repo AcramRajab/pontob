@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { db, inviteTokensTable, usersTable, franchisesTable } from "@workspace/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { sendApprovalRequest, sendApprovalGranted, sendAdminError } from "../services/email";
+import { sendApprovalRequest, sendApprovalGranted, sendRejectionNotice, sendAdminError } from "../services/email";
 
 const router = Router();
 
@@ -480,12 +480,13 @@ router.post("/invites/:id/reject", requireAuth, requireRole("master_admin", "sta
     }
 
     const [user] = await db
-      .select({ id: usersTable.id, name: usersTable.name })
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
       .from(usersTable)
       .where(eq(usersTable.id, invite.usedByUserId))
       .limit(1);
 
     if (user) {
+      sendRejectionNotice({ toEmail: user.email, toName: user.name }).catch(() => {});
       await db.delete(usersTable).where(eq(usersTable.id, user.id));
     }
     await db.update(inviteTokensTable).set({ rejectedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));
@@ -606,7 +607,7 @@ router.get("/invites/reject/:approvalToken", async (req, res) => {
     }
 
     const [user] = await db
-      .select({ id: usersTable.id, name: usersTable.name })
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email })
       .from(usersTable)
       .where(eq(usersTable.id, invite.usedByUserId))
       .limit(1);
@@ -614,6 +615,7 @@ router.get("/invites/reject/:approvalToken", async (req, res) => {
     const userName = user?.name ?? "Usuário";
 
     if (user) {
+      sendRejectionNotice({ toEmail: user.email, toName: user.name }).catch(() => {});
       await db.delete(usersTable).where(eq(usersTable.id, user.id));
     }
     await db.update(inviteTokensTable).set({ rejectedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));

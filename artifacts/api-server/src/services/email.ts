@@ -532,6 +532,38 @@ export async function sendApprovalGranted(opts: {
   });
 }
 
+export async function sendRejectionNotice(opts: {
+  toEmail: string;
+  toName: string;
+}) {
+  if (!isEmailConfigured()) return;
+
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `Cadastro não aprovado — Método Ponto B`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#111;">
+        <div style="background:#dc2626;padding:28px 24px;border-radius:8px 8px 0 0;text-align:center;">
+          <h1 style="color:white;margin:0;font-size:20px;">Cadastro não aprovado</h1>
+          <p style="color:#fecaca;margin:4px 0 0;font-size:13px;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
+          <h2 style="font-size:18px;margin-top:0;">Olá, ${opts.toName}.</h2>
+          <p style="color:#374151;line-height:1.6;">
+            Infelizmente seu cadastro no <strong>Método Ponto B</strong> não foi aprovado pela equipe regional.
+          </p>
+          <p style="color:#374151;line-height:1.6;">
+            Se você acredita que isso foi um engano, entre em contato diretamente com a equipe da RE/MAX Santa Catarina para esclarecimentos.
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}
+
 export async function sendAdminError(opts: {
   subject: string;
   context: string;
