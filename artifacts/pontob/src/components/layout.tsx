@@ -36,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <span className="text-sm font-semibold ml-3 text-foreground/80 tracking-tight">Ponto B</span>
                 </header>
                 <main className="flex-1 overflow-y-auto">
-                  <div className="mx-auto max-w-5xl px-5 py-6 md:px-8 md:py-8">
+                  <div className="mx-auto max-w-7xl px-5 py-6 md:px-6 md:py-8">
                     {children}
                   </div>
                 </main>

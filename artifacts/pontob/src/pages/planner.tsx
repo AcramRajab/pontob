@@ -569,18 +569,18 @@ export default function Planner() {
               </div>
 
               {/* Table */}
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-muted/30 border-b border-border/60">
-                      <th className="text-left px-4 py-2 font-medium text-muted-foreground text-xs sticky left-0 bg-muted/30 min-w-[180px] max-w-[200px]">
+                      <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs sticky left-0 bg-muted/30 w-[170px] min-w-[170px]">
                         Indicador
                       </th>
                       {DAYS.map((d, i) => (
                         <th
                           key={d}
                           className={cn(
-                            "text-center px-2 py-2 font-medium text-xs min-w-[72px]",
+                            "text-center px-1 py-2 font-medium text-xs min-w-[52px]",
                             isCurrentWeek && i === todayDayIdx
                               ? "text-primary bg-primary/5 font-bold"
                               : "text-muted-foreground"
@@ -621,7 +621,7 @@ export default function Planner() {
                           )}
                         >
                           <td className={cn(
-                            "px-4 py-1 font-medium text-xs text-foreground/80 sticky left-0",
+                            "px-3 py-1 font-medium text-xs text-foreground/80 sticky left-0 w-[170px] min-w-[170px]",
                             rowIdx % 2 === 0 ? "bg-background" : "bg-muted/10"
                           )}>
                             {ind.label}
