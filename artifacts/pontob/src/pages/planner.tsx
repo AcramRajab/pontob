@@ -139,23 +139,38 @@ async function submitWeek(body: object) {
 
 // Single editable cell
 function Cell({
-  defaultValue, onChange, disabled, isZero,
+  serverValue, onChange, disabled,
 }: {
-  defaultValue: string; onChange: (v: string) => void; disabled: boolean; isZero: boolean;
+  serverValue: string; onChange: (v: string) => void; disabled: boolean;
 }) {
+  const [localValue, setLocalValue] = useState(serverValue);
+  const isFocused = useRef(false);
+
+  // Sync from server only when not focused (user not actively typing)
+  useEffect(() => {
+    if (!isFocused.current) setLocalValue(serverValue);
+  }, [serverValue]);
+
+  const isEmpty = localValue === "" || localValue === "0";
+
   return (
     <Input
       type="number"
       min={0}
       step="any"
-      defaultValue={defaultValue}
+      value={localValue}
       disabled={disabled}
       className={cn(
         "h-8 w-full text-center text-sm font-medium px-1 border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5",
         "disabled:opacity-40",
-        isZero && !disabled ? "text-muted-foreground/40" : ""
+        isEmpty && !disabled ? "text-muted-foreground/40" : ""
       )}
-      onChange={e => onChange(e.target.value)}
+      onFocus={() => { isFocused.current = true; }}
+      onBlur={() => { isFocused.current = false; }}
+      onChange={e => {
+        setLocalValue(e.target.value);
+        onChange(e.target.value);
+      }}
     />
   );
 }
@@ -639,10 +654,9 @@ export default function Planner() {
                                 )}
                               >
                                 <Cell
-                                  defaultValue={v}
+                                  serverValue={v}
                                   onChange={val => handleCellChange(ind.key, dayIdx, "value", val)}
                                   disabled={!canWrite || isSubmitted}
-                                  isZero={v === "" || v === "0"}
                                 />
                               </td>
                             );
