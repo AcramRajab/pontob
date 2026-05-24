@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -61,6 +61,7 @@ interface DailyCheckin {
 
 interface WeeklyCheckin {
   id: number;
+  goalId: number | null;
   weekStartDate: string;
   weekEndDate: string | null;
   progressSummary: string | null;
@@ -137,6 +138,7 @@ export default function CheckinScreen() {
   const [needsHelp, setNeedsHelp] = useState(false);
   const [dailySubmitting, setDailySubmitting] = useState(false);
   const [dailyDone, setDailyDone] = useState(false);
+  const [dailyPreFilled, setDailyPreFilled] = useState(false);
 
   // ── Weekly state ─────────────────────────────────────────────────────────
   const [weeklyGoalId, setWeeklyGoalId] = useState<number | null>(null);
@@ -147,6 +149,7 @@ export default function CheckinScreen() {
   const [weeklyNeedsSupport, setWeeklyNeedsSupport] = useState(false);
   const [weeklySubmitting, setWeeklySubmitting] = useState(false);
   const [weeklyDone, setWeeklyDone] = useState(false);
+  const [weeklyPreFilled, setWeeklyPreFilled] = useState(false);
 
   // ── Monthly state ────────────────────────────────────────────────────────
   const [monthlyGoalId, setMonthlyGoalId] = useState<number | null>(null);
@@ -256,7 +259,36 @@ export default function CheckinScreen() {
   const alreadySubmittedWeekly = !!thisWeekCheckin;
   const alreadySubmittedMonthly = !!thisMonthCheckin;
 
+  const existingDailyCheckin = todayCheckins?.[0] ?? null;
+  const existingWeeklyCheckin = thisWeekCheckin ?? null;
+
   const activeGoals = goals?.filter((g) => g.status === "em_andamento") ?? [];
+
+  // ── Pre-fill daily form from existing check-in ────────────────────────────
+
+  useEffect(() => {
+    if (!dailyPreFilled && existingDailyCheckin) {
+      setExecuted(existingDailyCheckin.executedToday as ExecutedOption);
+      setProgress(existingDailyCheckin.progressToday ?? 50);
+      setBlocker(existingDailyCheckin.blocker ?? "");
+      setNextStep(existingDailyCheckin.nextStep ?? "");
+      setNeedsHelp(existingDailyCheckin.needsHelp);
+      setDailyPreFilled(true);
+    }
+  }, [existingDailyCheckin, dailyPreFilled]);
+
+  // ── Pre-fill weekly form from existing check-in ───────────────────────────
+
+  useEffect(() => {
+    if (!weeklyPreFilled && existingWeeklyCheckin) {
+      setWeeklyExecPct(existingWeeklyCheckin.executionPercentage ?? 50);
+      setWeeklyProgressSummary(existingWeeklyCheckin.progressSummary ?? "");
+      setWeeklyBlockers(existingWeeklyCheckin.blockers ?? "");
+      setWeeklyNextPriority(existingWeeklyCheckin.nextWeekPriority ?? "");
+      setWeeklyNeedsSupport(existingWeeklyCheckin.needsRegionalSupport);
+      setWeeklyPreFilled(true);
+    }
+  }, [existingWeeklyCheckin, weeklyPreFilled]);
 
   // ── Submit handlers ───────────────────────────────────────────────────────
 
@@ -276,7 +308,10 @@ export default function CheckinScreen() {
         goalId: selectedGoalId,
         notes: null,
       };
-      const res = await apiFetch("/daily-checkins", { method: "POST", body: JSON.stringify(body) });
+      const isEdit = !!existingDailyCheckin;
+      const url = isEdit ? `/daily-checkins/${existingDailyCheckin!.id}` : "/daily-checkins";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
@@ -299,7 +334,8 @@ export default function CheckinScreen() {
 
   async function handleWeeklySubmit() {
     if (!user?.franchiseId) { Alert.alert("Erro", "Franquia não identificada."); return; }
-    const goalId = weeklyGoalId ?? (activeGoals.length === 1 ? activeGoals[0].id : null);
+    const isEdit = !!existingWeeklyCheckin;
+    const goalId = weeklyGoalId ?? existingWeeklyCheckin?.goalId ?? (activeGoals.length === 1 ? activeGoals[0].id : null);
     if (!goalId) { Alert.alert("Selecione uma meta", "Escolha a meta relacionada a este check-in semanal."); return; }
     setWeeklySubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -315,7 +351,9 @@ export default function CheckinScreen() {
         needsRegionalSupport: weeklyNeedsSupport,
         executionPercentage: weeklyExecPct,
       };
-      const res = await apiFetch("/weekly-checkins", { method: "POST", body: JSON.stringify(body) });
+      const url = isEdit ? `/weekly-checkins/${existingWeeklyCheckin!.id}` : "/weekly-checkins";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
@@ -564,6 +602,19 @@ export default function CheckinScreen() {
       gap: 10,
     },
     infoText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 },
+    // Edit banner
+    editBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: "#f59e0b18",
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: "#f59e0b50",
+      padding: 12,
+      marginBottom: 20,
+      gap: 8,
+    },
+    editBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#d97706", lineHeight: 18 },
     // History
     historyFilter: { flexDirection: "row", gap: 8, marginBottom: 16 },
     historyFilterBtn: {
@@ -693,13 +744,16 @@ export default function CheckinScreen() {
   // ── Daily form ────────────────────────────────────────────────────────────
 
   function renderDailyForm() {
-    if (dailyDone || alreadySubmittedDaily) {
+    if (dailyDone) {
       return (
         <View style={s.doneCard}>
           <Ionicons name="checkmark-circle" size={60} color={colors.success} />
-          <Text style={s.doneTitle}>{dailyDone ? "Check-in feito!" : "Já registrado"}</Text>
+          <Text style={s.doneTitle}>{alreadySubmittedDaily ? "Check-in atualizado!" : "Check-in feito!"}</Text>
           <Text style={s.doneText}>
-            {dailyDone ? "Check-in diário registrado com sucesso!" : "Você já realizou o check-in diário hoje."}
+            {alreadySubmittedDaily
+              ? "Check-in diário atualizado com sucesso!"
+              : "Check-in diário registrado com sucesso!"
+            }
           </Text>
         </View>
       );
@@ -707,6 +761,12 @@ export default function CheckinScreen() {
 
     return (
       <View style={s.content}>
+        {alreadySubmittedDaily && (
+          <View style={s.editBanner}>
+            <Ionicons name="create-outline" size={16} color="#d97706" />
+            <Text style={s.editBannerText}>Editando check-in de hoje — suas alterações substituirão o registro atual.</Text>
+          </View>
+        )}
         {activeGoals.length > 1 && (
           <View style={s.section}>
             <Text style={s.secLabel}>Meta (opcional)</Text>
@@ -763,7 +823,7 @@ export default function CheckinScreen() {
         >
           {dailySubmitting
             ? <ActivityIndicator color={colors.primaryForeground} size="small" />
-            : <Text style={s.submitBtnText}>Registrar Check-in Diário</Text>
+            : <Text style={s.submitBtnText}>{alreadySubmittedDaily ? "Atualizar Check-in Diário" : "Registrar Check-in Diário"}</Text>
           }
         </Pressable>
       </View>
@@ -800,13 +860,16 @@ export default function CheckinScreen() {
   }
 
   function renderWeeklyForm() {
-    if (weeklyDone || alreadySubmittedWeekly) {
+    if (weeklyDone) {
       return (
         <View style={s.doneCard}>
           <Ionicons name="checkmark-circle" size={60} color={colors.success} />
-          <Text style={s.doneTitle}>{weeklyDone ? "Check-in feito!" : "Já registrado"}</Text>
+          <Text style={s.doneTitle}>{alreadySubmittedWeekly ? "Check-in atualizado!" : "Check-in feito!"}</Text>
           <Text style={s.doneText}>
-            {weeklyDone ? "Check-in semanal registrado com sucesso!" : "O check-in desta semana já foi registrado."}
+            {alreadySubmittedWeekly
+              ? "Check-in semanal atualizado com sucesso!"
+              : "Check-in semanal registrado com sucesso!"
+            }
           </Text>
         </View>
       );
@@ -817,7 +880,13 @@ export default function CheckinScreen() {
 
     return (
       <View style={s.content}>
-        {!isMonday && (
+        {alreadySubmittedWeekly && (
+          <View style={s.editBanner}>
+            <Ionicons name="create-outline" size={16} color="#d97706" />
+            <Text style={s.editBannerText}>Editando check-in desta semana — suas alterações substituirão o registro atual.</Text>
+          </View>
+        )}
+        {!isMonday && !alreadySubmittedWeekly && (
           <View style={s.infoBanner}>
             <Ionicons name="information-circle-outline" size={18} color={colors.mutedForeground} />
             <Text style={s.infoText}>
@@ -871,7 +940,7 @@ export default function CheckinScreen() {
         >
           {weeklySubmitting
             ? <ActivityIndicator color={colors.primaryForeground} size="small" />
-            : <Text style={s.submitBtnText}>Registrar Check-in Semanal</Text>
+            : <Text style={s.submitBtnText}>{alreadySubmittedWeekly ? "Atualizar Check-in Semanal" : "Registrar Check-in Semanal"}</Text>
           }
         </Pressable>
       </View>
