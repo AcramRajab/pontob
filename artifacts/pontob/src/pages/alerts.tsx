@@ -140,9 +140,7 @@ export default function Alerts() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Alertas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Situações que precisam da sua atenção.
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">Nada escapa — check-ins em atraso, iniciativas vencendo, metas em risco.</p>
         </div>
         <Button
           variant="outline"

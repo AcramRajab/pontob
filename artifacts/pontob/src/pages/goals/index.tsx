@@ -94,7 +94,7 @@ export default function Goals() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Metas</h1>
-          <p className="text-muted-foreground mt-2">Menos planejamento bonito. Mais execução visível.</p>
+          <p className="text-muted-foreground mt-2">Defina o "o quê" — cada meta ligada a um KRI e processo-chave da sua estratégia.</p>
           <ProgressLegend className="mt-3" />
         </div>
         {canWrite && franchiseId && (

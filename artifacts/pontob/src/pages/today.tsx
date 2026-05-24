@@ -159,6 +159,7 @@ export default function Today() {
           <h1 className="text-2xl font-bold tracking-tight capitalize leading-tight">
             {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
           </h1>
+          <p className="text-muted-foreground mt-1 text-sm">Acompanhe as iniciativas do dia e registre o check-in antes de fechar.</p>
         </div>
         {!isLoading && !!franchiseId && (
           <div className="flex items-center gap-1.5 shrink-0 mt-1">

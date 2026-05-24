@@ -235,7 +235,7 @@ export default function MonthlyCheckin() {
     <div className="max-w-xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Check-in Mensal</h1>
-        <p className="text-muted-foreground mt-1">{monthLabel}</p>
+        <p className="text-muted-foreground mt-1">No fechamento do mês, registre resultados e defina os focos do próximo · {monthLabel}.</p>
       </div>
 
       {(isAdmin || isSocio) && (

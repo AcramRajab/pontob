@@ -342,7 +342,7 @@ export default function Catalog() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Catálogo de Iniciativas</h1>
-        <p className="text-muted-foreground mt-1">Iniciativas estratégicas e KPIs do planner semanal</p>
+        <p className="text-muted-foreground mt-1">Iniciativas comprovadas pela rede, organizadas por dimensão e processo-chave.</p>
       </div>
 
       <AlertDialog open={!!pendingDeactivation} onOpenChange={open => { if (!open) setPendingDeactivation(null); }}>

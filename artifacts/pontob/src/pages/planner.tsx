@@ -378,7 +378,7 @@ export default function Planner() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Planner Semanal</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Indicadores diários — KRIs e KPIs</p>
+          <p className="text-muted-foreground mt-1 text-sm">Toda segunda, planeje. Toda sexta, finalize e identifique os gaps.</p>
           {isSocio && (
             <div className="mt-2">
               <FranchisePicker

@@ -458,6 +458,7 @@ export default function PlannerRegistro() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Planner Semanal</p>
             <h1 className="text-2xl font-bold tracking-tight">Registro de Eventos</h1>
+            <p className="text-muted-foreground mt-1 text-sm">Lance os números do dia para alimentar o Planner Semanal.</p>
           </div>
           <div className="flex items-center gap-2">
             {isSubmitted && (

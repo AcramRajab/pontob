@@ -243,7 +243,7 @@ export default function WeeklyCheckin() {
     <div className="max-w-xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Check-in Semanal</h1>
-        <p className="text-muted-foreground mt-1">Semana {week.start} — {week.end}</p>
+        <p className="text-muted-foreground mt-1">Na sexta, revise o que executou e ajuste o plano · {week.start} a {week.end}.</p>
       </div>
 
       {(isAdmin || isSocio) && (

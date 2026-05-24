@@ -327,7 +327,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Bata o olho e saiba onde avançar.</p>
+        <p className="text-muted-foreground mt-1 text-sm">Visão consolidada da execução estratégica e dos KRIs da franquia.</p>
       </div>
 
       {(isAdmin || isSocio) && (
