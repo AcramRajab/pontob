@@ -110,6 +110,7 @@ export default function MonthlyCheckin() {
     goalParams,
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
+  const monthlyGoals = (goals as any[]).filter(g => g.frequency === "mensal");
 
   const monthlyParams = { franchiseId: franchiseId ?? undefined };
   const { data: monthlyCheckins = [], isLoading: isLoadingCheckins } = useListMonthlyCheckins(
@@ -259,6 +260,19 @@ export default function MonthlyCheckin() {
           monthLabel={monthLabel}
           onEdit={() => setIsEditing(true)}
         />
+      ) : monthlyGoals.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
+            <Target className="h-7 w-7 text-slate-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800">Nenhuma meta mensal cadastrada</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-xs">O check-in mensal requer uma meta com frequência <strong>Mensal</strong>. Crie ou edite uma meta para continuar.</p>
+          </div>
+          <Link href="/goals/new">
+            <Button className="mt-1">+ Nova Meta</Button>
+          </Link>
+        </div>
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {existingCheckin && (
@@ -291,7 +305,7 @@ export default function MonthlyCheckin() {
                       <SelectValue placeholder="Selecione a meta" />
                     </SelectTrigger>
                     <SelectContent>
-                      {goals.map((g: any) => (
+                      {monthlyGoals.map((g: any) => (
                         <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
                       ))}
                     </SelectContent>

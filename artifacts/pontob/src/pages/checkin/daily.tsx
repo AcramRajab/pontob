@@ -149,6 +149,7 @@ export default function DailyCheckin() {
     goalParams,
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
+  const dailyGoals = (goals as any[]).filter(g => g.frequency === "diario");
 
   const dailyParams = { franchiseId: franchiseId ?? undefined, date: today };
   const { data: todaysCheckins = [], isLoading: isLoadingCheckins } = useListDailyCheckins(
@@ -287,16 +288,16 @@ export default function DailyCheckin() {
           goalTitle={(goals as any[]).find((g: any) => g.id === existingCheckin.goalId)?.title}
           onEdit={() => setIsEditing(true)}
         />
-      ) : goals.length === 0 ? (
+      ) : dailyGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
             <Target className="h-7 w-7 text-slate-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800">Nenhuma meta cadastrada</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-xs">Crie uma meta antes de fazer check-in para acompanhar seu progresso.</p>
+            <h3 className="font-semibold text-slate-800">Nenhuma meta diária cadastrada</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-xs">O check-in diário requer uma meta com frequência <strong>Diária</strong>. Crie ou edite uma meta para continuar.</p>
           </div>
-          <Link href="/metas/nova">
+          <Link href="/goals/new">
             <Button className="mt-1">+ Nova Meta</Button>
           </Link>
         </div>
@@ -335,7 +336,7 @@ export default function DailyCheckin() {
                       <SelectValue placeholder="Selecione uma meta" />
                     </SelectTrigger>
                     <SelectContent>
-                      {goals.map((g: any) => (
+                      {dailyGoals.map((g: any) => (
                         <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
                       ))}
                     </SelectContent>

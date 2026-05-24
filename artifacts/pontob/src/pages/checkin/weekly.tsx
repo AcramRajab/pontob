@@ -121,6 +121,7 @@ export default function WeeklyCheckin() {
     goalParams,
     { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
   );
+  const weeklyGoals = (goals as any[]).filter(g => g.frequency === "semanal");
 
   const weeklyParams = { franchiseId: franchiseId ?? undefined };
   const { data: weeklyCheckins = [], isLoading: isLoadingCheckins } = useListWeeklyCheckins(
@@ -267,16 +268,16 @@ export default function WeeklyCheckin() {
           week={week}
           onEdit={() => setIsEditing(true)}
         />
-      ) : goals.length === 0 ? (
+      ) : weeklyGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
           <div className="h-14 w-14 rounded-full bg-slate-100 flex items-center justify-center">
             <Target className="h-7 w-7 text-slate-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800">Nenhuma meta cadastrada</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-xs">Crie uma meta antes de fazer check-in semanal.</p>
+            <h3 className="font-semibold text-slate-800">Nenhuma meta semanal cadastrada</h3>
+            <p className="text-sm text-slate-500 mt-1 max-w-xs">O check-in semanal requer uma meta com frequência <strong>Semanal</strong>. Crie ou edite uma meta para continuar.</p>
           </div>
-          <Link href="/metas/nova">
+          <Link href="/goals/new">
             <Button className="mt-1">+ Nova Meta</Button>
           </Link>
         </div>
@@ -312,7 +313,7 @@ export default function WeeklyCheckin() {
                       <SelectValue placeholder="Selecione a meta" />
                     </SelectTrigger>
                     <SelectContent>
-                      {goals.map((g: any) => (
+                      {weeklyGoals.map((g: any) => (
                         <SelectItem key={g.id} value={String(g.id)}>{g.title}</SelectItem>
                       ))}
                     </SelectContent>
