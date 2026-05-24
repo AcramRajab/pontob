@@ -266,8 +266,8 @@ router.post("/planner/submit", requireAuth, requireWriteAccess, async (req, res)
 
     const totals = PLANNER_INDICATORS.map(ind => {
       const dayEntries = entries.filter(e => e.indicatorKey === ind.key);
-      const total = dayEntries.reduce((s, e) => s + (e.value ?? 0), 0);
-      const metas = dayEntries.filter(e => e.meta != null).map(e => e.meta!);
+      const total = dayEntries.reduce((s, e) => s + Number(e.value ?? 0), 0);
+      const metas = dayEntries.filter(e => e.meta != null).map(e => Number(e.meta!));
       const meta = metas.length ? metas[metas.length - 1] : null;
       return { label: ind.label, total, meta };
     });
@@ -413,14 +413,14 @@ router.post("/planner/events", requireAuth, requireWriteAccess, async (req, res)
       )).limit(1);
 
     if (existing[0]) {
-      const newVal = (existing[0].value ?? 0) + delta;
+      const newVal = Number(existing[0].value ?? 0) + delta;
       await db.update(weeklyPlannerEntriesTable)
-        .set({ value: newVal })
+        .set({ value: String(newVal) })
         .where(eq(weeklyPlannerEntriesTable.id, existing[0].id));
     } else {
       await db.insert(weeklyPlannerEntriesTable).values({
         franchiseId, userId, weekStartDate, indicatorKey, dayOfWeek,
-        value: delta, meta: null,
+        value: String(delta), meta: null,
       });
     }
 
@@ -452,9 +452,9 @@ router.delete("/planner/events/:id", requireAuth, requireWriteAccess, async (req
       )).limit(1);
 
     if (existing[0]) {
-      const newVal = (existing[0].value ?? 0) - event.delta;
+      const newVal = Number(existing[0].value ?? 0) - Number(event.delta);
       await db.update(weeklyPlannerEntriesTable)
-        .set({ value: newVal })
+        .set({ value: String(newVal) })
         .where(eq(weeklyPlannerEntriesTable.id, existing[0].id));
     }
 

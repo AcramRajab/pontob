@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, real, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, unique, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { franchisesTable, usersTable } from "./users";
@@ -29,8 +29,8 @@ export const weeklyPlannerEntriesTable = pgTable("weekly_planner_entries", {
   weekStartDate: text("week_start_date").notNull(), // ISO date string YYYY-MM-DD (Monday)
   indicatorKey: text("indicator_key").notNull(),
   dayOfWeek: integer("day_of_week").notNull(), // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
-  value: real("value"),
-  meta: real("meta"),
+  value: numeric("value", { precision: 18, scale: 4 }),
+  meta: numeric("meta", { precision: 18, scale: 4 }),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -67,7 +67,7 @@ export const plannerEventLogTable = pgTable("planner_event_log", {
   eventDate: text("event_date").notNull(),            // Actual date YYYY-MM-DD
   dayOfWeek: integer("day_of_week").notNull(),        // 0=Mon … 6=Sun
   indicatorKey: text("indicator_key").notNull(),
-  delta: real("delta").notNull(),                     // +1, -1, +150000, etc.
+  delta: numeric("delta", { precision: 18, scale: 4 }).notNull(), // +1, -1, +150000.50, etc.
   note: text("note"),                                 // Optional: name, property, etc.
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
