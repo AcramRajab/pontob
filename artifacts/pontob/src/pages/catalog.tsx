@@ -11,6 +11,8 @@ import {
   getListDimensionsQueryKey,
   getListKeyProcessesQueryKey,
   getListStrategicInitiativesQueryKey,
+  useListCatalogAuditLogs,
+  getListCatalogAuditLogsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +30,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
-import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock } from "lucide-react";
+import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -242,6 +246,81 @@ export default function Catalog() {
         <Clock className="h-3 w-3 shrink-0" />
         Alterado em {formatted} por {item.lastChangedBy}
       </span>
+    );
+  }
+
+  function HistoryPopover({ itemType, itemId, itemName }: {
+    itemType: "dimension" | "key_process" | "strategic_initiative";
+    itemId: number;
+    itemName: string;
+  }) {
+    const [open, setOpen] = useState(false);
+    const params = { itemType, itemId };
+    const { data: logs = [], isLoading } = useListCatalogAuditLogs(
+      params,
+      { query: { enabled: open, queryKey: getListCatalogAuditLogsQueryKey(params) } }
+    );
+
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            aria-label={`Histórico de alterações: ${itemName}`}
+            data-testid={`history-btn-${itemType}-${itemId}`}
+          >
+            <History className="h-3.5 w-3.5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="end">
+          <div className="px-4 py-3 border-b">
+            <p className="text-sm font-semibold">Histórico de alterações</p>
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{itemName}</p>
+          </div>
+          {isLoading ? (
+            <div className="p-4 space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : logs.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6 px-4">
+              Nenhuma alteração registrada
+            </p>
+          ) : (
+            <ScrollArea className="max-h-64">
+              <div className="divide-y">
+                {logs.map((entry: any) => {
+                  const date = new Date(entry.changedAt);
+                  const formatted = date.toLocaleString("pt-BR", {
+                    day: "2-digit", month: "2-digit", year: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                  });
+                  const isActivated = entry.action === "activated";
+                  return (
+                    <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs shrink-0 mt-0.5 ${isActivated
+                          ? "bg-green-50 text-green-700 border-green-200"
+                          : "bg-muted text-muted-foreground border-muted-foreground/30"
+                        }`}
+                      >
+                        {isActivated ? "Ativado" : "Desativado"}
+                      </Badge>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{entry.userName}</p>
+                        <p className="text-xs text-muted-foreground">{formatted}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </PopoverContent>
+      </Popover>
     );
   }
 
@@ -552,20 +631,23 @@ export default function Catalog() {
                           </div>
                           <LastChangedHint item={d} />
                         </div>
-                        <Button
-                          size="sm"
-                          variant={d.active ? "outline" : "default"}
-                          className="shrink-0 gap-1.5"
-                          disabled={toggleDim.isPending || impactCheckingId === `dim-${d.id}`}
-                          onClick={() => d.active ? handleDimensionDeactivate(d) : toggleDim.mutate({ id: d.id })}
-                          data-testid={`toggle-dimension-${d.id}`}
-                        >
-                          {d.active ? (
-                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
-                          ) : (
-                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <HistoryPopover itemType="dimension" itemId={d.id} itemName={d.name} />
+                          <Button
+                            size="sm"
+                            variant={d.active ? "outline" : "default"}
+                            className="gap-1.5"
+                            disabled={toggleDim.isPending || impactCheckingId === `dim-${d.id}`}
+                            onClick={() => d.active ? handleDimensionDeactivate(d) : toggleDim.mutate({ id: d.id })}
+                            data-testid={`toggle-dimension-${d.id}`}
+                          >
+                            {d.active ? (
+                              <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                            ) : (
+                              <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -609,20 +691,23 @@ export default function Catalog() {
                           </div>
                           <LastChangedHint item={kp} />
                         </div>
-                        <Button
-                          size="sm"
-                          variant={kp.active ? "outline" : "default"}
-                          className="shrink-0 gap-1.5"
-                          disabled={toggleKp.isPending || impactCheckingId === `kp-${kp.id}`}
-                          onClick={() => kp.active ? handleKeyProcessDeactivate(kp) : toggleKp.mutate({ id: kp.id })}
-                          data-testid={`toggle-key-process-${kp.id}`}
-                        >
-                          {kp.active ? (
-                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
-                          ) : (
-                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <HistoryPopover itemType="key_process" itemId={kp.id} itemName={kp.name} />
+                          <Button
+                            size="sm"
+                            variant={kp.active ? "outline" : "default"}
+                            className="gap-1.5"
+                            disabled={toggleKp.isPending || impactCheckingId === `kp-${kp.id}`}
+                            onClick={() => kp.active ? handleKeyProcessDeactivate(kp) : toggleKp.mutate({ id: kp.id })}
+                            data-testid={`toggle-key-process-${kp.id}`}
+                          >
+                            {kp.active ? (
+                              <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                            ) : (
+                              <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -668,20 +753,23 @@ export default function Catalog() {
                           </div>
                           <LastChangedHint item={init} />
                         </div>
-                        <Button
-                          size="sm"
-                          variant={init.active ? "outline" : "default"}
-                          className="shrink-0 gap-1.5"
-                          disabled={toggleInit.isPending || impactCheckingId === `init-${init.id}`}
-                          onClick={() => init.active ? handleStrategicInitiativeDeactivate(init) : toggleInit.mutate({ id: init.id })}
-                          data-testid={`toggle-initiative-${init.id}`}
-                        >
-                          {init.active ? (
-                            <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
-                          ) : (
-                            <><Eye className="h-3.5 w-3.5" /> Reativar</>
-                          )}
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <HistoryPopover itemType="strategic_initiative" itemId={init.id} itemName={init.name} />
+                          <Button
+                            size="sm"
+                            variant={init.active ? "outline" : "default"}
+                            className="gap-1.5"
+                            disabled={toggleInit.isPending || impactCheckingId === `init-${init.id}`}
+                            onClick={() => init.active ? handleStrategicInitiativeDeactivate(init) : toggleInit.mutate({ id: init.id })}
+                            data-testid={`toggle-initiative-${init.id}`}
+                          >
+                            {init.active ? (
+                              <><EyeOff className="h-3.5 w-3.5" /> Desativar</>
+                            ) : (
+                              <><Eye className="h-3.5 w-3.5" /> Reativar</>
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>

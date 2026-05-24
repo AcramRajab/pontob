@@ -380,6 +380,25 @@ export const ListStrategicInitiativesResponse = zod.array(
 );
 
 /**
+ * @summary List full audit log history for a catalog item (admin/staff only)
+ */
+export const ListCatalogAuditLogsQueryParams = zod.object({
+  itemType: zod.enum(["dimension", "key_process", "strategic_initiative"]),
+  itemId: zod.coerce.number(),
+});
+
+export const ListCatalogAuditLogsResponseItem = zod.object({
+  id: zod.number(),
+  action: zod.string().describe("activated or deactivated"),
+  userName: zod.string(),
+  userEmail: zod.string(),
+  changedAt: zod.coerce.date(),
+});
+export const ListCatalogAuditLogsResponse = zod.array(
+  ListCatalogAuditLogsResponseItem,
+);
+
+/**
  * @summary Count active goals that reference a dimension (admin/staff only)
  */
 export const GetDimensionDeactivationImpactParams = zod.object({

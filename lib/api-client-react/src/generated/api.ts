@@ -23,6 +23,7 @@ import type {
   Candidato,
   CandidatoInput,
   CandidatoUpdate,
+  CatalogAuditLogEntry,
   CatalogDeactivationImpact,
   CatalogToggleResult,
   DailyCheckin,
@@ -64,6 +65,7 @@ import type {
   KpiUpdate,
   ListAlertsParams,
   ListAllGoalInitiativesParams,
+  ListCatalogAuditLogsParams,
   ListDailyCheckinsParams,
   ListDimensionsParams,
   ListFranchiseKrisParams,
@@ -1877,6 +1879,109 @@ export function useListStrategicInitiatives<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListStrategicInitiativesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List full audit log history for a catalog item (admin/staff only)
+ */
+export const getListCatalogAuditLogsUrl = (
+  params: ListCatalogAuditLogsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/catalog-audit-logs?${stringifiedParams}`
+    : `/api/catalog-audit-logs`;
+};
+
+export const listCatalogAuditLogs = async (
+  params: ListCatalogAuditLogsParams,
+  options?: RequestInit,
+): Promise<CatalogAuditLogEntry[]> => {
+  return customFetch<CatalogAuditLogEntry[]>(
+    getListCatalogAuditLogsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCatalogAuditLogsQueryKey = (
+  params?: ListCatalogAuditLogsParams,
+) => {
+  return [`/api/catalog-audit-logs`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCatalogAuditLogsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCatalogAuditLogs>>,
+  TError = ErrorType<void>,
+>(
+  params: ListCatalogAuditLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCatalogAuditLogsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCatalogAuditLogs>>
+  > = ({ signal }) =>
+    listCatalogAuditLogs(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCatalogAuditLogs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCatalogAuditLogsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCatalogAuditLogs>>
+>;
+export type ListCatalogAuditLogsQueryError = ErrorType<void>;
+
+/**
+ * @summary List full audit log history for a catalog item (admin/staff only)
+ */
+
+export function useListCatalogAuditLogs<
+  TData = Awaited<ReturnType<typeof listCatalogAuditLogs>>,
+  TError = ErrorType<void>,
+>(
+  params: ListCatalogAuditLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCatalogAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCatalogAuditLogsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

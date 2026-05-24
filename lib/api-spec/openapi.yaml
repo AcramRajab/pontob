@@ -452,6 +452,35 @@ paths:
                 items:
                   $ref: "#/components/schemas/StrategicInitiative"
 
+  /catalog-audit-logs:
+    get:
+      operationId: listCatalogAuditLogs
+      tags: [dimensions]
+      summary: List full audit log history for a catalog item (admin/staff only)
+      parameters:
+        - name: itemType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [dimension, key_process, strategic_initiative]
+        - name: itemId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of audit log entries for the item, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CatalogAuditLogEntry"
+        "400":
+          description: Missing or invalid parameters
+
   /dimensions/{id}/deactivation-impact:
     get:
       operationId: getDimensionDeactivationImpact
@@ -2016,6 +2045,23 @@ components:
         activeGoalCount:
           type: integer
           description: Number of active goals that reference this catalog item
+
+    CatalogAuditLogEntry:
+      type: object
+      required: [id, action, userName, userEmail, changedAt]
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+          description: "activated or deactivated"
+        userName:
+          type: string
+        userEmail:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
 
     Goal:
       type: object

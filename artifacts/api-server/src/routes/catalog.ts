@@ -166,6 +166,50 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
   }
 });
 
+// ── Admin: catalog audit log history ─────────────────────────────────────────
+
+router.get(
+  "/catalog-audit-logs",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    const itemType = req.query.itemType as string | undefined;
+    const itemId = req.query.itemId ? parseInt(req.query.itemId as string) : undefined;
+
+    if (!itemType || !["dimension", "key_process", "strategic_initiative"].includes(itemType)) {
+      res.status(400).json({ error: "itemType must be one of: dimension, key_process, strategic_initiative" });
+      return;
+    }
+    if (!itemId || isNaN(itemId)) {
+      res.status(400).json({ error: "itemId must be a valid integer" });
+      return;
+    }
+
+    try {
+      const logs = await db
+        .select()
+        .from(catalogAuditLogTable)
+        .where(
+          and(
+            eq(catalogAuditLogTable.itemType, itemType),
+            eq(catalogAuditLogTable.itemId, itemId),
+          ),
+        )
+        .orderBy(desc(catalogAuditLogTable.createdAt));
+
+      res.json(logs.map(l => ({
+        id: l.id,
+        action: l.action,
+        userName: l.userName,
+        userEmail: l.userEmail,
+        changedAt: l.createdAt,
+      })));
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
 // ── Admin: deactivation impact ───────────────────────────────────────────────
 
 router.get(

@@ -253,6 +253,15 @@ export interface CatalogDeactivationImpact {
   activeGoalCount: number;
 }
 
+export interface CatalogAuditLogEntry {
+  id: number;
+  /** activated or deactivated */
+  action: string;
+  userName: string;
+  userEmail: string;
+  changedAt: string;
+}
+
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
 
 export const GoalStatus = {
@@ -1441,6 +1450,20 @@ export type ListStrategicInitiativesParams = {
    */
   includeInactive?: boolean;
 };
+
+export type ListCatalogAuditLogsParams = {
+  itemType: ListCatalogAuditLogsItemType;
+  itemId: number;
+};
+
+export type ListCatalogAuditLogsItemType =
+  (typeof ListCatalogAuditLogsItemType)[keyof typeof ListCatalogAuditLogsItemType];
+
+export const ListCatalogAuditLogsItemType = {
+  dimension: "dimension",
+  key_process: "key_process",
+  strategic_initiative: "strategic_initiative",
+} as const;
 
 export type ListGoalsParams = {
   franchiseId?: number;
