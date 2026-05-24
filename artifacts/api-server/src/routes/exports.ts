@@ -13,10 +13,14 @@ function toCSV(headers: string[], rows: any[][]): string {
   return [headers.join(","), ...rows.map(r => r.map(escape).join(","))].join("\n");
 }
 
-function canAccessFranchise(req: any, franchiseId?: number) {
+function canAccessFranchise(req: any, franchiseId?: number | null) {
   const role = req.session.userRole;
   if (role === "master_admin" || role === "staff_regional") return true;
   if (!franchiseId) return false;
+  if (role === "socio") {
+    const linked: number[] = req.session.linkedFranchiseIds ?? [];
+    return linked.includes(franchiseId);
+  }
   return req.session.franchiseId === franchiseId;
 }
 

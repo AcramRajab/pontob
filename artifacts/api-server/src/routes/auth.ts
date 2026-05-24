@@ -69,6 +69,7 @@ router.post("/auth/login", async (req, res) => {
 
     if (user.role === "socio") {
       linkedFranchises = await getSocioFranchises(user.id);
+      req.session.linkedFranchiseIds = linkedFranchises.map(f => f.id);
     } else if (user.franchiseId) {
       const franchise = await db
         .select({ name: franchisesTable.name })
@@ -156,6 +157,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
 
     if (user.role === "socio") {
       linkedFranchises = await getSocioFranchises(user.id);
+      req.session.linkedFranchiseIds = linkedFranchises.map(f => f.id);
     } else if (user.franchiseId) {
       const franchise = await db
         .select({ name: franchisesTable.name })

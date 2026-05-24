@@ -9,6 +9,10 @@ const router = Router();
 function canAccessFranchise(req: any, franchiseId: number) {
   const role = req.session.userRole;
   if (role === "master_admin" || role === "staff_regional") return true;
+  if (role === "socio") {
+    const linked: number[] = req.session.linkedFranchiseIds ?? [];
+    return linked.includes(franchiseId);
+  }
   return req.session.franchiseId === franchiseId;
 }
 

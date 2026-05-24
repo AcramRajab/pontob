@@ -13,6 +13,7 @@ declare module "express-session" {
     userName?: string;
     userEmail?: string;
     franchiseId?: number | null;
+    linkedFranchiseIds?: number[];
   }
 }
 
