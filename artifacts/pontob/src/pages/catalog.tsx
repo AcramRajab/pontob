@@ -54,6 +54,8 @@ export default function Catalog() {
   const [impactCheckingId, setImpactCheckingId] = useState<string | null>(null);
   const [mgmtSearch, setMgmtSearch] = useState("");
   const [mgmtInactiveOnly, setMgmtInactiveOnly] = useState(false);
+  const [mgmtDimensionId, setMgmtDimensionId] = useState<string>("");
+  const [mgmtKeyProcessId, setMgmtKeyProcessId] = useState<string>("");
 
   const isAdmin = !authLoading && (user?.role === "master_admin" || user?.role === "staff_regional");
 
@@ -179,17 +181,27 @@ export default function Catalog() {
   const adminIsLoading = adminDimsLoading || adminKpsLoading || adminInitsLoading;
 
   const mgmtSearchLower = mgmtSearch.toLowerCase();
+
+  const mgmtKeyProcessesForDimension = mgmtDimensionId
+    ? adminKeyProcesses.filter((kp: any) => String(kp.dimensionId) === mgmtDimensionId)
+    : adminKeyProcesses;
+
   const filteredAdminDimensions = adminDimensions.filter((d: any) => {
+    if (mgmtDimensionId && String(d.id) !== mgmtDimensionId) return false;
     if (mgmtInactiveOnly && d.active) return false;
     if (mgmtSearchLower && !d.name.toLowerCase().includes(mgmtSearchLower)) return false;
     return true;
   });
   const filteredAdminKeyProcesses = adminKeyProcesses.filter((kp: any) => {
+    if (mgmtDimensionId && String(kp.dimensionId) !== mgmtDimensionId) return false;
+    if (mgmtKeyProcessId && String(kp.id) !== mgmtKeyProcessId) return false;
     if (mgmtInactiveOnly && kp.active) return false;
     if (mgmtSearchLower && !kp.name.toLowerCase().includes(mgmtSearchLower) && !(kp.dimensionName ?? "").toLowerCase().includes(mgmtSearchLower)) return false;
     return true;
   });
   const filteredAdminInitiatives = adminInitiatives.filter((init: any) => {
+    if (mgmtDimensionId && String(init.dimensionId) !== mgmtDimensionId) return false;
+    if (mgmtKeyProcessId && String(init.keyProcessId) !== mgmtKeyProcessId) return false;
     if (mgmtInactiveOnly && init.active) return false;
     if (mgmtSearchLower && !init.name.toLowerCase().includes(mgmtSearchLower) && !(init.dimensionName ?? "").toLowerCase().includes(mgmtSearchLower) && !(init.keyProcessName ?? "").toLowerCase().includes(mgmtSearchLower)) return false;
     return true;
@@ -428,27 +440,65 @@ export default function Catalog() {
               Aqui você pode ver todos os itens do catálogo, incluindo os inativos, e reativar qualquer item desativado por engano.
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  data-testid="mgmt-search"
-                  placeholder="Buscar por nome..."
-                  value={mgmtSearch}
-                  onChange={e => setMgmtSearch(e.target.value)}
-                  className="pl-8"
-                />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-3 items-center">
+                <Select
+                  value={mgmtDimensionId || "all"}
+                  onValueChange={v => {
+                    setMgmtDimensionId(v === "all" ? "" : v);
+                    setMgmtKeyProcessId("");
+                  }}
+                >
+                  <SelectTrigger className="w-44" data-testid="mgmt-select-dimension">
+                    <SelectValue placeholder="Dimensão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as dimensões</SelectItem>
+                    {adminDimensions.map((d: any) => (
+                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={mgmtKeyProcessId || "all"}
+                  onValueChange={v => setMgmtKeyProcessId(v === "all" ? "" : v)}
+                  disabled={!mgmtDimensionId}
+                >
+                  <SelectTrigger className="w-56" data-testid="mgmt-select-key-process">
+                    <SelectValue placeholder="Processo-chave" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os processos</SelectItem>
+                    {mgmtKeyProcessesForDimension.map((kp: any) => (
+                      <SelectItem key={kp.id} value={String(kp.id)}>{kp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="mgmt-inactive-only"
-                  data-testid="mgmt-inactive-only"
-                  checked={mgmtInactiveOnly}
-                  onCheckedChange={v => setMgmtInactiveOnly(!!v)}
-                />
-                <Label htmlFor="mgmt-inactive-only" className="text-sm cursor-pointer select-none">
-                  Mostrar apenas inativos
-                </Label>
+
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    data-testid="mgmt-search"
+                    placeholder="Buscar por nome..."
+                    value={mgmtSearch}
+                    onChange={e => setMgmtSearch(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="mgmt-inactive-only"
+                    data-testid="mgmt-inactive-only"
+                    checked={mgmtInactiveOnly}
+                    onCheckedChange={v => setMgmtInactiveOnly(!!v)}
+                  />
+                  <Label htmlFor="mgmt-inactive-only" className="text-sm cursor-pointer select-none">
+                    Mostrar apenas inativos
+                  </Label>
+                </div>
               </div>
             </div>
 
