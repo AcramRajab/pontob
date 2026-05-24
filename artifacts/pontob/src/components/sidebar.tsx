@@ -157,6 +157,7 @@ export function AppSidebar() {
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
         )}
         <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
+        <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
         {!isFranqueado && (
           <>
             <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
@@ -170,7 +171,6 @@ export function AppSidebar() {
         {(isMasterAdmin || isStaffRegional) && (
           <>
             <NavSection label="Regional" />
-            <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
             <NavItem href="/regional" icon={Map} label="Regional" active={at("/regional")} />
           </>
         )}
