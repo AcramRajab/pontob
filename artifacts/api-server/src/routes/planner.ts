@@ -33,7 +33,7 @@ router.get("/planner/ytd", requireAuth, async (req, res) => {
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
     const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
 
-    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional" || role === "socio")
       ? paramFranchiseId
       : req.session.franchiseId ?? undefined;
 
@@ -98,7 +98,7 @@ router.get("/planner", requireAuth, async (req, res) => {
     const { weekStartDate } = req.query;
     const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
 
-    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional" || role === "socio")
       ? paramFranchiseId
       : req.session.franchiseId ?? undefined;
 
@@ -514,7 +514,7 @@ router.get("/planner/history", requireAuth, async (req, res) => {
     const role = req.session.userRole!;
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
     const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
-    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional" || role === "socio")
       ? paramFranchiseId
       : req.session.franchiseId ?? undefined;
 
