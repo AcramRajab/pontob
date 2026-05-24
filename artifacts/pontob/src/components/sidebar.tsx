@@ -6,7 +6,7 @@ import {
   Users, Building, LogOut, ArrowRightCircle, UserCog, BookOpen,
   CalendarCheck, CalendarDays, CalendarRange, Briefcase, Bot,
   TableIcon, Eye, ClipboardList, LineChart, PlusCircle, HelpCircle,
-  Sparkles, Navigation, BrainCircuit, Trash2,
+  Sparkles, Navigation, BrainCircuit, Trash2, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
@@ -67,22 +67,45 @@ export function AppSidebar() {
   const isMasterAdmin = role === "master_admin";
   const isStaffRegional = role === "staff_regional";
   const isFranqueado = role === "franqueado";
+  const isAdminPanel = isMasterAdmin || isStaffRegional;
 
   const at = (path: string) => location === path;
   const startsWith = (prefix: string) => location.startsWith(prefix);
 
   return (
     <Sidebar className="border-r-0" style={{ "--sidebar-width": "220px" } as React.CSSProperties}>
-      {/* ── LOGO ── */}
+      {/* ── LOGO / HEADER ── */}
       <SidebarHeader className="px-4 py-4 border-b border-white/[0.06]">
-        <img
-          src="/remax-sc-logo.jpg"
-          alt="RE/MAX SC"
-          className="w-full h-auto object-contain rounded-md"
-        />
-        <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mt-2">
-          Método Ponto B
-        </p>
+        {isAdminPanel ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-md bg-sidebar-primary/20 flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-4 w-4 text-sidebar-primary" strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[13px] font-bold text-white/90 leading-tight">Ponto B</p>
+                <p className="text-[10px] text-sidebar-primary/80 font-semibold tracking-wide uppercase leading-tight">
+                  {isMasterAdmin ? "Master Admin" : "Staff Regional"}
+                </p>
+              </div>
+            </div>
+            <div className="h-px bg-sidebar-primary/20 rounded-full" />
+            <p className="text-[9px] font-semibold tracking-widest uppercase text-white/25">
+              Painel Administrativo
+            </p>
+          </div>
+        ) : (
+          <>
+            <img
+              src="/remax-sc-logo.jpg"
+              alt="RE/MAX SC"
+              className="w-full h-auto object-contain rounded-md"
+            />
+            <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mt-2">
+              Método Ponto B
+            </p>
+          </>
+        )}
       </SidebarHeader>
 
       {/* ── NAV ── */}
@@ -186,14 +209,20 @@ export function AppSidebar() {
 
         {/* User row */}
         <div className="px-3 py-3 border-t border-white/[0.06] flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-            <span className="text-[11px] font-semibold text-white/80">
-              {user.name?.charAt(0).toUpperCase()}
-            </span>
+          <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${isAdminPanel ? "bg-sidebar-primary/20" : "bg-white/10"}`}>
+            {isAdminPanel
+              ? <ShieldCheck className="h-3.5 w-3.5 text-sidebar-primary" strokeWidth={2} />
+              : <span className="text-[11px] font-semibold text-white/80">{user.name?.charAt(0).toUpperCase()}</span>
+            }
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-medium text-white/80 truncate">{user.name}</p>
-            <p className="text-[11px] text-white/35 truncate">{user.franchiseName || user.role}</p>
+            <p className={`text-[11px] truncate ${isAdminPanel ? "text-sidebar-primary/60" : "text-white/35"}`}>
+              {isAdminPanel
+                ? (isMasterAdmin ? "Master Admin · RE/MAX SC" : "Staff Regional · RE/MAX SC")
+                : (user.franchiseName || user.role)
+              }
+            </p>
           </div>
           <button
             onClick={() => logout()}

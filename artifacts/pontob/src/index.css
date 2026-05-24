@@ -215,6 +215,38 @@
 
 }
 
+/* ── ADMIN THEME ─────────────────────────────────────────────────────────
+   Applied via .theme-admin on the root layout div when role is
+   master_admin or staff_regional. Overrides sidebar + primary tokens.
+──────────────────────────────────────────────────────────────────────── */
+.theme-admin {
+  --sidebar: 246 18% 8%;
+  --sidebar-foreground: 240 10% 76%;
+  --sidebar-border: 246 14% 14%;
+  --sidebar-primary: 259 72% 68%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 246 14% 14%;
+  --sidebar-accent-foreground: 0 0% 95%;
+  --sidebar-ring: 259 72% 68%;
+  --sidebar-primary-border: hsl(259 72% 58%);
+  --sidebar-accent-border: hsl(246 14% 18%);
+
+  --primary: 259 58% 52%;
+  --primary-foreground: 0 0% 100%;
+  --primary-border: hsl(259 58% 44%);
+  --ring: 259 58% 52%;
+
+  --background: 246 12% 96.5%;
+  --muted: 246 10% 92%;
+  --muted-foreground: 246 8% 48%;
+  --accent: 246 10% 92%;
+  --input: 246 12% 88%;
+  --border: 246 10% 88%;
+
+  --chart-1: 259 58% 52%;
+  --chart-5: 259 58% 52%;
+}
+
 @layer base {
   * {
     @apply border-border;

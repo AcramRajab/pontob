@@ -21,12 +21,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  const isAdmin = user.role === "master_admin" || user.role === "staff_regional";
+
   return (
     <TourProvider>
       <AiAssistantProvider>
         <CheckinGate>
           <SidebarProvider>
-            <div className="flex h-screen w-full bg-background">
+            <div className={`flex h-screen w-full bg-background${isAdmin ? " theme-admin" : ""}`}>
               <AppSidebar />
               <div className="flex flex-col flex-1 min-w-0">
                 <header className="h-12 lg:hidden border-b border-border/60 flex items-center px-4 shrink-0 bg-background/95 backdrop-blur-sm">
