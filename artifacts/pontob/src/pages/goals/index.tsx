@@ -186,12 +186,22 @@ export default function Goals() {
         </div>
       )}
 
-      {(isAdmin || isSocio) && (
+      {isAdmin && (
         <FranchisePicker
           franchises={franchises}
-          value={isSocio ? socioFranchiseId : adminFranchiseId}
-          onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId}
+          value={adminFranchiseId}
+          onChange={setAdminFranchiseId}
         />
+      )}
+
+      {isSocio && franchiseId && (
+        <div className="flex items-center gap-2 py-1 border-b border-border">
+          <Target className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">
+            {(franchises as any[]).find((f) => f.id === franchiseId)?.name ?? ""}
+          </span>
+          <span className="text-xs text-muted-foreground">— metas desta franquia</span>
+        </div>
       )}
 
       {(isAdmin || isSocio) && !franchiseId ? (
@@ -379,9 +389,11 @@ export default function Goals() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                 <Target className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">Nenhuma meta encontrada</h3>
+                <h3 className="text-lg font-medium">Nenhuma meta cadastrada</h3>
                 <p className="text-muted-foreground mt-2 max-w-sm">
-                  Você ainda não tem metas cadastradas. Clique em Nova Meta para começar.
+                  {isSocio && franchiseId
+                    ? `Esta franquia ainda não tem metas cadastradas.`
+                    : "Você ainda não tem metas cadastradas. Clique em Nova Meta para começar."}
                 </p>
                 {canWrite && (
                   <Button asChild className="mt-6" variant="outline">
