@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/context/auth";
+import { NotificationsProvider } from "@/context/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,11 +44,13 @@ function AuthGate() {
   }, [user, loading]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="goal/[id]" options={{ headerShown: false }} />
-    </Stack>
+    <NotificationsProvider franchiseId={user?.franchiseId ?? null} userId={user?.id ?? null}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="goal/[id]" options={{ headerShown: false }} />
+      </Stack>
+    </NotificationsProvider>
   );
 }
 

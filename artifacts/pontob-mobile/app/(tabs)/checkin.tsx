@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/auth";
+import { useNotifications } from "@/context/notifications";
 import { useColors } from "@/hooks/useColors";
 import { apiFetch } from "@/lib/api";
 
@@ -102,6 +103,7 @@ export default function CheckinScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { onCheckinComplete } = useNotifications();
 
   const today = new Date();
   const todayStr = toISODate(today);
@@ -281,6 +283,7 @@ export default function CheckinScreen() {
         queryClient.invalidateQueries({ queryKey: ["today-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
         setDailyDone(true);
+        onCheckinComplete();
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         const err = (await res.json()) as { error?: string };

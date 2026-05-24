@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, candidatosTable, vagasTable, franchisesTable } from "@workspace/db";
+import { db, usersTable, candidatosTable, vagasTable, franchisesTable, pushTokensTable } from "@workspace/db";
 import { eq, inArray, isNotNull, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import {
@@ -10,6 +10,32 @@ import {
 } from "../services/email";
 
 const router = Router();
+
+// POST /notifications/push-token — register or update device push token
+router.post("/notifications/push-token", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId!;
+    const { token, platform } = req.body as { token?: string; platform?: string };
+    if (!token || !platform) {
+      res.status(400).json({ error: "token and platform are required" });
+      return;
+    }
+
+    // Upsert: update if token already exists, otherwise insert
+    await db
+      .insert(pushTokensTable)
+      .values({ userId, token, platform })
+      .onConflictDoUpdate({
+        target: pushTokensTable.token,
+        set: { userId, platform, updatedAt: new Date() },
+      });
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // GET /notifications/status
 router.get("/notifications/status", requireAuth, (req, res) => {

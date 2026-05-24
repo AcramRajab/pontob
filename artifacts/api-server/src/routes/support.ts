@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, alertsTable, helpRequestsTable, progressHistoryTable, franchisesTable, goalsTable, goalInitiativesTable, dailyCheckinsTable, usersTable } from "@workspace/db";
-import { eq, and, desc, notInArray, isNull, lt, gte } from "drizzle-orm";
+import { db, alertsTable, helpRequestsTable, progressHistoryTable, franchisesTable, goalsTable, goalInitiativesTable, dailyCheckinsTable, usersTable, pushTokensTable } from "@workspace/db";
+import { eq, and, desc, notInArray, isNull, lt, gte, inArray } from "drizzle-orm";
 import { requireAuth, requireAdminOrStaff } from "../middlewares/auth";
+import { sendAlertPush } from "../services/expoPush";
 
 const router = Router();
 
@@ -166,6 +167,41 @@ export async function generateAlertsForFranchise(franchiseId: number): Promise<{
   // ── Insert new alerts ────────────────────────────────────────────────────────
   if (toInsert.length > 0) {
     await db.insert(alertsTable).values(toInsert);
+
+    // ── Send Expo push notifications to franchise users ─────────────────────
+    try {
+      const franchiseUsers = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(and(eq(usersTable.franchiseId, franchiseId), eq(usersTable.active, true)));
+
+      if (franchiseUsers.length > 0) {
+        const userIds = franchiseUsers.map((u) => u.id);
+        const tokenRows = await db
+          .select({ token: pushTokensTable.token })
+          .from(pushTokensTable)
+          .where(inArray(pushTokensTable.userId, userIds));
+
+        const tokens = tokenRows.map((r) => r.token);
+        if (tokens.length > 0) {
+          const body =
+            toInsert.length === 1
+              ? toInsert[0].message
+              : `${toInsert.length} novos alertas na sua franquia.`;
+          const { invalidTokens } = await sendAlertPush(tokens, body);
+          // Prune permanently-invalid tokens so they don't accumulate
+          if (invalidTokens.length > 0) {
+            for (const token of invalidTokens) {
+              await db
+                .delete(pushTokensTable)
+                .where(eq(pushTokensTable.token, token));
+            }
+          }
+        }
+      }
+    } catch {
+      // Push is best-effort — don't fail the alert generation
+    }
   }
 
   // ── Resolve stale alerts ─────────────────────────────────────────────────────

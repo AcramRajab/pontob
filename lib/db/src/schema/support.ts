@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, timestamp, real } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, real, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { franchisesTable, usersTable } from "./users";
@@ -68,4 +68,19 @@ export const commentsTable = pgTable("comments", {
 export const insertCommentSchema = createInsertSchema(commentsTable).omit({ id: true, createdAt: true });
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof commentsTable.$inferSelect;
+
+export const pushTokensTable = pgTable("push_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  token: text("token").notNull(),
+  platform: text("platform").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  unique("push_tokens_token_unique").on(t.token),
+]);
+
+export const insertPushTokenSchema = createInsertSchema(pushTokensTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
+export type PushToken = typeof pushTokensTable.$inferSelect;
 
