@@ -259,15 +259,35 @@ function InviteStatusPill({ status }: { status: string }) {
   );
 }
 
+function relativeTime(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "agora mesmo";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "há 1 dia";
+  if (days < 30) return `há ${days} dias`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "há 1 mês";
+  return `há ${months} meses`;
+}
+
 function PendingApprovalSection({ invites }: { invites: any[] }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [approveTarget, setApproveTarget] = useState<{ id: number; name: string; email: string; franchiseName: string | null; role: string } | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{ id: number; name: string; franchiseName: string | null; role: string } | null>(null);
 
-  const pending = invites.filter(
-    (inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt
-  );
+  const pending = invites
+    .filter((inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt)
+    .sort((a, b) => {
+      const ta = a.usedAt ? new Date(a.usedAt).getTime() : 0;
+      const tb = b.usedAt ? new Date(b.usedAt).getTime() : 0;
+      return ta - tb;
+    });
 
   const approve = useApproveInvite({
     mutation: {
@@ -330,6 +350,11 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
                     )}
                     <span className="ml-2">· {roleLabel[inv.role] ?? inv.role}</span>
                   </p>
+                  {inv.usedAt && (
+                    <p className="text-xs text-amber-600/80 mt-0.5">
+                      Cadastrado {relativeTime(inv.usedAt)}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
