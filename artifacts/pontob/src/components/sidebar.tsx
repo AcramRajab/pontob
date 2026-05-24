@@ -118,9 +118,10 @@ export function AppSidebar() {
               alt="RE/MAX SC"
               className="w-full h-auto object-contain rounded-md"
             />
-            <p className="text-[10px] font-semibold tracking-widest uppercase text-white/30 mt-2">
-              Método Ponto B
-            </p>
+            <div className="mt-2">
+              <p className="text-[9px] font-semibold tracking-widest uppercase text-white/25 leading-none">Método</p>
+              <p className="text-[16px] font-extrabold tracking-wide text-white/85 leading-tight mt-0.5">Ponto B</p>
+            </div>
           </>
         )}
       </SidebarHeader>
