@@ -12,8 +12,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker } from "@/components/franchise-picker";
 
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAY_LABELS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -174,17 +175,8 @@ export default function Planner() {
   const [localGaps, setLocalGaps] = useState<Record<string, string>>({});
   const [localActions, setLocalActions] = useState<Record<string, string>>({});
 
-  const isSocio = (user as any)?.role === "socio";
-  const socioFranchises: Array<{ id: number; name: string }> = isSocio
-    ? ((user as any)?.linkedFranchises ?? []).slice().sort((a: any, b: any) =>
-        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
-    : [];
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState<number | null>(
-    isSocio ? null : null
-  );
-  const franchiseId: number | null = isSocio
-    ? selectedFranchiseId
-    : (user?.franchiseId ?? null);
+  const { franchiseId: ctxFranchiseId, isSocio, franchises: socioFranchises, setSocioFranchiseId, socioFranchiseId } = useFranchiseContext();
+  const franchiseId: number | null = ctxFranchiseId ?? null;
   const weekKey = `${franchiseId}-${weekStartStr}`;
   const currentYear = new Date().getFullYear();
 
@@ -353,19 +345,11 @@ export default function Planner() {
           <p className="text-sm text-muted-foreground mt-0.5">Indicadores diários — KRIs e KPIs</p>
           {isSocio && (
             <div className="mt-2">
-              <Select
-                value={selectedFranchiseId ? String(selectedFranchiseId) : ""}
-                onValueChange={v => setSelectedFranchiseId(v ? Number(v) : null)}
-              >
-                <SelectTrigger className="w-64 h-8 text-sm">
-                  <SelectValue placeholder="Selecione uma franquia…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {socioFranchises.map(f => (
-                    <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FranchisePicker
+                franchises={socioFranchises}
+                value={socioFranchiseId}
+                onChange={setSocioFranchiseId}
+              />
             </div>
           )}
         </div>

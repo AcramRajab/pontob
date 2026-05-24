@@ -768,4 +768,59 @@ router.get("/dashboard/initiative-score", requireAuth, async (req, res) => {
   }
 });
 
+// GET /dashboard/socio-overview — per-franchise summary for socio users
+router.get("/dashboard/socio-overview", requireAuth, async (req, res) => {
+  try {
+    const linkedFranchiseIds: number[] = req.session.linkedFranchiseIds ?? [];
+    if (linkedFranchiseIds.length === 0) { res.json([]); return; }
+
+    const [allFranchises, goalRows, initiativeRows] = await Promise.all([
+      db
+        .select({ id: franchisesTable.id, name: franchisesTable.name })
+        .from(franchisesTable)
+        .where(inArray(franchisesTable.id, linkedFranchiseIds))
+        .orderBy(franchisesTable.name),
+      db
+        .select({
+          franchiseId: goalsTable.franchiseId,
+          goalCount: sql<number>`count(*)`.mapWith(Number),
+          avgScore: sql<number>`round(avg(${goalsTable.score})::numeric, 0)`.mapWith(Number),
+          avgProgress: sql<number>`round(avg(${goalsTable.progressPercentage})::numeric, 0)`.mapWith(Number),
+        })
+        .from(goalsTable)
+        .where(and(inArray(goalsTable.franchiseId, linkedFranchiseIds), isNull(goalsTable.deletedAt)))
+        .groupBy(goalsTable.franchiseId),
+      db
+        .select({
+          franchiseId: goalsTable.franchiseId,
+          activeInitiatives: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(goalInitiativesTable)
+        .innerJoin(goalsTable, eq(goalInitiativesTable.goalId, goalsTable.id))
+        .where(and(
+          inArray(goalsTable.franchiseId, linkedFranchiseIds),
+          eq(goalInitiativesTable.status, "ativa"),
+          isNull(goalInitiativesTable.deletedAt),
+          isNull(goalsTable.deletedAt),
+        ))
+        .groupBy(goalsTable.franchiseId),
+    ]);
+
+    const goalMap = new Map(goalRows.map(r => [r.franchiseId, r]));
+    const initMap = new Map(initiativeRows.map(r => [r.franchiseId, r.activeInitiatives]));
+
+    res.json(allFranchises.map(f => ({
+      franchiseId: f.id,
+      franchiseName: f.name,
+      goalCount: goalMap.get(f.id)?.goalCount ?? 0,
+      avgScore: goalMap.get(f.id)?.avgScore ?? 0,
+      avgProgress: goalMap.get(f.id)?.avgProgress ?? 0,
+      activeInitiatives: initMap.get(f.id) ?? 0,
+    })));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

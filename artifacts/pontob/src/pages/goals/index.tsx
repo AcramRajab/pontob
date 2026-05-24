@@ -1,14 +1,14 @@
 import { useAuth } from "@/lib/auth";
 import { useListGoals, getListGoalsQueryKey, useDeleteGoal } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Target, Trash2, BarChart2, Zap } from "lucide-react";
+import { Loader2, Plus, Target, Trash2, BarChart2, Zap, Building2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -63,6 +63,19 @@ export default function Goals() {
 
   const canWrite = user?.role !== "responsavel_interno";
 
+  const { data: socioOverview } = useQuery<Array<{
+    franchiseId: number; franchiseName: string;
+    goalCount: number; avgScore: number; avgProgress: number; activeInitiatives: number;
+  }>>({
+    queryKey: ["socio-overview"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/socio-overview", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: isSocio,
+  });
+
   const handleDelete = async () => {
     if (!confirmDeleteId) return;
     try {
@@ -94,11 +107,90 @@ export default function Goals() {
         )}
       </div>
 
+      {isSocio && socioOverview && socioOverview.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Visão Geral — Todas as Franquias
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {socioOverview.map(f => {
+              const isSelected = socioFranchiseId === f.franchiseId;
+              const progress = f.avgProgress ?? 0;
+              const score = f.avgScore ?? 0;
+              return (
+                <button
+                  key={f.franchiseId}
+                  onClick={() => setSocioFranchiseId(f.franchiseId)}
+                  className={cn(
+                    "text-left rounded-xl border p-4 transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary",
+                    isSelected
+                      ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
+                      : "border-border bg-card hover:border-primary/40"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn(
+                        "flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center",
+                        isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                      )}>
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-semibold truncate leading-tight">{f.franchiseName}</span>
+                    </div>
+                    {isSelected && (
+                      <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 rounded px-1.5 py-0.5">
+                        Ativa
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" />
+                          Progresso médio
+                        </span>
+                        <span className={cn(
+                          "font-bold",
+                          progress >= 70 ? "text-green-600" : progress >= 40 ? "text-yellow-600" : "text-red-500"
+                        )}>
+                          {progress}%
+                        </span>
+                      </div>
+                      <Progress value={progress} className="h-1.5" />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50">
+                      <span className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">{f.goalCount}</span> {f.goalCount === 1 ? "meta" : "metas"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        <span className={cn(
+                          "font-semibold",
+                          score >= 70 ? "text-green-600" : score >= 40 ? "text-yellow-600" : "text-red-500"
+                        )}>{score}</span>
+                        {" "}pts score
+                      </span>
+                      <span className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">{f.activeInitiatives}</span> iniciativas
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(isAdmin || isSocio) && (
         <FranchisePicker
           franchises={franchises}
-          value={adminFranchiseId}
-          onChange={setAdminFranchiseId}
+          value={isSocio ? socioFranchiseId : adminFranchiseId}
+          onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId}
         />
       )}
 

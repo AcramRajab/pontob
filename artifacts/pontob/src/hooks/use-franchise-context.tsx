@@ -2,16 +2,47 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useListFranchises, getListFranchisesQueryKey } from "@workspace/api-client-react";
 
+const SOCIO_KEY = "pontob_socio_franchise_id";
+const ADMIN_KEY = "pontob_admin_franchise_id";
+
+function readStorage(key: string): number | undefined {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? Number(v) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeStorage(key: string, id: number | undefined) {
+  try {
+    if (id) localStorage.setItem(key, String(id));
+    else localStorage.removeItem(key);
+  } catch {}
+}
+
 export function useFranchiseContext() {
   const { user } = useAuth();
   const isAdmin = user?.role === "master_admin" || user?.role === "staff_regional";
-  const isSocio = user?.role === "socio";
-  const [adminFranchiseId, setAdminFranchiseId] = useState<number | undefined>();
-  const [socioFranchiseId, setSocioFranchiseId] = useState<number | undefined>();
+  const isSocio = (user as any)?.role === "socio";
 
-  // socio: picks from their linked franchises (no DB fetch needed — already in user object)
-  // admin/staff: picks from all franchises (fetched from API)
-  // franqueado/responsavel: fixed to their single franchise
+  const [adminFranchiseId, setAdminFranchiseIdRaw] = useState<number | undefined>(
+    () => readStorage(ADMIN_KEY)
+  );
+  const [socioFranchiseId, setSocioFranchiseIdRaw] = useState<number | undefined>(
+    () => readStorage(SOCIO_KEY)
+  );
+
+  const setAdminFranchiseId = (id: number | undefined) => {
+    setAdminFranchiseIdRaw(id);
+    writeStorage(ADMIN_KEY, id);
+  };
+
+  const setSocioFranchiseId = (id: number | undefined) => {
+    setSocioFranchiseIdRaw(id);
+    writeStorage(SOCIO_KEY, id);
+  };
+
   const franchiseId = isAdmin
     ? adminFranchiseId
     : isSocio
@@ -23,13 +54,12 @@ export function useFranchiseContext() {
     { query: { enabled: isAdmin, queryKey: franchisesKey } }
   );
 
-  // For admins: all franchises sorted alphabetically. For socio: their linked list.
   const franchises = isAdmin
     ? [...allFranchises].sort((a, b) =>
         (a.name ?? "").localeCompare(b.name ?? "", "pt-BR", { sensitivity: "base" })
       )
     : isSocio
-    ? (user?.linkedFranchises ?? []).sort((a, b) =>
+    ? ((user as any)?.linkedFranchises ?? []).slice().sort((a: any, b: any) =>
         a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
       )
     : [];
@@ -39,10 +69,8 @@ export function useFranchiseContext() {
     isAdmin,
     isSocio,
     franchises,
-    // admin uses these
     adminFranchiseId,
     setAdminFranchiseId,
-    // socio uses these
     socioFranchiseId,
     setSocioFranchiseId,
   };
