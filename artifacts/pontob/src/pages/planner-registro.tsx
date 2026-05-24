@@ -321,7 +321,7 @@ export default function PlannerRegistro() {
     if (!plannerData?.entries) return totals;
     for (const e of plannerData.entries) {
       if (e.dayOfWeek === todayDayOfWeek && e.value != null) {
-        totals[e.indicatorKey] = (totals[e.indicatorKey] ?? 0) + e.value;
+        totals[e.indicatorKey] = (totals[e.indicatorKey] ?? 0) + Number(e.value);
       }
     }
     return totals;
