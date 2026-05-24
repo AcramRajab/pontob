@@ -708,8 +708,8 @@ export default function PlannerRegistro() {
                     isPositive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
                   )}>
                     {isPositive ? "+" : ""}{meta?.isMonetary
-                      ? fmtBRL(Math.abs(event.delta))
-                      : event.delta}
+                      ? fmtBRL(Math.abs(Number(event.delta)))
+                      : Math.round(Number(event.delta))}
                   </div>
 
                   {/* Info */}
