@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
 import { useTour } from "./tour-guide";
 import { ShortcutsPanel } from "./shortcuts-panel";
 import { RemaxPanel } from "./remax-panel";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+
+const ROLE_LABELS: Record<string, string> = {
+  master_admin:        "Master Admin",
+  staff_regional:      "Regional",
+  franqueado:          "Franqueado",
+  responsavel_interno: "Resp. Interno",
+  socio:               "Sócio",
+};
 
 
 function NavItem({
@@ -60,6 +69,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { startTour } = useTour();
+  const { franchiseId, isSocio, franchises } = useFranchiseContext();
 
   if (!user) return null;
 
@@ -68,6 +78,13 @@ export function AppSidebar() {
   const isStaffRegional = role === "staff_regional";
   const isFranqueado = role === "franqueado";
   const isAdminPanel = isMasterAdmin || isStaffRegional;
+
+  // Resolve the currently active franchise name
+  const activeFranchiseName: string | null =
+    isAdminPanel ? null
+    : isSocio
+      ? (franchises.find((f: any) => f.id === franchiseId) as any)?.name ?? null
+      : (user.franchiseName ?? null);
 
   const at = (path: string) => location === path;
   const startsWith = (prefix: string) => location.startsWith(prefix);
@@ -208,29 +225,37 @@ export function AppSidebar() {
         </div>
 
         {/* User row */}
-        <div className="px-3 py-3 border-t border-white/[0.06] flex items-center gap-2.5">
-          <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${isAdminPanel ? "bg-sidebar-primary/20" : "bg-white/10"}`}>
-            {isAdminPanel
-              ? <ShieldCheck className="h-3.5 w-3.5 text-sidebar-primary" strokeWidth={2} />
-              : <span className="text-[11px] font-semibold text-white/80">{user.name?.charAt(0).toUpperCase()}</span>
-            }
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-white/80 truncate">{user.name}</p>
-            <p className={`text-[11px] truncate ${isAdminPanel ? "text-sidebar-primary/60" : "text-white/35"}`}>
+        <div className="px-3 py-3 border-t border-white/[0.06] space-y-2">
+          <div className="flex items-center gap-2.5">
+            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${isAdminPanel ? "bg-sidebar-primary/20" : "bg-white/10"}`}>
               {isAdminPanel
-                ? (isMasterAdmin ? "Master Admin · RE/MAX SC" : "Staff Regional · RE/MAX SC")
-                : (user.franchiseName || user.role)
+                ? <ShieldCheck className="h-3.5 w-3.5 text-sidebar-primary" strokeWidth={2} />
+                : <span className="text-[11px] font-semibold text-white/80">{user.name?.charAt(0).toUpperCase()}</span>
               }
-            </p>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-white/80 truncate">{user.name}</p>
+              <p className="text-[11px] text-white/40 truncate">
+                {ROLE_LABELS[role] ?? role}
+                {isAdminPanel && " · RE/MAX SC"}
+              </p>
+            </div>
+            <button
+              onClick={() => logout()}
+              className="h-6 w-6 flex items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
+              title="Sair"
+            >
+              <LogOut className="h-3.5 w-3.5" strokeWidth={1.8} />
+            </button>
           </div>
-          <button
-            onClick={() => logout()}
-            className="h-6 w-6 flex items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/[0.07] transition-colors shrink-0"
-            title="Sair"
-          >
-            <LogOut className="h-3.5 w-3.5" strokeWidth={1.8} />
-          </button>
+
+          {/* Active franchise badge */}
+          {activeFranchiseName && (
+            <div className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-1.5">
+              <Building className="h-3 w-3 text-white/30 shrink-0" />
+              <span className="text-[11px] text-white/55 truncate font-medium">{activeFranchiseName}</span>
+            </div>
+          )}
         </div>
       </div>
     </Sidebar>
