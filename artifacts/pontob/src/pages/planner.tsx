@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw, ClipboardList } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw, ClipboardList, ArrowUp, ArrowDown, Minus, BadgePlus, XCircle, HandCoins } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -750,68 +750,169 @@ export default function Planner() {
             </div>
           ))}
 
-          {/* Resultado do Mês */}
-          {franchiseId && (
-            <div className="rounded-2xl border bg-card overflow-hidden">
-              <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold capitalize">Resultado de {plannerMonthName}</span>
+          {/* Resultado do Mês — painel completo */}
+          {franchiseId && (() => {
+            const r = monthlySummary?.realizado ?? {};
+            const p = monthlySummary?.planejado ?? {};
+            const n = (key: string) => Number(r[key] ?? 0);
+            const fmtBrl = (v: number) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            const fmtN = (v: number, sign = false) => (sign && v > 0 ? "+" : "") + Math.round(v);
+            const metaPct = (key: string) => {
+              const meta = Number(p[key] ?? 0);
+              return meta > 0 ? Math.min(Math.round((n(key) / meta) * 100), 100) : null;
+            };
+
+            const corrEntram = n("corretores_entraram");
+            const corrSaem = n("corretores_sairam");
+            const estEntram = n("estagiarios_entraram");
+            const estSaem = n("estagiarios_sairam");
+            const netGain = (corrEntram + estEntram) - (corrSaem + estSaem);
+
+            const novasCres = n("novos_contratos_representacao");
+            const cresCanceladas = n("contratos_cancelados");
+            const cresVendidas = n("contratos_vendidos");
+
+            const vgv = n("venda_assinada");
+            const vgc = n("venda_realizada");
+
+            const StatCell = ({ label, value, Icon, colorClass, suffix = "" }: {
+              label: string; value: number | string; Icon: React.ElementType; colorClass: string; suffix?: string;
+            }) => (
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <div className={cn("flex items-center gap-1", colorClass)}>
+                  <Icon className="h-3 w-3 shrink-0" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide truncate">{label}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">Realizado vs Meta mensal</span>
+                <span className="text-xl font-bold tabular-nums text-foreground">
+                  {value === 0 || value === "0" ? <span className="text-muted-foreground/40 text-lg">—</span> : <>{value}{suffix}</>}
+                </span>
               </div>
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                  { key: "corretores_entraram", label: "Corretores entraram", Icon: Users, barClass: "bg-blue-400", overClass: "bg-blue-500", textClass: "text-blue-600" },
-                  { key: "novos_contratos_representacao", label: "Novos CREs", Icon: Building2, barClass: "bg-violet-400", overClass: "bg-violet-500", textClass: "text-violet-600" },
-                  { key: "venda_assinada", label: "VGH (Vendas)", Icon: TrendingUp, barClass: "bg-emerald-400", overClass: "bg-emerald-500", textClass: "text-emerald-600" },
-                ].map(({ key, label, Icon, barClass, overClass, textClass }) => {
-                  const isVghKey = key === "venda_assinada";
-                  const realizado = monthlySummary?.realizado?.[key] ?? 0;
-                  const planejado = monthlySummary?.planejado?.[key] ?? null;
-                  const p = planejado && planejado > 0 ? Math.min(Math.round((realizado / planejado) * 100), 100) : null;
-                  const fmt = (n: number) => isVghKey
-                    ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                    : String(Math.round(n));
-                  const isOver = p !== null && p >= 100;
-                  return (
-                    <div key={key} className="rounded-xl border bg-muted/20 p-4 space-y-1">
-                      <div className="flex items-center gap-1.5">
-                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
-                      </div>
-                      <div className="text-2xl font-bold tabular-nums">
-                        {realizado > 0 ? fmt(realizado) : <span className="text-muted-foreground/40 text-xl">—</span>}
-                      </div>
-                      {planejado !== null ? (
-                        <>
-                          <div className="text-xs text-muted-foreground">Meta: {fmt(planejado)}</div>
-                          <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-2">
-                            <div
-                              className={cn("h-full rounded-full transition-all", isOver ? overClass : barClass)}
-                              style={{ width: `${p ?? 0}%` }}
-                            />
-                          </div>
-                          {p !== null && (
-                            <div className={cn("text-xs font-semibold", isOver ? textClass : "text-muted-foreground")}>
-                              {p}% da meta{isOver ? " ✓" : ""}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-xs text-muted-foreground/60 italic">Meta não definida</div>
-                      )}
+            );
+
+            const MetaBar = ({ metaKey, colorBar }: { metaKey: string; colorBar: string }) => {
+              const pct = metaPct(metaKey);
+              if (pct === null) return <span className="text-[10px] text-muted-foreground/50 italic">sem meta</span>;
+              return (
+                <div className="space-y-0.5">
+                  <div className="h-1 rounded-full bg-muted overflow-hidden">
+                    <div className={cn("h-full rounded-full", colorBar)} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{pct}% da meta</span>
+                </div>
+              );
+            };
+
+            return (
+              <div className="rounded-2xl border bg-card overflow-hidden">
+                {/* Header */}
+                <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold capitalize">Resultado de {plannerMonthName}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Acumulado no período</span>
+                </div>
+
+                <div className="p-4 space-y-3">
+
+                  {/* BLOCO 1 — PESSOAS */}
+                  <div className="rounded-xl border border-blue-200/60 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-800/40 overflow-hidden">
+                    <div className="px-4 py-2 border-b border-blue-200/60 dark:border-blue-800/40 flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-blue-700 dark:text-blue-400">Pessoas</span>
                     </div>
-                  );
-                })}
+                    <div className="p-3 grid grid-cols-2 sm:grid-cols-5 gap-3 items-end">
+                      {/* Entradas */}
+                      <StatCell label="Corretores ↑" value={corrEntram} Icon={ArrowUp} colorClass="text-blue-500" />
+                      <StatCell label="Estagiários ↑" value={estEntram} Icon={ArrowUp} colorClass="text-sky-500" />
+                      {/* Saídas */}
+                      <StatCell label="Corretores ↓" value={corrSaem} Icon={ArrowDown} colorClass="text-red-500" />
+                      <StatCell label="Estagiários ↓" value={estSaem} Icon={ArrowDown} colorClass="text-rose-400" />
+                      {/* Net Gain */}
+                      <div className={cn(
+                        "rounded-lg px-3 py-2 border col-span-2 sm:col-span-1 flex flex-col gap-0.5",
+                        netGain > 0 ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40"
+                          : netGain < 0 ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800/40"
+                            : "bg-muted/30 border-border"
+                      )}>
+                        <div className={cn("flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
+                          netGain > 0 ? "text-emerald-600" : netGain < 0 ? "text-red-600" : "text-muted-foreground"
+                        )}>
+                          <Minus className="h-3 w-3" />
+                          Net Gain
+                        </div>
+                        <span className={cn("text-2xl font-bold tabular-nums",
+                          netGain > 0 ? "text-emerald-600" : netGain < 0 ? "text-red-600" : "text-muted-foreground"
+                        )}>
+                          {fmtN(netGain, true)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">saldo líquido</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BLOCO 2 — CREs */}
+                  <div className="rounded-xl border border-violet-200/60 bg-violet-50/40 dark:bg-violet-950/20 dark:border-violet-800/40 overflow-hidden">
+                    <div className="px-4 py-2 border-b border-violet-200/60 dark:border-violet-800/40 flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-400">CREs — Contratos de Representação Exclusiva</span>
+                    </div>
+                    <div className="p-3 grid grid-cols-3 gap-3 items-start">
+                      <div className="space-y-1">
+                        <StatCell label="Novas captadas" value={novasCres} Icon={BadgePlus} colorClass="text-violet-600" />
+                        <MetaBar metaKey="novos_contratos_representacao" colorBar="bg-violet-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <StatCell label="Canceladas" value={cresCanceladas} Icon={XCircle} colorClass="text-red-500" />
+                        <MetaBar metaKey="contratos_cancelados" colorBar="bg-red-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <StatCell label="Vendidas" value={cresVendidas} Icon={CheckCircle2} colorClass="text-emerald-600" />
+                        <MetaBar metaKey="contratos_vendidos" colorBar="bg-emerald-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BLOCO 3 — VENDAS */}
+                  <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/40 dark:bg-emerald-950/20 dark:border-emerald-800/40 overflow-hidden">
+                    <div className="px-4 py-2 border-b border-emerald-200/60 dark:border-emerald-800/40 flex items-center gap-2">
+                      <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">Vendas</span>
+                    </div>
+                    <div className="p-3 grid grid-cols-2 gap-3 items-start">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-emerald-600">
+                          <TrendingUp className="h-3 w-3 shrink-0" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wide">VGV — Subtotal vendas</span>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums text-foreground">
+                          {vgv > 0 ? fmtBrl(vgv) : <span className="text-muted-foreground/40 text-lg">—</span>}
+                        </div>
+                        <MetaBar metaKey="venda_assinada" colorBar="bg-emerald-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-teal-600">
+                          <HandCoins className="h-3 w-3 shrink-0" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wide">VGC/VGH — Honorários recebidos</span>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums text-foreground">
+                          {vgc > 0 ? fmtBrl(vgc) : <span className="text-muted-foreground/40 text-lg">—</span>}
+                        </div>
+                        <MetaBar metaKey="venda_realizada" colorBar="bg-teal-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="px-5 py-2 border-t bg-muted/20">
+                  <p className="text-[11px] text-muted-foreground">
+                    Atualizado automaticamente a cada registro de evento · Semanas com segunda-feira em {plannerMonthName.split(" ")[0]}
+                  </p>
+                </div>
               </div>
-              <div className="px-5 py-2 border-t bg-muted/20">
-                <p className="text-[11px] text-muted-foreground">
-                  Atualizado automaticamente a cada registro de evento · Semanas com segunda-feira em {plannerMonthName.split(" ")[0]}
-                </p>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Gaps & Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
