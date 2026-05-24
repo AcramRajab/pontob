@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
+import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import {
   ChevronLeft, ChevronRight, BarChart2, TrendingUp,
   Users, Building2, LineChart as LineChartIcon,
@@ -221,11 +222,10 @@ function IndicatorChart({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PlannerHistorico() {
-  const { user } = useAuth();
   const [year, setYear] = useState(new Date().getFullYear());
   const [viewMode, setViewMode] = useState<ViewMode>("monthly");
   const [chartType, setChartType] = useState<ChartType>("line");
-  const franchiseId = user?.franchiseId;
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
   const currentYear = new Date().getFullYear();
 
   const { data, isLoading } = useQuery<HistoryData>({
@@ -334,10 +334,16 @@ export default function PlannerHistorico() {
         </div>
       </div>
 
+      {(isAdmin || isSocio) && franchises.length > 1 && (
+        <FranchisePicker
+          franchises={franchises}
+          value={isSocio ? socioFranchiseId : adminFranchiseId}
+          onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId}
+        />
+      )}
+
       {!franchiseId && (
-        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-          Selecione uma franquia para visualizar o histórico.
-        </div>
+        <AdminEmptyState message="Selecione uma franquia acima para visualizar o histórico." />
       )}
 
       {franchiseId && isLoading && (

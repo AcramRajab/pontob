@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { useListFranchises, getListFranchisesQueryKey } from "@workspace/api-client-react";
 
@@ -43,12 +43,6 @@ export function useFranchiseContext() {
     writeStorage(SOCIO_KEY, id);
   };
 
-  const franchiseId = isAdmin
-    ? adminFranchiseId
-    : isSocio
-    ? socioFranchiseId
-    : (user?.franchiseId ?? undefined);
-
   const franchisesKey = getListFranchisesQueryKey();
   const { data: allFranchises = [] } = useListFranchises(
     { query: { enabled: isAdmin, queryKey: franchisesKey } }
@@ -63,6 +57,22 @@ export function useFranchiseContext() {
         a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
       )
     : [];
+
+  // Auto-select when there is exactly one option and nothing stored yet
+  useEffect(() => {
+    if (isSocio && franchises.length === 1 && !socioFranchiseId) {
+      setSocioFranchiseId((franchises[0] as any).id);
+    }
+    if (isAdmin && allFranchises.length === 1 && !adminFranchiseId) {
+      setAdminFranchiseId((allFranchises[0] as any).id);
+    }
+  }, [isSocio, isAdmin, franchises.length, allFranchises.length, socioFranchiseId, adminFranchiseId]);
+
+  const franchiseId = isAdmin
+    ? adminFranchiseId
+    : isSocio
+    ? socioFranchiseId
+    : (user?.franchiseId ?? undefined);
 
   return {
     franchiseId,
