@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, BookOpen, Pencil, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, BookOpen, Pencil, Loader2, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface InitiativeForm {
@@ -45,6 +45,7 @@ export default function NewGoalInitiative() {
   const [selectedInitiative, setSelectedInitiative] = useState<any>(null);
   const [dimensionId, setDimensionId] = useState<string>("");
   const [keyProcessId, setKeyProcessId] = useState<string>("");
+  const [show5W2H, setShow5W2H] = useState(false);
 
   // Load the goal so we can lock filters to its dimension/key-process
   const { data: goal, isLoading: goalLoading } = useGetGoal(goalId, {
@@ -140,6 +141,16 @@ export default function NewGoalInitiative() {
     }
   };
 
+  const w2hFields = [
+    { field: "whatWillBeDone" as const, label: "O que será feito? (What)", placeholder: "Descreva a ação concreta" },
+    { field: "whyItMatters" as const, label: "Por que é importante? (Why)", placeholder: "Qual o propósito desta iniciativa?" },
+    { field: "whoIsResponsible" as const, label: "Quem é responsável? (Who)", placeholder: "Nome do responsável" },
+    { field: "whereItWillBeDone" as const, label: "Onde será executado? (Where)", placeholder: "Local ou contexto de execução" },
+    { field: "howItWillBeDone" as const, label: "Como será feito? (How)", placeholder: "Método de execução" },
+    { field: "investmentOrEffort" as const, label: "Quanto custa / tempo envolvido? (How much)", placeholder: "Investimento, horas, recursos" },
+    { field: "desiredResult" as const, label: "Resultado esperado", placeholder: "O que você quer alcançar com esta iniciativa?" },
+  ];
+
   const ConfigureForm = ({ isCustom }: { isCustom: boolean }) => (
     <div className="max-w-xl mx-auto space-y-6 pb-64">
       <div className="flex items-center gap-3">
@@ -166,56 +177,80 @@ export default function NewGoalInitiative() {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {isCustom && (
+        {/* ── Custom: name only required ────────────────────────── */}
+        {isCustom ? (
+          <>
+            <Card>
+              <CardContent className="pt-4 space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Nome da Iniciativa *</Label>
+                  <Input
+                    placeholder="Ex: Programa de indicações de corretores, Reunião semanal de vendas..."
+                    {...register("customName", { required: true })}
+                    data-testid="input-custom-name"
+                    autoFocus
+                  />
+                  {errors.customName && <p className="text-xs text-destructive">Nome é obrigatório</p>}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-green-700 flex items-center gap-1.5">
+                    <ClipboardList className="h-3.5 w-3.5" />
+                    Resultado já obtido <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <Textarea
+                    rows={2}
+                    placeholder="Se já executou esta iniciativa antes, descreva o resultado obtido para benchmarking futuro..."
+                    {...register("actualResult")}
+                    data-testid="textarea-actual-result"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ── 5W2H collapsible ─────────────────────────────── */}
+            <button
+              type="button"
+              onClick={() => setShow5W2H(v => !v)}
+              className="w-full flex items-center justify-between rounded-lg border px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <ClipboardList className="h-4 w-4" />
+                5W2H — Planejamento da Execução
+                <span className="text-xs font-normal">(opcional)</span>
+              </span>
+              {show5W2H ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+
+            {show5W2H && (
+              <Card>
+                <CardContent className="pt-4 space-y-4">
+                  {w2hFields.map(q => (
+                    <div key={q.field} className="space-y-1.5">
+                      <Label className="text-xs font-medium">{q.label}</Label>
+                      <Textarea rows={2} placeholder={q.placeholder} {...register(q.field)} data-testid={`textarea-${q.field}`} />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </>
+        ) : (
+          /* ── Catalog: full 5W2H shown ──────────────────────────── */
           <Card>
-            <CardContent className="pt-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Nome da Iniciativa *</Label>
-                <Input
-                  placeholder="Ex: Programa de indicações de corretores, Reunião semanal de vendas..."
-                  {...register("customName", { required: isCustom })}
-                  data-testid="input-custom-name"
-                />
-                {errors.customName && <p className="text-xs text-destructive">Nome é obrigatório</p>}
-              </div>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm">5W2H — Planejamento da Execução</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {w2hFields.map(q => (
+                <div key={q.field} className="space-y-1.5">
+                  <Label className="text-xs font-medium">{q.label}</Label>
+                  <Textarea rows={2} placeholder={q.placeholder} {...register(q.field)} data-testid={`textarea-${q.field}`} />
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">5W2H — Planejamento da Execução</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { field: "whatWillBeDone" as const, label: "O que será feito? (What)", placeholder: "Descreva a ação concreta" },
-              { field: "whyItMatters" as const, label: "Por que é importante? (Why)", placeholder: "Qual o propósito desta iniciativa?" },
-              { field: "whoIsResponsible" as const, label: "Quem é responsável? (Who)", placeholder: "Nome do responsável" },
-              { field: "whereItWillBeDone" as const, label: "Onde será executado? (Where)", placeholder: "Local ou contexto de execução" },
-              { field: "howItWillBeDone" as const, label: "Como será feito? (How)", placeholder: "Método de execução" },
-              { field: "investmentOrEffort" as const, label: "Quanto custa / tempo envolvido? (How much)", placeholder: "Investimento, horas, recursos" },
-              { field: "desiredResult" as const, label: "Resultado esperado", placeholder: "O que você quer alcançar com esta iniciativa?" },
-            ].map(q => (
-              <div key={q.field} className="space-y-1.5">
-                <Label className="text-xs font-medium">{q.label}</Label>
-                <Textarea rows={2} placeholder={q.placeholder} {...register(q.field)} data-testid={`textarea-${q.field}`} />
-              </div>
-            ))}
-
-            {isCustom && (
-              <div className="space-y-1.5 border-t pt-4">
-                <Label className="text-xs font-medium text-green-700">Resultado já realizado (opcional)</Label>
-                <Textarea
-                  rows={2}
-                  placeholder="Se já executou esta iniciativa antes, descreva o resultado obtido..."
-                  {...register("actualResult")}
-                  data-testid="textarea-actual-result"
-                />
-                <p className="text-xs text-muted-foreground">Preencha se já tem histórico de resultado com esta ação.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm">Agendamento</CardTitle></CardHeader>
