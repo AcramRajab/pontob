@@ -14,7 +14,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, Cell,
 } from "recharts";
-import { progressColorHex } from "@/lib/progress-color";
+import { progressColorHex, progressBadgeClass } from "@/lib/progress-color";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,10 +62,7 @@ function fmtVgh(v: number | null | undefined) {
 
 function PctBadge({ val }: { val: number | null }) {
   if (val == null) return <span className="text-xs text-muted-foreground">—</span>;
-  const cls = val >= 80 ? "bg-green-50 text-green-700 border-green-200"
-    : val >= 50 ? "bg-amber-50 text-amber-700 border-amber-200"
-    : "bg-red-50 text-red-600 border-red-200";
-  return <Badge variant="outline" className={`text-xs ${cls}`}>{val}%</Badge>;
+  return <Badge variant="outline" className={`text-xs ${progressBadgeClass(val)}`}>{val}%</Badge>;
 }
 
 // ── KRI Chart ────────────────────────────────────────────────────────────────

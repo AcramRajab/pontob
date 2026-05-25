@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
-import { progressColorHex } from "@/lib/progress-color";
+import { progressColorHex, progressColorClass, progressBgClass } from "@/lib/progress-color";
 
 interface InitiativeScoreData {
   totalCatalog: number;
@@ -455,12 +455,12 @@ export default function Dashboard() {
                           <span className="text-sm text-muted-foreground">/ {fmt(target)}</span>
                         )}
                         {p != null && (
-                          <span className={`text-xs font-semibold ml-auto ${p >= 100 ? "text-green-600" : p >= 75 ? "text-amber-500" : "text-muted-foreground"}`}>{p}%</span>
+                          <span className={`text-xs font-semibold ml-auto ${progressColorClass(p)}`}>{p}%</span>
                         )}
                       </div>
                       {target != null && (
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${p ?? 0}%` }} />
+                          <div className={`h-full rounded-full transition-all ${progressBgClass(p)}`} style={{ width: `${p ?? 0}%` }} />
                         </div>
                       )}
                     </div>
