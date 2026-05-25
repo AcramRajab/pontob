@@ -11,6 +11,16 @@
  *    delivery reliable indefinitely as long as the app is opened at least once
  *    every two weeks (expected daily for a check-in product).
  *
+ * Pause / vacation mode:
+ *  - pauseUntil is the RESUME date (YYYY-MM-DD).  Days strictly before that
+ *    date are skipped; the resume date itself and all later days fire normally.
+ *  - When pauseUntil > 14 days away the scheduling horizon is extended so that
+ *    14 full post-pause days are always pre-scheduled without needing the app
+ *    to be opened on the resume date.
+ *  - Alert notifications (foreground polling) are NOT affected by the pause.
+ *  - When the app comes to the foreground and the pause date has passed,
+ *    reminders are automatically restored.
+ *
  * Server-driven push (via Expo Push API) is the primary channel for new alert
  * notifications; local foreground polling is the fallback.
  */
@@ -34,6 +44,7 @@ import { apiFetch } from "@/lib/api";
 const NOTIF_ASKED_KEY = "pontob_notif_asked";
 const NOTIF_TIME_KEY = "pontob_notif_time";
 const NOTIF_ENABLED_KEY = "pontob_notif_enabled";
+const NOTIF_PAUSE_UNTIL_KEY = "pontob_notif_pause_until";
 const REMINDER_PREFIX = "pontob_reminder_";
 const SCHEDULE_DAYS = 14;
 
@@ -46,13 +57,25 @@ export interface NotifTime {
   minute: number;
 }
 
+/** Returns the date as a YYYY-MM-DD string in local time. */
+function toDateString(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 interface NotificationsContextType {
   permissionGranted: boolean;
   notifEnabled: boolean;
   notifTime: NotifTime;
+  /** ISO date string (YYYY-MM-DD) until which daily reminders are paused, or null. */
+  pauseUntil: string | null;
   requestPermission: () => Promise<boolean>;
   setNotifEnabled: (enabled: boolean) => Promise<void>;
   setNotifTime: (time: NotifTime) => Promise<void>;
+  /** Pause reminders until the given date (inclusive). Pass null to clear. */
+  setPauseUntil: (dateStr: string | null) => Promise<void>;
   onCheckinComplete: () => Promise<void>;
 }
 
@@ -73,10 +96,7 @@ Notifications.setNotificationHandler({
 // ─── ID helpers ──────────────────────────────────────────────────────────────
 
 function reminderIdForDate(date: Date): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${REMINDER_PREFIX}${yyyy}-${mm}-${dd}`;
+  return `${REMINDER_PREFIX}${toDateString(date)}`;
 }
 
 // ─── Scheduling helpers ───────────────────────────────────────────────────────
@@ -127,15 +147,36 @@ async function hasDoneCheckinToday(franchiseId: number): Promise<boolean> {
 }
 
 /**
- * Pre-schedule DATE triggers for the next SCHEDULE_DAYS days.
+ * Returns the number of calendar days from today (local time) until the given
+ * YYYY-MM-DD string.  Returns 0 when dateStr equals today, negative for past dates.
+ */
+function daysUntilDateStr(dateStr: string): number {
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const [yyyy, mm, dd] = dateStr.split("-").map(Number);
+  const target = new Date(yyyy, mm - 1, dd);
+  return Math.round(
+    (target.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)
+  );
+}
+
+/**
+ * Pre-schedule DATE triggers covering SCHEDULE_DAYS days of reminders.
  *
- * This guarantees delivery for 14 days without requiring any further app
- * interaction — each notification fires independently.  The current day is
- * skipped when the check-in is already done.
+ * When pauseUntil is set:
+ *  - pauseUntil is treated as the RESUME date — days strictly before it are
+ *    skipped; the resume date itself and all later days fire normally.
+ *  - The scheduling horizon is extended beyond 14 days when needed so that
+ *    14 full post-pause reminders are always pre-scheduled.  This guarantees
+ *    automatic resumption on the chosen date without requiring the app to be
+ *    opened during the pause period.
+ *
+ * Alert notifications are not affected.
  */
 async function scheduleReminders(
   time: NotifTime,
-  franchiseId: number | null
+  franchiseId: number | null,
+  pauseUntil: string | null
 ): Promise<void> {
   if (Platform.OS === "web") return;
   await cancelAllReminders();
@@ -144,10 +185,17 @@ async function scheduleReminders(
     ? await hasDoneCheckinToday(franchiseId)
     : false;
 
+  // Extend the horizon so we always have SCHEDULE_DAYS reminders after the pause ends.
+  const pauseDays = pauseUntil ? daysUntilDateStr(pauseUntil) : 0;
+  const horizon =
+    pauseUntil && pauseDays > 0
+      ? pauseDays + SCHEDULE_DAYS
+      : SCHEDULE_DAYS;
+
   const now = new Date();
   const pending: Promise<string>[] = [];
 
-  for (let i = 0; i < SCHEDULE_DAYS; i++) {
+  for (let i = 0; i < horizon; i++) {
     const fireDate = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -163,6 +211,9 @@ async function scheduleReminders(
 
     // Skip today if check-in is already done
     if (i === 0 && checkinDoneToday) continue;
+
+    // Skip days strictly before the resume date (pauseUntil is the first day reminders fire)
+    if (pauseUntil && toDateString(fireDate) < pauseUntil) continue;
 
     pending.push(
       Notifications.scheduleNotificationAsync({
@@ -277,6 +328,7 @@ export function NotificationsProvider({
     hour: 8,
     minute: 0,
   });
+  const [pauseUntil, setPauseUntilState] = useState<string | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const initialized = useRef(false);
 
@@ -284,12 +336,14 @@ export function NotificationsProvider({
   const permGrantedRef = useRef(false);
   const notifEnabledRef = useRef(true);
   const notifTimeRef = useRef<NotifTime>({ hour: 8, minute: 0 });
+  const pauseUntilRef = useRef<string | null>(null);
   const franchiseIdRef = useRef<number | null>(null);
   const userIdRef = useRef<number | null>(null);
 
   useEffect(() => { permGrantedRef.current = permissionGranted; }, [permissionGranted]);
   useEffect(() => { notifEnabledRef.current = notifEnabled; }, [notifEnabled]);
   useEffect(() => { notifTimeRef.current = notifTime; }, [notifTime]);
+  useEffect(() => { pauseUntilRef.current = pauseUntil; }, [pauseUntil]);
   useEffect(() => { franchiseIdRef.current = franchiseId; }, [franchiseId]);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
@@ -297,11 +351,13 @@ export function NotificationsProvider({
   useEffect(() => {
     if (Platform.OS === "web") return;
     async function init() {
-      const [storedEnabled, storedTime, storedAsked] = await Promise.all([
-        AsyncStorage.getItem(NOTIF_ENABLED_KEY),
-        AsyncStorage.getItem(NOTIF_TIME_KEY),
-        AsyncStorage.getItem(NOTIF_ASKED_KEY),
-      ]);
+      const [storedEnabled, storedTime, storedAsked, storedPause] =
+        await Promise.all([
+          AsyncStorage.getItem(NOTIF_ENABLED_KEY),
+          AsyncStorage.getItem(NOTIF_TIME_KEY),
+          AsyncStorage.getItem(NOTIF_ASKED_KEY),
+          AsyncStorage.getItem(NOTIF_PAUSE_UNTIL_KEY),
+        ]);
 
       const enabled =
         storedEnabled === null ? true : storedEnabled === "true";
@@ -309,10 +365,20 @@ export function NotificationsProvider({
         ? (JSON.parse(storedTime) as NotifTime)
         : { hour: 8, minute: 0 };
 
+      // If pause date is in the past, clear it automatically
+      const today = toDateString(new Date());
+      const pause =
+        storedPause && storedPause >= today ? storedPause : null;
+      if (storedPause && !pause) {
+        await AsyncStorage.removeItem(NOTIF_PAUSE_UNTIL_KEY);
+      }
+
       setNotifEnabledState(enabled);
       setNotifTimeState(time);
+      setPauseUntilState(pause);
       notifEnabledRef.current = enabled;
       notifTimeRef.current = time;
+      pauseUntilRef.current = pause;
 
       let granted = false;
 
@@ -330,7 +396,7 @@ export function NotificationsProvider({
       permGrantedRef.current = granted;
 
       if (granted && enabled) {
-        await scheduleReminders(time, franchiseIdRef.current);
+        await scheduleReminders(time, franchiseIdRef.current, pause);
         await registerPushToken();
       }
 
@@ -343,7 +409,7 @@ export function NotificationsProvider({
   useEffect(() => {
     if (Platform.OS === "web" || !initialized.current) return;
     if (permissionGranted && notifEnabled && userId) {
-      scheduleReminders(notifTime, franchiseId);
+      scheduleReminders(notifTime, franchiseId, pauseUntilRef.current);
       registerPushToken();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -358,11 +424,20 @@ export function NotificationsProvider({
         const wasBackground = appStateRef.current.match(/inactive|background/);
         appStateRef.current = nextState;
         if (wasBackground && nextState === "active") {
+          // Auto-expire pause if the resume date has passed
+          const today = toDateString(new Date());
+          if (pauseUntilRef.current && pauseUntilRef.current < today) {
+            pauseUntilRef.current = null;
+            setPauseUntilState(null);
+            await AsyncStorage.removeItem(NOTIF_PAUSE_UNTIL_KEY);
+          }
+
           if (permGrantedRef.current && notifEnabledRef.current) {
             // Refresh 14-day schedule; also handles today's conditional skip
             await scheduleReminders(
               notifTimeRef.current,
-              franchiseIdRef.current
+              franchiseIdRef.current,
+              pauseUntilRef.current
             );
           }
           if (
@@ -407,7 +482,7 @@ export function NotificationsProvider({
     setPermissionGranted(granted);
     permGrantedRef.current = granted;
     if (granted && notifEnabled) {
-      await scheduleReminders(notifTime, franchiseId);
+      await scheduleReminders(notifTime, franchiseId, pauseUntilRef.current);
       await registerPushToken();
     }
     return granted;
@@ -419,7 +494,7 @@ export function NotificationsProvider({
       notifEnabledRef.current = enabled;
       await AsyncStorage.setItem(NOTIF_ENABLED_KEY, String(enabled));
       if (enabled && permissionGranted) {
-        await scheduleReminders(notifTime, franchiseId);
+        await scheduleReminders(notifTime, franchiseId, pauseUntilRef.current);
       } else {
         await cancelAllReminders();
       }
@@ -433,10 +508,29 @@ export function NotificationsProvider({
       notifTimeRef.current = time;
       await AsyncStorage.setItem(NOTIF_TIME_KEY, JSON.stringify(time));
       if (notifEnabled && permissionGranted) {
-        await scheduleReminders(time, franchiseId);
+        await scheduleReminders(time, franchiseId, pauseUntilRef.current);
       }
     },
     [notifEnabled, permissionGranted, franchiseId]
+  );
+
+  const setPauseUntil = useCallback(
+    async (dateStr: string | null) => {
+      const today = toDateString(new Date());
+      // Reject dates in the past
+      const effective = dateStr && dateStr >= today ? dateStr : null;
+      setPauseUntilState(effective);
+      pauseUntilRef.current = effective;
+      if (effective) {
+        await AsyncStorage.setItem(NOTIF_PAUSE_UNTIL_KEY, effective);
+      } else {
+        await AsyncStorage.removeItem(NOTIF_PAUSE_UNTIL_KEY);
+      }
+      if (notifEnabled && permissionGranted) {
+        await scheduleReminders(notifTime, franchiseId, effective);
+      }
+    },
+    [notifEnabled, permissionGranted, notifTime, franchiseId]
   );
 
   /**
@@ -454,9 +548,11 @@ export function NotificationsProvider({
         permissionGranted,
         notifEnabled,
         notifTime,
+        pauseUntil,
         requestPermission,
         setNotifEnabled,
         setNotifTime,
+        setPauseUntil,
         onCheckinComplete,
       }}
     >
