@@ -134,7 +134,7 @@ router.post("/recruiting/candidatos/:id/draft-message", requireAuth, async (req,
   const [row] = await db
     .select({ candidato: candidatosTable, vaga: vagasTable })
     .from(candidatosTable)
-    .innerJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
+    .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
     .where(eq(candidatosTable.id, candidatoId));
   if (!row) return res.status(404).json({ error: "Candidato not found" });
 
@@ -153,18 +153,20 @@ router.post("/recruiting/candidatos/:id/draft-message", requireAuth, async (req,
     candidato.currentRole ? `Cargo atual: ${candidato.currentRole}` : null,
     candidato.source ? `Como chegou até nós: ${candidato.source}` : null,
     candidato.notes ? `Notas do recrutador: ${candidato.notes}` : null,
+    candidato.notasEntrevistaOnline ? `Observações entrevista online: ${candidato.notasEntrevistaOnline}` : null,
+    candidato.notasEntrevistaPresencial ? `Observações entrevista presencial: ${candidato.notasEntrevistaPresencial}` : null,
     `Estágio no processo: ${candidato.stage}`,
   ]
     .filter(Boolean)
     .join("\n");
 
-  const vagaCtx = [
-    `Vaga: ${vaga.title}`,
-    vaga.profileSummary ? `Perfil buscado: ${vaga.profileSummary}` : null,
-    vaga.mustHaves ? `Requisitos: ${vaga.mustHaves}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const vagaCtx = vaga
+    ? [
+        `Vaga: ${vaga.title}`,
+        vaga.profileSummary ? `Perfil buscado: ${vaga.profileSummary}` : null,
+        vaga.mustHaves ? `Requisitos: ${vaga.mustHaves}` : null,
+      ].filter(Boolean).join("\n")
+    : "Vaga: Corretor Associado RE/MAX SC (processo de prospecção geral)";
 
   const systemPrompt = `Você é a secretária de recrutamento de uma franquia RE/MAX SC.
 Redija mensagens profissionais e calorosas para candidatos — em português brasileiro informal mas respeitoso.
@@ -204,7 +206,7 @@ router.post("/recruiting/candidatos/:id/interview-prep", requireAuth, async (req
   const [row] = await db
     .select({ candidato: candidatosTable, vaga: vagasTable })
     .from(candidatosTable)
-    .innerJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
+    .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
     .where(eq(candidatosTable.id, candidatoId));
   if (!row) return res.status(404).json({ error: "Candidato not found" });
 
@@ -215,18 +217,20 @@ router.post("/recruiting/candidatos/:id/interview-prep", requireAuth, async (req
     candidato.currentRole ? `Cargo atual: ${candidato.currentRole}` : null,
     candidato.source ? `Origem: ${candidato.source}` : null,
     candidato.notes ? `Notas do recrutador: ${candidato.notes}` : null,
+    candidato.notasEntrevistaOnline ? `Observações entrevista online: ${candidato.notasEntrevistaOnline}` : null,
+    candidato.notasEntrevistaPresencial ? `Observações entrevista presencial: ${candidato.notasEntrevistaPresencial}` : null,
     candidato.recommendation ? `Recomendação atual: ${candidato.recommendation}` : null,
   ]
     .filter(Boolean)
     .join("\n");
 
-  const vagaCtx = [
-    `Vaga: ${vaga.title}`,
-    vaga.profileSummary ? `Perfil buscado: ${vaga.profileSummary}` : null,
-    vaga.mustHaves ? `Requisitos indispensáveis: ${vaga.mustHaves}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const vagaCtx = vaga
+    ? [
+        `Vaga: ${vaga.title}`,
+        vaga.profileSummary ? `Perfil buscado: ${vaga.profileSummary}` : null,
+        vaga.mustHaves ? `Requisitos indispensáveis: ${vaga.mustHaves}` : null,
+      ].filter(Boolean).join("\n")
+    : "Vaga: Corretor Associado RE/MAX SC (processo de prospecção geral)";
 
   const systemPrompt = `Você é um especialista em entrevistas de recrutamento para o mercado imobiliário brasileiro (franquias RE/MAX SC).
 Crie agendas de entrevista práticas, personalizadas e prontas para usar.
