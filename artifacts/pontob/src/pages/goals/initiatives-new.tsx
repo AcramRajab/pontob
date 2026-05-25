@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, BookOpen, Pencil, Loader2, ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
+import {
+  ArrowLeft, ChevronRight, BookOpen, Pencil, Loader2,
+  ChevronDown, ChevronUp, ClipboardList, Target, BarChart2,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
 interface InitiativeForm {
@@ -46,13 +49,12 @@ export default function NewGoalInitiative() {
   const [dimensionId, setDimensionId] = useState<string>("");
   const [keyProcessId, setKeyProcessId] = useState<string>("");
   const [show5W2H, setShow5W2H] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
 
-  // Load the goal so we can lock filters to its dimension/key-process
   const { data: goal, isLoading: goalLoading } = useGetGoal(goalId, {
     query: { queryKey: getGetGoalQueryKey(goalId) },
   });
 
-  // Pre-set dimension + key-process from the goal when data arrives
   useEffect(() => {
     if (!goal) return;
     if ((goal as any).dimensionId) setDimensionId(String((goal as any).dimensionId));
@@ -72,7 +74,7 @@ export default function NewGoalInitiative() {
 
   const goalDimensionName = (goal as any)?.dimensionName ?? "";
   const { data: users = [] } = useListUsers({}, { query: { enabled: !!user?.franchiseId, queryKey: getListUsersQueryKey({}) } });
-  const franchiseUsers = users.filter((u: any) => u.franchiseId === user?.franchiseId);
+  const franchiseUsers = (users as any[]).filter((u: any) => u.franchiseId === user?.franchiseId);
 
   const create = useCreateGoalInitiative();
   const updateInitiative = useUpdateGoalInitiative();
@@ -95,7 +97,7 @@ export default function NewGoalInitiative() {
     }
   };
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<InitiativeForm>({
+  const { register, handleSubmit, control } = useForm<InitiativeForm>({
     defaultValues: { frequency: "diario" },
   });
 
@@ -158,90 +160,131 @@ export default function NewGoalInitiative() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{isCustom ? "Iniciativa Personalizada" : "Configurar Iniciativa"}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{isCustom ? "Iniciativa Personalizada" : "Adicionar Iniciativa"}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             {isCustom ? "Registre uma ação que já executa ou quer iniciar" : selectedInitiative?.name}
           </p>
         </div>
       </div>
 
-      {!isCustom && (
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">KRI</p>
-            <p className="text-sm mt-0.5">{selectedInitiative?.kri}</p>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">KPI</p>
-            <p className="text-sm mt-0.5">{selectedInitiative?.kpi}</p>
-          </CardContent>
-        </Card>
+      {/* Catalog: show KRI/KPI as the execution guide */}
+      {!isCustom && selectedInitiative && (
+        <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="rounded-md bg-primary/10 p-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="text-xs font-semibold text-primary uppercase tracking-wide">Guia de execução — Catálogo RE/MAX SC</span>
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                <Target className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">KRI</span>
+              </div>
+              <p className="text-sm text-foreground leading-snug">{selectedInitiative.kri}</p>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                <BarChart2 className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">KPI</span>
+              </div>
+              <p className="text-sm text-foreground leading-snug">{selectedInitiative.kpi}</p>
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground/70 border-t border-primary/10 pt-2.5 mt-1">
+            Esta iniciativa já foi benchmarked pelas franquias premiere da RE/MAX SC. Foque em executar — o quê e o porquê já estão definidos acima.
+          </p>
+        </div>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {/* ── Custom: name only required ────────────────────────── */}
-        {isCustom ? (
-          <>
-            <Card>
-              <CardContent className="pt-4 space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Nome da Iniciativa *</Label>
-                  <Input
-                    placeholder="Ex: Programa de indicações de corretores, Reunião semanal de vendas..."
-                    {...register("customName", { required: true })}
-                    data-testid="input-custom-name"
-                    autoFocus
-                  />
-                  {errors.customName && <p className="text-xs text-destructive">Nome é obrigatório</p>}
-                </div>
+        {/* Custom: name required */}
+        {isCustom && (
+          <Card>
+            <CardContent className="pt-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Nome da Iniciativa *</Label>
+                <Input
+                  placeholder="Ex: Programa de indicações de corretores, Reunião semanal de vendas..."
+                  {...register("customName", { required: true })}
+                  data-testid="input-custom-name"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-green-700 flex items-center gap-1.5">
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Resultado já obtido <span className="text-muted-foreground font-normal">(opcional)</span>
+                </Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Se já executou esta iniciativa antes, descreva o resultado obtido para benchmarking futuro..."
+                  {...register("actualResult")}
+                  data-testid="textarea-actual-result"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium text-green-700 flex items-center gap-1.5">
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    Resultado já obtido <span className="text-muted-foreground font-normal">(opcional)</span>
-                  </Label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Se já executou esta iniciativa antes, descreva o resultado obtido para benchmarking futuro..."
-                    {...register("actualResult")}
-                    data-testid="textarea-actual-result"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* ── 5W2H collapsible ─────────────────────────────── */}
-            <button
-              type="button"
-              onClick={() => setShow5W2H(v => !v)}
-              className="w-full flex items-center justify-between rounded-lg border px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors"
-            >
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <ClipboardList className="h-4 w-4" />
-                5W2H — Planejamento da Execução
-                <span className="text-xs font-normal">(opcional)</span>
-              </span>
-              {show5W2H ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-
-            {show5W2H && (
-              <Card>
-                <CardContent className="pt-4 space-y-4">
-                  {w2hFields.map(q => (
-                    <div key={q.field} className="space-y-1.5">
-                      <Label className="text-xs font-medium">{q.label}</Label>
-                      <Textarea rows={2} placeholder={q.placeholder} {...register(q.field)} data-testid={`textarea-${q.field}`} />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </>
-        ) : (
-          /* ── Catalog: full 5W2H shown ──────────────────────────── */
+        {/* Catalog: minimal required info — responsável + datas */}
+        {!isCustom && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">5W2H — Planejamento da Execução</CardTitle>
+              <CardTitle className="text-sm">Definir responsável e prazo <span className="text-muted-foreground font-normal text-xs">(opcional)</span></CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Início</Label>
+                  <Input type="date" {...register("startDate")} data-testid="input-start-date" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Término</Label>
+                  <Input type="date" {...register("endDate")} data-testid="input-end-date" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Responsável</Label>
+                <Controller
+                  name="ownerUserId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value || "none"} onValueChange={v => field.onChange(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem responsável</SelectItem>
+                        {franchiseUsers.map((u: any) => (
+                          <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 5W2H — collapsible for BOTH catalog and custom */}
+        <button
+          type="button"
+          onClick={() => setShow5W2H(v => !v)}
+          className="w-full flex items-center justify-between rounded-lg border px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors"
+          data-testid="toggle-5w2h"
+        >
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <ClipboardList className="h-4 w-4" />
+            5W2H — Planejamento detalhado
+            <span className="text-xs font-normal">(opcional)</span>
+          </span>
+          {show5W2H ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+
+        {show5W2H && (
+          <Card>
+            <CardContent className="pt-4 space-y-4">
               {w2hFields.map(q => (
                 <div key={q.field} className="space-y-1.5">
                   <Label className="text-xs font-medium">{q.label}</Label>
@@ -252,29 +295,64 @@ export default function NewGoalInitiative() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm">Agendamento</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Início</Label>
-              <Input type="date" {...register("startDate")} data-testid="input-start-date" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Término</Label>
-              <Input type="date" {...register("endDate")} data-testid="input-end-date" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Horário de execução</Label>
-              <Input type="time" {...register("executionTime")} data-testid="input-execution-time" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tempo estimado</Label>
-              <Input placeholder="Ex: 30min" {...register("estimatedTime")} data-testid="input-estimated-time" />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Schedule — collapsible for catalog, visible for custom */}
+        {isCustom && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowSchedule(v => !v)}
+              className="w-full flex items-center justify-between rounded-lg border px-4 py-3 text-sm font-medium hover:bg-muted/40 transition-colors"
+            >
+              <span className="flex items-center gap-2 text-muted-foreground">
+                Agendamento
+                <span className="text-xs font-normal">(opcional)</span>
+              </span>
+              {showSchedule ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {showSchedule && (
+              <Card>
+                <CardContent className="pt-4 grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Início</Label>
+                    <Input type="date" {...register("startDate")} data-testid="input-start-date" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Término</Label>
+                    <Input type="date" {...register("endDate")} data-testid="input-end-date" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Horário de execução</Label>
+                    <Input type="time" {...register("executionTime")} data-testid="input-execution-time" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Tempo estimado</Label>
+                    <Input placeholder="Ex: 30min" {...register("estimatedTime")} data-testid="input-estimated-time" />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <Label className="text-xs">Responsável</Label>
+                    <Controller
+                      name="ownerUserId"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value || "none"} onValueChange={v => field.onChange(v === "none" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Sem responsável</SelectItem>
+                            {franchiseUsers.map((u: any) => (
+                              <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 pt-2">
           <Button variant="outline" type="button" onClick={() => setMode(isCustom ? "choose" : "catalog-select")} className="flex-1">
             Voltar
           </Button>
