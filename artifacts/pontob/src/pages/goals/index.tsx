@@ -81,13 +81,19 @@ export default function Goals() {
     [goals, franchiseId]
   );
 
-  // Fetch visão milestones to get current-quarter targets
+  // Fetch visão milestones + quarterly actuals
   const { data: visaoData } = useQuery<{
     milestones: Array<{
       quarterDate: string;
       targetCreci: number | null;
       targetCres: number | null;
       targetVgh: number | null;
+    }>;
+    quarterActuals: Array<{
+      quarterDate: string;
+      actualCreci: number | null;
+      actualCres: number | null;
+      actualVgh: number | null;
     }>;
   }>({
     queryKey: ["visao-milestones", goalsFranchiseId, currentYear],
@@ -117,6 +123,23 @@ export default function Goals() {
     if (t.includes("vgh") || t.includes("honorário") || u === "r$" || u.includes("honorário"))
       return currentQMilestone.targetVgh;
     return null;
+  }
+
+  // YTD actual: carry-forward across quarters — most recent non-null actual for the KRI type
+  function getYtdActual(goal: { title?: string | null; unit?: string | null }): number | null {
+    if (!visaoData?.quarterActuals?.length) return null;
+    const t = (goal.title ?? "").toLowerCase();
+    const u = (goal.unit ?? "").toLowerCase();
+    let key: "actualCreci" | "actualCres" | "actualVgh" | null = null;
+    if (t.includes("creci") || t.includes("corretor") || u.includes("corretor")) key = "actualCreci";
+    else if (t.includes("cres") || t.includes("representaç") || u.includes("contrat") || u.includes("representaç")) key = "actualCres";
+    else if (t.includes("vgh") || t.includes("honorário") || u === "r$" || u.includes("honorário")) key = "actualVgh";
+    if (!key) return null;
+    let ytd: number | null = null;
+    for (const qa of visaoData.quarterActuals) {
+      if (qa[key] != null) ytd = qa[key];
+    }
+    return ytd;
   }
 
   const { data: socioOverview } = useQuery<Array<{
@@ -298,13 +321,18 @@ export default function Goals() {
           {goals?.length ? (
             goals.map(goal => {
               const projected = calcProjected(goal.targetValue, goal.startDate, goal.endDate);
-              const hasValues = goal.targetValue != null || goal.currentValue != null;
+
+              // YTD actual from franchiseKrisTable (carry-forward), falls back to manually-set currentValue
+              const ytdActual = getYtdActual(goal);
+              const effectiveCurrentValue = ytdActual ?? goal.currentValue;
+
+              const hasValues = goal.targetValue != null || effectiveCurrentValue != null;
 
               // Q-milestone target (overrides annual target when set)
               const qTarget = getQTarget(goal);
               const effectiveTarget = qTarget ?? goal.targetValue;
-              const pct = effectiveTarget != null && effectiveTarget > 0 && goal.currentValue != null
-                ? Math.min(100, Math.round((Number(goal.currentValue) / Number(effectiveTarget)) * 100))
+              const pct = effectiveTarget != null && effectiveTarget > 0 && effectiveCurrentValue != null
+                ? Math.min(100, Math.round((Number(effectiveCurrentValue) / Number(effectiveTarget)) * 100))
                 : (goal.progressPercentage ?? 0);
 
               return (
@@ -382,9 +410,9 @@ export default function Goals() {
                               <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">Realizado</span>
                               <span className={cn(
                                 "text-base font-bold tabular-nums leading-none",
-                                goal.currentValue != null ? progressColorClass(pct) : "text-muted-foreground/30",
+                                effectiveCurrentValue != null ? progressColorClass(pct) : "text-muted-foreground/30",
                               )}>
-                                {formatGoalValue(goal.currentValue, goal.unit)}
+                                {formatGoalValue(effectiveCurrentValue, goal.unit)}
                               </span>
                             </div>
                             {projected != null && (
