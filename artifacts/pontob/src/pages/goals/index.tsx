@@ -26,13 +26,11 @@ function formatGoalValue(v: number | null | undefined, unit?: string | null): st
   if (v == null) return "—";
   const u = unit?.toLowerCase() ?? "";
   if (u === "r$" || u.includes("financeiro") || u.includes("honorário")) {
-    if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
-    if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`;
-    return `R$ ${v.toLocaleString("pt-BR")}`;
+    return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-  if (u === "%") return `${v.toLocaleString("pt-BR")}%`;
+  if (u === "%") return `${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
   const suffix = unit ? ` ${unit}` : "";
-  return `${v.toLocaleString("pt-BR")}${suffix}`;
+  return `${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}${suffix}`;
 }
 
 function calcProjected(
