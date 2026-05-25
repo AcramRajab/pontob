@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, auditLogsTable } from "@workspace/db";
 import { goalsTable, goalInitiativesTable, franchisesTable } from "@workspace/db";
-import { and, eq, notInArray, count, inArray, desc, isNotNull } from "drizzle-orm";
+import { and, eq, notInArray, count, inArray, desc, isNotNull, gte, lte } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
@@ -169,6 +169,63 @@ router.get("/strategic-initiatives", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// ── Admin: all catalog activity (unified feed) ────────────────────────────────
+
+router.get(
+  "/catalog-audit-logs/all",
+  requireRole("master_admin", "staff_regional"),
+  async (req, res) => {
+    try {
+      const entityType = req.query.entityType as string | undefined;
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
+
+      if (entityType && !(CATALOG_ENTITY_TYPES as readonly string[]).includes(entityType)) {
+        res.status(400).json({ error: "entityType must be one of: dimension, key_process, strategic_initiative" });
+        return;
+      }
+
+      const conditions = [
+        inArray(auditLogsTable.entityType, [...CATALOG_ENTITY_TYPES]),
+      ];
+
+      if (entityType) {
+        conditions.push(eq(auditLogsTable.entityType, entityType));
+      }
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
+        conditions.push(gte(auditLogsTable.createdAt, from));
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        conditions.push(lte(auditLogsTable.createdAt, to));
+      }
+
+      const logs = await db
+        .select()
+        .from(auditLogsTable)
+        .where(and(...conditions))
+        .orderBy(desc(auditLogsTable.createdAt));
+
+      res.json(logs.map(l => ({
+        id: l.id,
+        entityType: l.entityType,
+        entityId: l.entityId,
+        entityName: l.entityName,
+        action: l.action,
+        userName: l.userName,
+        userEmail: l.userEmail,
+        changedAt: l.createdAt,
+      })));
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
 
 // ── Admin: catalog audit log CSV export ──────────────────────────────────────
 

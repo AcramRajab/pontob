@@ -462,6 +462,40 @@ paths:
                 items:
                   $ref: "#/components/schemas/StrategicInitiative"
 
+  /catalog-audit-logs/all:
+    get:
+      operationId: listAllCatalogActivity
+      tags: [dimensions]
+      summary: List all catalog activity across all item types (admin/staff only)
+      parameters:
+        - name: entityType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [dimension, key_process, strategic_initiative]
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: All catalog activity entries, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CatalogActivityEntry"
+
   /catalog-audit-logs/export:
     get:
       operationId: exportCatalogAuditLogs
@@ -2089,6 +2123,30 @@ components:
       properties:
         id:
           type: integer
+        action:
+          type: string
+          description: "activated or deactivated"
+        userName:
+          type: string
+        userEmail:
+          type: string
+        changedAt:
+          type: string
+          format: date-time
+
+    CatalogActivityEntry:
+      type: object
+      required: [id, entityType, action, userName, userEmail, changedAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+          enum: [dimension, key_process, strategic_initiative]
+        entityId:
+          type: ["integer", "null"]
+        entityName:
+          type: ["string", "null"]
         action:
           type: string
           description: "activated or deactivated"

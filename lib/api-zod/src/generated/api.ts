@@ -389,6 +389,31 @@ export const ListStrategicInitiativesResponse = zod.array(
 );
 
 /**
+ * @summary List all catalog activity across all item types (admin/staff only)
+ */
+export const ListAllCatalogActivityQueryParams = zod.object({
+  entityType: zod
+    .enum(["dimension", "key_process", "strategic_initiative"])
+    .optional(),
+  dateFrom: zod.date().optional(),
+  dateTo: zod.date().optional(),
+});
+
+export const ListAllCatalogActivityResponseItem = zod.object({
+  id: zod.number(),
+  entityType: zod.enum(["dimension", "key_process", "strategic_initiative"]),
+  entityId: zod.number().nullish(),
+  entityName: zod.string().nullish(),
+  action: zod.string().describe("activated or deactivated"),
+  userName: zod.string(),
+  userEmail: zod.string(),
+  changedAt: zod.coerce.date(),
+});
+export const ListAllCatalogActivityResponse = zod.array(
+  ListAllCatalogActivityResponseItem,
+);
+
+/**
  * @summary List full audit log history for a catalog item (admin/staff only)
  */
 export const ListCatalogAuditLogsQueryParams = zod.object({

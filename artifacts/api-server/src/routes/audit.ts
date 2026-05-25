@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 
 const router = Router();
 
-router.get("/admin/audit-logs", requireAuth, requireRole("master_admin"), async (req, res) => {
+router.get("/admin/audit-logs", requireAuth, requireRole("master_admin", "staff_regional"), async (req, res) => {
   try {
     const rows = await db
       .select()

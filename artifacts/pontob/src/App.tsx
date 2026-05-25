@@ -42,6 +42,7 @@ import PlannerRegistro from "@/pages/planner-registro";
 import PlannerHistorico from "@/pages/planner-historico";
 import Visao from "@/pages/visao";
 import AdminHistory from "@/pages/admin/history";
+import CatalogHistory from "@/pages/admin/catalog-history";
 import Convite from "@/pages/convite";
 import SolicitarAcesso from "@/pages/solicitar-acesso";
 import Agents from "@/pages/agents";
@@ -139,6 +140,9 @@ function Router() {
         </Route>
         <Route path="/admin/history">
           <ProtectedRoute><AdminHistory /></ProtectedRoute>
+        </Route>
+        <Route path="/admin/catalog-history">
+          <ProtectedRoute><CatalogHistory /></ProtectedRoute>
         </Route>
         <Route path="/my-team">
           <ProtectedRoute><MyTeam /></ProtectedRoute>

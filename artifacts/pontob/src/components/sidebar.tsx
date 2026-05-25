@@ -168,12 +168,16 @@ export function AppSidebar() {
             <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
 
             {/* Administração */}
-            {isMasterAdmin && (
+            {(isMasterAdmin || isStaffRegional) && (
               <>
                 <NavSection label="Administração" />
-                <NavItem href="/admin/franchises" icon={Building} label="Franquias" active={at("/admin/franchises")} />
-                <NavItem href="/admin/users" icon={Users} label="Usuários" active={at("/admin/users")} />
-                <NavItem href="/admin/history" icon={ClipboardList} label="Histórico Alt." active={at("/admin/history")} />
+                {isMasterAdmin && (
+                  <>
+                    <NavItem href="/admin/franchises" icon={Building} label="Franquias" active={at("/admin/franchises")} />
+                    <NavItem href="/admin/users" icon={Users} label="Usuários" active={at("/admin/users")} />
+                  </>
+                )}
+                <NavItem href="/admin/history" icon={ClipboardList} label="Histórico de Atividade" active={at("/admin/history") || at("/admin/catalog-history")} />
               </>
             )}
           </>

@@ -269,6 +269,29 @@ export interface CatalogAuditLogEntry {
   changedAt: string;
 }
 
+export type CatalogActivityEntryEntityType =
+  (typeof CatalogActivityEntryEntityType)[keyof typeof CatalogActivityEntryEntityType];
+
+export const CatalogActivityEntryEntityType = {
+  dimension: "dimension",
+  key_process: "key_process",
+  strategic_initiative: "strategic_initiative",
+} as const;
+
+export interface CatalogActivityEntry {
+  id: number;
+  entityType: CatalogActivityEntryEntityType;
+  /** @nullable */
+  entityId?: number | null;
+  /** @nullable */
+  entityName?: string | null;
+  /** activated or deactivated */
+  action: string;
+  userName: string;
+  userEmail: string;
+  changedAt: string;
+}
+
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
 
 export const GoalStatus = {
@@ -1462,6 +1485,21 @@ export type ListStrategicInitiativesParams = {
    */
   includeInactive?: boolean;
 };
+
+export type ListAllCatalogActivityParams = {
+  entityType?: ListAllCatalogActivityEntityType;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type ListAllCatalogActivityEntityType =
+  (typeof ListAllCatalogActivityEntityType)[keyof typeof ListAllCatalogActivityEntityType];
+
+export const ListAllCatalogActivityEntityType = {
+  dimension: "dimension",
+  key_process: "key_process",
+  strategic_initiative: "strategic_initiative",
+} as const;
 
 export type ListCatalogAuditLogsParams = {
   itemType: ListCatalogAuditLogsItemType;

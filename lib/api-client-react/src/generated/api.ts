@@ -23,6 +23,7 @@ import type {
   Candidato,
   CandidatoInput,
   CandidatoUpdate,
+  CatalogActivityEntry,
   CatalogAuditLogEntry,
   CatalogDeactivationImpact,
   CatalogToggleResult,
@@ -64,6 +65,7 @@ import type {
   KpiInput,
   KpiUpdate,
   ListAlertsParams,
+  ListAllCatalogActivityParams,
   ListAllGoalInitiativesParams,
   ListCatalogAuditLogsParams,
   ListDailyCheckinsParams,
@@ -1884,6 +1886,109 @@ export function useListStrategicInitiatives<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListStrategicInitiativesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all catalog activity across all item types (admin/staff only)
+ */
+export const getListAllCatalogActivityUrl = (
+  params?: ListAllCatalogActivityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/catalog-audit-logs/all?${stringifiedParams}`
+    : `/api/catalog-audit-logs/all`;
+};
+
+export const listAllCatalogActivity = async (
+  params?: ListAllCatalogActivityParams,
+  options?: RequestInit,
+): Promise<CatalogActivityEntry[]> => {
+  return customFetch<CatalogActivityEntry[]>(
+    getListAllCatalogActivityUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListAllCatalogActivityQueryKey = (
+  params?: ListAllCatalogActivityParams,
+) => {
+  return [`/api/catalog-audit-logs/all`, ...(params ? [params] : [])] as const;
+};
+
+export const getListAllCatalogActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllCatalogActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllCatalogActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllCatalogActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAllCatalogActivityQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAllCatalogActivity>>
+  > = ({ signal }) =>
+    listAllCatalogActivity(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllCatalogActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllCatalogActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllCatalogActivity>>
+>;
+export type ListAllCatalogActivityQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all catalog activity across all item types (admin/staff only)
+ */
+
+export function useListAllCatalogActivity<
+  TData = Awaited<ReturnType<typeof listAllCatalogActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListAllCatalogActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAllCatalogActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllCatalogActivityQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
