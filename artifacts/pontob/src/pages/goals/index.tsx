@@ -10,7 +10,7 @@ import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -65,6 +65,55 @@ export default function Goals() {
   );
 
   const canWrite = user?.role !== "responsavel_interno";
+
+  // Determine current quarter end date
+  const { currentYear, currentQDate, currentQLabel } = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth(); // 0-based
+    const qIdx = Math.floor(m / 3);
+    const qDates = [`${y}-03-31`, `${y}-06-30`, `${y}-09-30`, `${y}-12-31`];
+    const qLabels = ["Q1", "Q2", "Q3", "Q4"];
+    return { currentYear: y, currentQDate: qDates[qIdx], currentQLabel: qLabels[qIdx] };
+  }, []);
+
+  // Fetch visão milestones to get current-quarter targets
+  const { data: visaoData } = useQuery<{
+    milestones: Array<{
+      quarterDate: string;
+      targetCreci: number | null;
+      targetCres: number | null;
+      targetVgh: number | null;
+    }>;
+  }>({
+    queryKey: ["visao-milestones", franchiseId, currentYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/visao?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!franchiseId,
+  });
+
+  // Extract the current quarter's milestone targets
+  const currentQMilestone = useMemo(
+    () => visaoData?.milestones?.find(m => m.quarterDate === currentQDate) ?? null,
+    [visaoData, currentQDate]
+  );
+
+  // Map a goal to its current-Q milestone target by keyword matching on title/unit
+  function getQTarget(goal: { title?: string | null; unit?: string | null }): number | null {
+    if (!currentQMilestone) return null;
+    const t = (goal.title ?? "").toLowerCase();
+    const u = (goal.unit ?? "").toLowerCase();
+    if (t.includes("creci") || t.includes("corretor") || u.includes("corretor"))
+      return currentQMilestone.targetCreci;
+    if (t.includes("cres") || t.includes("representaç") || u.includes("contrat") || u.includes("representaç"))
+      return currentQMilestone.targetCres;
+    if (t.includes("vgh") || t.includes("honorário") || u === "r$" || u.includes("honorário"))
+      return currentQMilestone.targetVgh;
+    return null;
+  }
 
   const { data: socioOverview } = useQuery<Array<{
     franchiseId: number; franchiseName: string;
@@ -246,7 +295,13 @@ export default function Goals() {
             goals.map(goal => {
               const projected = calcProjected(goal.targetValue, goal.startDate, goal.endDate);
               const hasValues = goal.targetValue != null || goal.currentValue != null;
-              const pct = goal.progressPercentage ?? 0;
+
+              // Q-milestone target (overrides annual target when set)
+              const qTarget = getQTarget(goal);
+              const effectiveTarget = qTarget ?? goal.targetValue;
+              const pct = effectiveTarget != null && effectiveTarget > 0 && goal.currentValue != null
+                ? Math.min(100, Math.round((Number(goal.currentValue) / Number(effectiveTarget)) * 100))
+                : (goal.progressPercentage ?? 0);
 
               return (
                 <Card key={goal.id} className="hover:bg-muted/50 transition-colors">
@@ -337,10 +392,17 @@ export default function Goals() {
                               </div>
                             )}
                             <div className="flex flex-col ml-auto items-end">
-                              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">Meta</span>
-                              <span className="text-base font-semibold tabular-nums leading-none text-primary">
-                                {formatGoalValue(goal.targetValue, goal.unit)}
+                              <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 mb-0.5">
+                                Meta {qTarget != null ? currentQLabel : "Anual"}
                               </span>
+                              <span className="text-base font-semibold tabular-nums leading-none text-primary">
+                                {formatGoalValue(effectiveTarget, goal.unit)}
+                              </span>
+                              {qTarget != null && goal.targetValue != null && (
+                                <span className="text-[9px] text-muted-foreground/50 tabular-nums">
+                                  Anual: {formatGoalValue(goal.targetValue, goal.unit)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         )}

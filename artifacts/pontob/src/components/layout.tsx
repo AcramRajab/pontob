@@ -2,11 +2,12 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./sidebar";
 import { useAuth } from "@/lib/auth";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
-import { Loader2, Building2, ShieldCheck } from "lucide-react";
+import { Loader2, Building2, ShieldCheck, CalendarDays } from "lucide-react";
 import { TourProvider } from "./tour-guide";
 import { AiAssistantProvider } from "./ai-assistant";
 import { CheckinGate } from "./checkin-gate";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 const ROLE_LABELS: Record<string, string> = {
   master_admin:        "Master Admin",
@@ -27,6 +28,16 @@ const ROLE_COLORS: Record<string, string> = {
 function PageContextBar() {
   const { user } = useAuth();
   const { franchiseId, isSocio, franchises } = useFranchiseContext();
+
+  const dateLabel = useMemo(() => {
+    const now = new Date();
+    const weekday = now.toLocaleDateString("pt-BR", { weekday: "long" });
+    const day = now.getDate();
+    const month = now.toLocaleDateString("pt-BR", { month: "long" });
+    const year = now.getFullYear();
+    // Capitalize weekday
+    return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${day} de ${month} de ${year}`;
+  }, []);
 
   if (!user) return null;
 
@@ -61,6 +72,12 @@ function PageContextBar() {
         ) : (
           <span className="text-[12px] text-muted-foreground italic">Nenhuma franquia selecionada</span>
         )}
+      </div>
+
+      {/* Center: current date */}
+      <div className="hidden md:flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium shrink-0">
+        <CalendarDays className="h-3 w-3 opacity-60" strokeWidth={2} />
+        <span>{dateLabel}</span>
       </div>
 
       {/* Right: user + role badge */}
