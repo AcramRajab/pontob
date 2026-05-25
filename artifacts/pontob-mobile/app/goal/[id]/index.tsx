@@ -749,7 +749,7 @@ export default function GoalDetailScreen() {
                           Esta iniciativa foi desativada do catálogo.{" "}
                           <Text
                             style={s.deactivatedBannerLink}
-                            onPress={() => router.push("/(tabs)/goals")}
+                            onPress={() => router.push(`/goal/${id}/initiative-new` as Parameters<typeof router.push>[0])}
                           >
                             Adicionar substituta
                           </Text>
