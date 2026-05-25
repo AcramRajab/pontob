@@ -231,8 +231,16 @@ function KriBlock({
   const barPct = p != null ? Math.min(p, 100) : 0;
   const isGood = p != null && p >= 100;
   const hasTarget = target != null && target !== 0;
-  const barColor = isGood ? "bg-green-500" : p != null && p >= 75 ? "bg-amber-400" : cfg.bar;
-  const pctColor = isGood ? "text-green-600" : p != null && p >= 75 ? "text-amber-500" : "text-muted-foreground";
+  const barColor = p == null ? cfg.bar
+    : p >= 100 ? "bg-green-500"
+    : p >= 75  ? "bg-amber-400"
+    : p >= 50  ? "bg-orange-400"
+    : "bg-red-400";
+  const pctColor = p == null ? "text-muted-foreground"
+    : p >= 100 ? "text-green-600"
+    : p >= 75  ? "text-amber-500"
+    : p >= 50  ? "text-orange-500"
+    : "text-red-500";
 
   // Stored numeric values for VghTextInput
   const storedTarget = target;
@@ -721,7 +729,11 @@ export default function Visao() {
             const overallPct = pValues.length > 0
               ? Math.round(pValues.reduce((a, b) => a + Math.min(b, 100), 0) / pValues.length)
               : null;
-            const overallColor = overallPct == null ? "" : overallPct >= 100 ? "text-green-600" : overallPct >= 75 ? "text-amber-500" : "text-muted-foreground";
+            const overallColor = overallPct == null ? ""
+              : overallPct >= 100 ? "text-green-600"
+              : overallPct >= 75  ? "text-amber-500"
+              : overallPct >= 50  ? "text-orange-500"
+              : "text-red-500";
 
             return (
               <div
