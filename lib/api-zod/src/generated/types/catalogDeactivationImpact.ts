@@ -7,6 +7,8 @@
  */
 
 export interface CatalogDeactivationImpact {
-  /** Number of active goals that reference this catalog item */
+  /** Number of distinct franchises with active goals referencing this catalog item */
   activeGoalCount: number;
+  /** Names of franchises that have active goals referencing this catalog item */
+  affectedFranchises: string[];
 }

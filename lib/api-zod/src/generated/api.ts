@@ -442,7 +442,14 @@ export const GetDimensionDeactivationImpactParams = zod.object({
 export const GetDimensionDeactivationImpactResponse = zod.object({
   activeGoalCount: zod
     .number()
-    .describe("Number of active goals that reference this catalog item"),
+    .describe(
+      "Number of distinct franchises with active goals referencing this catalog item",
+    ),
+  affectedFranchises: zod
+    .array(zod.string())
+    .describe(
+      "Names of franchises that have active goals referencing this catalog item",
+    ),
 });
 
 /**
@@ -468,7 +475,14 @@ export const GetKeyProcessDeactivationImpactParams = zod.object({
 export const GetKeyProcessDeactivationImpactResponse = zod.object({
   activeGoalCount: zod
     .number()
-    .describe("Number of active goals that reference this catalog item"),
+    .describe(
+      "Number of distinct franchises with active goals referencing this catalog item",
+    ),
+  affectedFranchises: zod
+    .array(zod.string())
+    .describe(
+      "Names of franchises that have active goals referencing this catalog item",
+    ),
 });
 
 /**

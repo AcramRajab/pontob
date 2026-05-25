@@ -362,16 +362,18 @@ router.get(
     try {
       const [row] = await db.select().from(dimensionsTable).where(eq(dimensionsTable.id, id));
       if (!row) { res.status(404).json({ error: "Not found" }); return; }
-      const [result] = await db
-        .select({ activeGoalCount: count() })
+      const rows = await db
+        .selectDistinct({ franchiseName: franchisesTable.name })
         .from(goalsTable)
+        .innerJoin(franchisesTable, eq(goalsTable.franchiseId, franchisesTable.id))
         .where(
           and(
             eq(goalsTable.dimensionId, id),
             notInArray(goalsTable.status, ["concluida", "cancelada"]),
           ),
         );
-      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+      const affectedFranchises = rows.map(r => r.franchiseName);
+      res.json({ activeGoalCount: affectedFranchises.length, affectedFranchises });
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Internal server error" });
@@ -388,16 +390,18 @@ router.get(
     try {
       const [row] = await db.select().from(keyProcessesTable).where(eq(keyProcessesTable.id, id));
       if (!row) { res.status(404).json({ error: "Not found" }); return; }
-      const [result] = await db
-        .select({ activeGoalCount: count() })
+      const rows = await db
+        .selectDistinct({ franchiseName: franchisesTable.name })
         .from(goalsTable)
+        .innerJoin(franchisesTable, eq(goalsTable.franchiseId, franchisesTable.id))
         .where(
           and(
             eq(goalsTable.keyProcessId, id),
             notInArray(goalsTable.status, ["concluida", "cancelada"]),
           ),
         );
-      res.json({ activeGoalCount: result?.activeGoalCount ?? 0 });
+      const affectedFranchises = rows.map(r => r.franchiseName);
+      res.json({ activeGoalCount: affectedFranchises.length, affectedFranchises });
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Internal server error" });

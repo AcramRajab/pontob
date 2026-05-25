@@ -131,7 +131,13 @@ export default function Catalog() {
     try {
       const impact = await getDimensionDeactivationImpact(d.id);
       if (impact.activeGoalCount > 0) {
-        setPendingDeactivation({ type: "dimension", id: d.id, name: d.name, activeGoalCount: impact.activeGoalCount });
+        setPendingDeactivation({
+          type: "dimension",
+          id: d.id,
+          name: d.name,
+          activeGoalCount: impact.activeGoalCount,
+          affectedFranchises: impact.affectedFranchises,
+        });
       } else {
         toggleDim.mutate({ id: d.id });
       }
@@ -146,7 +152,13 @@ export default function Catalog() {
     try {
       const impact = await getKeyProcessDeactivationImpact(kp.id);
       if (impact.activeGoalCount > 0) {
-        setPendingDeactivation({ type: "keyProcess", id: kp.id, name: kp.name, activeGoalCount: impact.activeGoalCount });
+        setPendingDeactivation({
+          type: "keyProcess",
+          id: kp.id,
+          name: kp.name,
+          activeGoalCount: impact.activeGoalCount,
+          affectedFranchises: impact.affectedFranchises,
+        });
       } else {
         toggleKp.mutate({ id: kp.id });
       }
@@ -379,9 +391,21 @@ export default function Catalog() {
                     </>
                   ) : (
                     <>
-                      Há <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
-                      {pendingDeactivation.activeGoalCount === 1 ? "meta ativa que referencia" : "metas ativas que referenciam"} este item.
-                      Desativá-lo pode causar confusão para as franquias afetadas.
+                      <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                      {pendingDeactivation.activeGoalCount === 1
+                        ? "franquia tem metas ativas que referenciam este item"
+                        : "franquias têm metas ativas que referenciam este item"}
+                      :
+                      {pendingDeactivation.affectedFranchises && pendingDeactivation.affectedFranchises.length > 0 && (
+                        <ul className="mt-2 space-y-1 list-disc list-inside text-sm">
+                          {pendingDeactivation.affectedFranchises.map(name => (
+                            <li key={name} className="font-medium text-foreground">{name}</li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-3">
+                        Desativá-lo pode causar confusão para as franquias afetadas.
+                      </p>
                     </>
                   )}
                 </>
