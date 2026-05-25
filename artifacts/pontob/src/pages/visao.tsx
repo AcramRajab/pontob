@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, Fragment } from "react";
 import { useAuth } from "@/lib/auth";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -433,6 +433,13 @@ export default function Visao() {
     if (editingStatement && textareaRef.current) textareaRef.current.focus();
   }, [editingStatement]);
 
+  // Reset all local state and pending debounces when the selected franchise changes
+  useEffect(() => {
+    setEditingStatement(false);
+    Object.values(debounceRef.current).forEach(clearTimeout);
+    debounceRef.current = {};
+  }, [franchiseId]);
+
   const saveStatement = useMutation({
     mutationFn: (statement: string) =>
       apiFetch("/api/visao", {
@@ -623,6 +630,8 @@ export default function Visao() {
           onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId}
         />
       )}
+
+      <Fragment key={String(franchiseId ?? "none")}>
 
       {!franchiseId && (
         <AdminEmptyState message="Selecione uma franquia acima para visualizar a Visão." />
@@ -902,6 +911,8 @@ export default function Visao() {
       <p className="text-[11px] text-muted-foreground/50 text-center">
         Metas salvas automaticamente · Valores reais calculados a partir dos KRIs mensais registrados
       </p>
+
+      </Fragment>
     </div>
   );
 }
