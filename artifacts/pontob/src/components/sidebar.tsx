@@ -227,6 +227,13 @@ export function AppSidebar() {
               </>
             )}
 
+            {/* Inteligência */}
+            <NavSection label="Inteligência" />
+            <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
+            <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
+            <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
+            <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
+
             {/* Suporte */}
             <NavDivider />
             <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
