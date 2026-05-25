@@ -20,6 +20,7 @@ import {
   ClipboardList, Target, BarChart2, TrendingUp, Lightbulb,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { cn } from "@/lib/utils";
 
 interface InitiativeForm {
@@ -48,6 +49,8 @@ export default function InitiativeEdit() {
   const initiativeId = parseInt(params?.initiativeId ?? "0");
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { franchiseId: ctxFranchiseId } = useFranchiseContext();
+  const effectiveFranchiseId = ctxFranchiseId ?? user?.franchiseId ?? undefined;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [show5W2H, setShow5W2H] = useState(false);
@@ -57,10 +60,11 @@ export default function InitiativeEdit() {
     query: { queryKey: getGetGoalInitiativeQueryKey(initiativeId), enabled: !!initiativeId },
   });
 
-  const { data: users = [] } = useListUsers({}, {
-    query: { enabled: !!user?.franchiseId, queryKey: getListUsersQueryKey({}) },
+  const usersParams = effectiveFranchiseId ? { franchiseId: effectiveFranchiseId } : {};
+  const { data: users = [] } = useListUsers(usersParams, {
+    query: { enabled: !!effectiveFranchiseId, queryKey: getListUsersQueryKey(usersParams) },
   });
-  const franchiseUsers = (users as any[]).filter((u: any) => u.franchiseId === user?.franchiseId);
+  const franchiseUsers = users as any[];
 
   const update = useUpdateGoalInitiative();
 

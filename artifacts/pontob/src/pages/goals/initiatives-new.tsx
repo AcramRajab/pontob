@@ -15,6 +15,7 @@ import {
   ChevronDown, ChevronUp, ClipboardList, Target, BarChart2,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useFranchiseContext } from "@/hooks/use-franchise-context";
 
 interface InitiativeForm {
   customName: string;
@@ -42,6 +43,8 @@ export default function NewGoalInitiative() {
   const goalId = parseInt(params?.id ?? "0");
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const { franchiseId: ctxFranchiseId } = useFranchiseContext();
+  const effectiveFranchiseId = ctxFranchiseId ?? user?.franchiseId ?? undefined;
   const { toast } = useToast();
   const qc = useQueryClient();
   const [mode, setMode] = useState<Mode>("choose");
@@ -73,8 +76,9 @@ export default function NewGoalInitiative() {
   );
 
   const goalDimensionName = (goal as any)?.dimensionName ?? "";
-  const { data: users = [] } = useListUsers({}, { query: { enabled: !!user?.franchiseId, queryKey: getListUsersQueryKey({}) } });
-  const franchiseUsers = (users as any[]).filter((u: any) => u.franchiseId === user?.franchiseId);
+  const usersParams = effectiveFranchiseId ? { franchiseId: effectiveFranchiseId } : {};
+  const { data: users = [] } = useListUsers(usersParams, { query: { enabled: !!effectiveFranchiseId, queryKey: getListUsersQueryKey(usersParams) } });
+  const franchiseUsers = users as any[];
 
   const create = useCreateGoalInitiative();
   const updateInitiative = useUpdateGoalInitiative();
