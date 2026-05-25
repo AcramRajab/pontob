@@ -16,10 +16,18 @@ import { useFranchiseContext } from "@/hooks/use-franchise-context";
 
 const ROLE_LABELS: Record<string, string> = {
   master_admin:        "Master Admin",
-  staff_regional:      "Regional",
+  staff_regional:      "Staff Regional",
   franqueado:          "Franqueado",
   responsavel_interno: "Resp. Interno",
   socio:               "Sócio",
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  master_admin:        "bg-blue-500/20 text-blue-300",
+  staff_regional:      "bg-indigo-500/20 text-indigo-300",
+  franqueado:          "bg-emerald-500/20 text-emerald-300",
+  responsavel_interno: "bg-amber-500/20 text-amber-300",
+  socio:               "bg-violet-500/20 text-violet-300",
 };
 
 
@@ -250,11 +258,13 @@ export function AppSidebar() {
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-white/80 truncate">{user.name}</p>
-              <p className="text-[11px] text-white/40 truncate">
+              <p className="text-[13px] font-semibold text-white/90 truncate leading-tight">{user.name}</p>
+              <span className={cn(
+                "inline-block mt-0.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full",
+                ROLE_COLORS[role] ?? "bg-white/10 text-white/50"
+              )}>
                 {ROLE_LABELS[role] ?? role}
-                {isAdminPanel && " · RE/MAX SC"}
-              </p>
+              </span>
             </div>
             <button
               onClick={() => logout()}
