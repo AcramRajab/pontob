@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -16,6 +17,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
 import { useColors } from "@/hooks/useColors";
 import { apiFetch } from "@/lib/api";
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+function getMondayOf(d: Date): Date {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(d.getDate() + diff);
+  m.setHours(0, 0, 0, 0);
+  return m;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TodayOverview {
   date: string;
@@ -40,12 +58,32 @@ interface TodayOverview {
   weekScore: number | null;
 }
 
+interface WeeklyCheckin {
+  id: number;
+  weekStartDate: string;
+}
+
+interface MonthlyCheckin {
+  id: number;
+  month: number;
+  year: number;
+}
+
 export default function TodayScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const router = useRouter();
 
   const today = new Date();
+  const isMonday = today.getDay() === 1;
+  const isFirstOfMonth = today.getDate() === 1;
+
+  const monday = getMondayOf(today);
+  const weekStartDate = toISODate(monday);
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+
   const dateStr = today.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
@@ -66,6 +104,34 @@ export default function TodayScreen() {
       return res.json() as Promise<TodayOverview>;
     },
     enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  const { data: thisWeekCheckin } = useQuery({
+    queryKey: ["weekly-checkins", user?.franchiseId, weekStartDate],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (user?.franchiseId) p.set("franchiseId", String(user.franchiseId));
+      const res = await apiFetch(`/weekly-checkins?${p}`);
+      if (!res.ok) return null;
+      const all = (await res.json()) as WeeklyCheckin[];
+      return all.find((c) => c.weekStartDate === weekStartDate) ?? null;
+    },
+    enabled: !!user && isMonday,
+    staleTime: 30_000,
+  });
+
+  const { data: thisMonthCheckin } = useQuery({
+    queryKey: ["monthly-checkins", user?.franchiseId, currentMonth, currentYear],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (user?.franchiseId) p.set("franchiseId", String(user.franchiseId));
+      const res = await apiFetch(`/monthly-checkins?${p}`);
+      if (!res.ok) return null;
+      const all = (await res.json()) as MonthlyCheckin[];
+      return all.find((c) => c.month === currentMonth && c.year === currentYear) ?? null;
+    },
+    enabled: !!user && isFirstOfMonth,
     staleTime: 30_000,
   });
 
@@ -221,21 +287,57 @@ export default function TodayScreen() {
       color: colors.mutedForeground,
       textAlign: "center",
     },
-    doneBanner: {
-      backgroundColor: colors.success + "18",
+    checkinCard: {
+      backgroundColor: colors.card,
       borderRadius: colors.radius + 4,
-      padding: 12,
+      padding: 14,
       borderWidth: 1,
-      borderColor: colors.success + "40",
+      borderColor: colors.border,
+      marginBottom: 20,
+      gap: 10,
+    },
+    checkinCardHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      marginBottom: 20,
+      gap: 6,
     },
-    doneBannerText: {
-      fontSize: 13,
+    checkinCardTitle: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+    },
+    checkinPills: {
+      flexDirection: "row",
+      gap: 8,
+      flexWrap: "wrap",
+    },
+    pill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    pillDone: {
+      backgroundColor: colors.success + "18",
+      borderColor: colors.success + "40",
+    },
+    pillPending: {
+      backgroundColor: colors.muted,
+      borderColor: colors.border,
+    },
+    pillText: {
+      fontSize: 12,
       fontFamily: "Inter_500Medium",
+    },
+    pillTextDone: {
       color: colors.success,
+    },
+    pillTextPending: {
+      color: colors.mutedForeground,
     },
     retryBtn: {
       marginTop: 16,
@@ -251,7 +353,23 @@ export default function TodayScreen() {
   });
 
   const firstName = user?.name?.split(" ")[0] ?? "Olá";
-  const hasCheckedIn = (data?.todayCheckins?.length ?? 0) > 0;
+  const alreadyDoneDaily = (data?.todayCheckins?.length ?? 0) > 0;
+  const alreadyDoneWeekly = !!thisWeekCheckin;
+  const alreadyDoneMonthly = !!thisMonthCheckin;
+
+  function getPendingTab(): "daily" | "weekly" | "monthly" {
+    if (!alreadyDoneDaily) return "daily";
+    if (isMonday && !alreadyDoneWeekly) return "weekly";
+    if (isFirstOfMonth && !alreadyDoneMonthly) return "monthly";
+    return "daily";
+  }
+
+  function handleCheckinCardPress() {
+    router.push({
+      pathname: "/(tabs)/checkin",
+      params: { tab: getPendingTab() },
+    });
+  }
 
   if (isLoading) {
     return (
@@ -363,16 +481,78 @@ export default function TodayScreen() {
           )}
         </View>
 
-        {hasCheckedIn && (
-          <View style={s.doneBanner}>
+        <Pressable style={s.checkinCard} onPress={handleCheckinCardPress}>
+          <View style={s.checkinCardHeader}>
             <Ionicons
-              name="checkmark-circle"
-              size={18}
-              color={colors.success}
+              name="checkmark-circle-outline"
+              size={16}
+              color={colors.mutedForeground}
             />
-            <Text style={s.doneBannerText}>Check-in realizado hoje</Text>
+            <Text style={s.checkinCardTitle}>Check-ins</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={colors.mutedForeground}
+            />
           </View>
-        )}
+          <View style={s.checkinPills}>
+            <View
+              style={[s.pill, alreadyDoneDaily ? s.pillDone : s.pillPending]}
+            >
+              <Text style={{ fontSize: 13 }}>
+                {alreadyDoneDaily ? "✅" : "⏳"}
+              </Text>
+              <Text
+                style={[
+                  s.pillText,
+                  alreadyDoneDaily ? s.pillTextDone : s.pillTextPending,
+                ]}
+              >
+                Diário
+              </Text>
+            </View>
+            {isMonday && (
+              <View
+                style={[
+                  s.pill,
+                  alreadyDoneWeekly ? s.pillDone : s.pillPending,
+                ]}
+              >
+                <Text style={{ fontSize: 13 }}>
+                  {alreadyDoneWeekly ? "✅" : "⏳"}
+                </Text>
+                <Text
+                  style={[
+                    s.pillText,
+                    alreadyDoneWeekly ? s.pillTextDone : s.pillTextPending,
+                  ]}
+                >
+                  Semanal
+                </Text>
+              </View>
+            )}
+            {isFirstOfMonth && (
+              <View
+                style={[
+                  s.pill,
+                  alreadyDoneMonthly ? s.pillDone : s.pillPending,
+                ]}
+              >
+                <Text style={{ fontSize: 13 }}>
+                  {alreadyDoneMonthly ? "✅" : "⏳"}
+                </Text>
+                <Text
+                  style={[
+                    s.pillText,
+                    alreadyDoneMonthly ? s.pillTextDone : s.pillTextPending,
+                  ]}
+                >
+                  Mensal
+                </Text>
+              </View>
+            )}
+          </View>
+        </Pressable>
 
         <View style={s.section}>
           <View style={s.sectionHeader}>

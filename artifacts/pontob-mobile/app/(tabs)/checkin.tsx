@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -135,7 +136,17 @@ export default function CheckinScreen() {
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
 
-  const [activeTab, setActiveTab] = useState<Tab>("daily");
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  const VALID_TABS: Tab[] = ["daily", "weekly", "monthly", "history"];
+  const [activeTab, setActiveTab] = useState<Tab>(
+    VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "daily"
+  );
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam as Tab)) {
+      setActiveTab(tabParam as Tab);
+    }
+  }, [tabParam]);
 
   // ── Daily state ──────────────────────────────────────────────────────────
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
