@@ -127,6 +127,13 @@ function initials(name: string | null): string {
 type AdminTab = "approvals" | "catalog";
 type CatalogTab = "dimension" | "key_process" | "strategic_initiative";
 
+type PendingDeactivation = {
+  id: number;
+  name: string;
+  activeGoalCount: number;
+  affectedFranchises: string[];
+};
+
 export default function AdminApprovalsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -140,6 +147,8 @@ export default function AdminApprovalsScreen() {
   const [rejectReason, setRejectReason] = useState("");
 
   const [historyTarget, setHistoryTarget] = useState<HistoryTarget | null>(null);
+  const [impactCheckingId, setImpactCheckingId] = useState<number | null>(null);
+  const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
@@ -260,6 +269,80 @@ export default function AdminApprovalsScreen() {
       setRejectReason("");
     },
   });
+
+  const toggleDimMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/dimensions/${id}/toggle-active`, { method: "POST" });
+      if (!res.ok) throw new Error("Erro ao alterar dimensão");
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["catalog-dimensions-admin"] });
+    },
+    onError: (err: Error) => Alert.alert("Erro", err.message),
+  });
+
+  const toggleKpMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/key-processes/${id}/toggle-active`, { method: "POST" });
+      if (!res.ok) throw new Error("Erro ao alterar processo-chave");
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["catalog-key-processes-admin"] });
+    },
+    onError: (err: Error) => Alert.alert("Erro", err.message),
+  });
+
+  const toggleInitMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiFetch(`/strategic-initiatives/${id}/toggle-active`, { method: "POST" });
+      if (!res.ok) throw new Error("Erro ao alterar iniciativa");
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["catalog-initiatives-admin"] });
+    },
+    onError: (err: Error) => Alert.alert("Erro", err.message),
+  });
+
+  async function handleCatalogToggle(item: CatalogItem) {
+    if (catalogTab === "dimension") {
+      toggleDimMutation.mutate(item.id);
+      return;
+    }
+    if (catalogTab === "key_process") {
+      toggleKpMutation.mutate(item.id);
+      return;
+    }
+    if (item.active) {
+      setImpactCheckingId(item.id);
+      try {
+        const res = await apiFetch(`/strategic-initiatives/${item.id}/deactivation-impact`);
+        if (!res.ok) throw new Error("Erro ao verificar impacto");
+        const impact = (await res.json()) as { activeGoalCount: number; affectedFranchises: string[] };
+        if (impact.activeGoalCount > 0) {
+          setPendingDeactivation({
+            id: item.id,
+            name: item.name,
+            activeGoalCount: impact.activeGoalCount,
+            affectedFranchises: impact.affectedFranchises ?? [],
+          });
+          return;
+        }
+        toggleInitMutation.mutate(item.id);
+      } catch (err) {
+        Alert.alert("Erro", (err as Error).message);
+      } finally {
+        setImpactCheckingId(null);
+      }
+    } else {
+      toggleInitMutation.mutate(item.id);
+    }
+  }
+
+  function confirmDeactivation() {
+    if (!pendingDeactivation) return;
+    toggleInitMutation.mutate(pendingDeactivation.id);
+    setPendingDeactivation(null);
+  }
 
   function handleApprove(inv: Invite) {
     Alert.alert(
@@ -689,6 +772,25 @@ export default function AdminApprovalsScreen() {
       padding: 4,
       marginBottom: 4,
     },
+    toggleBtn: {
+      padding: 4,
+    },
+    franchiseList: {
+      marginTop: 8,
+      marginBottom: 12,
+      gap: 4,
+    },
+    franchiseItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 3,
+    },
+    franchiseItemText: {
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+    },
   });
 
   if (!user || !["master_admin", "staff_regional"].includes(user.role)) {
@@ -945,6 +1047,25 @@ export default function AdminApprovalsScreen() {
                       {item.active ? "Ativo" : "Inativo"}
                     </Text>
                   </View>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      void handleCatalogToggle(item);
+                    }}
+                    disabled={impactCheckingId === item.id || toggleDimMutation.isPending || toggleKpMutation.isPending || toggleInitMutation.isPending}
+                    style={({ pressed }) => [s.toggleBtn, pressed && { opacity: 0.6 }]}
+                  >
+                    {impactCheckingId === item.id ? (
+                      <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    ) : (
+                      <Ionicons
+                        name={item.active ? "eye-outline" : "eye-off-outline"}
+                        size={18}
+                        color={item.active ? colors.primary : colors.mutedForeground}
+                      />
+                    )}
+                  </Pressable>
                   <Ionicons
                     name="time-outline"
                     size={16}
@@ -1005,6 +1126,53 @@ export default function AdminApprovalsScreen() {
               >
                 <Text style={s.sheetConfirmText}>
                   {rejectMutation.isPending ? "Rejeitando..." : "Rejeitar cadastro"}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      )}
+
+      {/* Deactivation impact sheet */}
+      {pendingDeactivation && (
+        <Pressable style={s.overlay} onPress={() => setPendingDeactivation(null)}>
+          <Pressable style={s.sheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={s.sheetTitle} numberOfLines={2}>
+              Desativar "{pendingDeactivation.name}"?
+            </Text>
+            <Text style={s.sheetDesc}>
+              <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>
+                {pendingDeactivation.activeGoalCount}
+              </Text>
+              {pendingDeactivation.activeGoalCount === 1
+                ? " franquia ainda tem esta iniciativa ativa em uma de suas metas:"
+                : " franquias ainda têm esta iniciativa ativa em suas metas:"}
+            </Text>
+            <ScrollView style={s.franchiseList} showsVerticalScrollIndicator={false}>
+              {pendingDeactivation.affectedFranchises.map((name) => (
+                <View key={name} style={s.franchiseItem}>
+                  <Ionicons name="business-outline" size={14} color={colors.mutedForeground} />
+                  <Text style={s.franchiseItemText}>{name}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <Text style={[s.sheetDesc, { marginBottom: 20 }]}>
+              Desativar esta iniciativa fará com que apareça como "(inativo)" para essas franquias.
+            </Text>
+            <View style={s.sheetBtnRow}>
+              <Pressable
+                style={[s.sheetBtn, s.sheetCancelBtn]}
+                onPress={() => setPendingDeactivation(null)}
+              >
+                <Text style={s.sheetCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[s.sheetBtn, s.sheetConfirmBtn, toggleInitMutation.isPending && { opacity: 0.6 }]}
+                onPress={confirmDeactivation}
+                disabled={toggleInitMutation.isPending}
+              >
+                <Text style={s.sheetConfirmText}>
+                  {toggleInitMutation.isPending ? "Desativando..." : "Desativar mesmo assim"}
                 </Text>
               </Pressable>
             </View>
