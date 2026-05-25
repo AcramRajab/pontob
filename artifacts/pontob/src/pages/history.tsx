@@ -21,11 +21,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   History, TrendingUp, TrendingDown, CheckSquare, Calendar, BarChart2,
-  CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand, Pencil,
+  CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand, Pencil, Filter,
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -700,9 +700,43 @@ function HistoryCard({ item, onClick }: { item: HistItem; onClick: () => void })
   );
 }
 
+type DatePreset = "all" | "7d" | "30d" | "month" | "custom";
+
+const DATE_PRESETS: { value: DatePreset; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+  { value: "month", label: "Este mês" },
+  { value: "custom", label: "Personalizado" },
+];
+
+function getPresetRange(preset: DatePreset): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  if (preset === "7d") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 6);
+    from.setHours(0, 0, 0, 0);
+    return { from, to: null };
+  }
+  if (preset === "30d") {
+    const from = new Date(now);
+    from.setDate(from.getDate() - 29);
+    from.setHours(0, 0, 0, 0);
+    return { from, to: null };
+  }
+  if (preset === "month") {
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from, to: null };
+  }
+  return { from: null, to: null };
+}
+
 export default function HistoryPage() {
   const [tab, setTab] = useState("all");
   const [selected, setSelected] = useState<HistItem | null>(null);
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const fid = franchiseId ?? undefined;
@@ -724,24 +758,48 @@ export default function HistoryPage() {
 
   const isLoading = enabled && (loadingDaily || loadingWeekly || loadingMonthly || loadingProgress);
 
-  const allItems: HistItem[] = [
+  const allItems: HistItem[] = useMemo(() => [
     ...(daily as any[]).map(c => ({ id: `d-${c.id}`, type: "daily" as const, date: c.createdAt, data: c })),
     ...(weekly as any[]).map(c => ({ id: `w-${c.id}`, type: "weekly" as const, date: c.createdAt, data: c })),
     ...(monthly as any[]).map(c => ({ id: `m-${c.id}`, type: "monthly" as const, date: c.createdAt, data: c })),
     ...(progress as any[]).map(p => ({ id: `p-${p.id}`, type: "progress" as const, date: p.createdAt, data: p })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), [daily, weekly, monthly, progress]);
 
-  const filtered = allItems.filter(i => {
+  const dateFilteredItems = useMemo(() => {
+    if (datePreset === "all") return allItems;
+
+    let from: Date | null = null;
+    let to: Date | null = null;
+
+    if (datePreset === "custom") {
+      from = customFrom ? new Date(customFrom + "T00:00:00") : null;
+      to = customTo ? new Date(customTo + "T23:59:59") : null;
+      if (!from && !to) return allItems;
+    } else {
+      const range = getPresetRange(datePreset);
+      from = range.from;
+      to = range.to;
+    }
+
+    return allItems.filter(item => {
+      const d = new Date(item.date);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [allItems, datePreset, customFrom, customTo]);
+
+  const filtered = dateFilteredItems.filter(i => {
     if (tab === "all") return true;
     return i.type === tab;
   });
 
   const counts = {
-    all: allItems.length,
-    daily: allItems.filter(i => i.type === "daily").length,
-    weekly: allItems.filter(i => i.type === "weekly").length,
-    monthly: allItems.filter(i => i.type === "monthly").length,
-    progress: allItems.filter(i => i.type === "progress").length,
+    all: dateFilteredItems.length,
+    daily: dateFilteredItems.filter(i => i.type === "daily").length,
+    weekly: dateFilteredItems.filter(i => i.type === "weekly").length,
+    monthly: dateFilteredItems.filter(i => i.type === "monthly").length,
+    progress: dateFilteredItems.filter(i => i.type === "progress").length,
   };
 
   return (
@@ -763,6 +821,61 @@ export default function HistoryPage() {
         </div>
       ) : (
         <>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Filter className="h-3.5 w-3.5" />
+                <span>Período:</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {DATE_PRESETS.map(p => (
+                  <button
+                    key={p.value}
+                    onClick={() => setDatePreset(p.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      datePreset === p.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {datePreset === "custom" && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">De:</label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={e => setCustomFrom(e.target.value)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground whitespace-nowrap">Até:</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={e => setCustomTo(e.target.value)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                {(customFrom || customTo) && (
+                  <button
+                    onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="overflow-x-auto">
             <Tabs value={tab} onValueChange={setTab}>
               <TabsList className="h-auto flex-wrap gap-1">
@@ -789,7 +902,9 @@ export default function HistoryPage() {
                 <History className="h-10 w-10 text-muted-foreground/40 mb-3" />
                 <p className="text-sm font-medium text-muted-foreground">Nenhum registro encontrado</p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
-                  Os check-ins e atualizações de progresso aparecerão aqui
+                  {datePreset !== "all"
+                    ? "Nenhum check-in encontrado no período selecionado"
+                    : "Os check-ins e atualizações de progresso aparecerão aqui"}
                 </p>
               </CardContent>
             </Card>
