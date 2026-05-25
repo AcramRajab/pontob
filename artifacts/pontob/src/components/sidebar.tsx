@@ -193,16 +193,16 @@ export function AppSidebar() {
             <NavItem href="/kpis" icon={LineChart} label="KPIs" active={at("/kpis")} />
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
-            {/* 2º — Semana (plan the week first, then execute daily) */}
-            <NavSection label="Semana" />
-            <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
-            <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
-
-            {/* 3º — Rotina Diária */}
-            <NavSection label="Rotina" />
+            {/* 2º — Dia */}
+            <NavSection label="Dia" />
             <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
             <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
             <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
+
+            {/* 3º — Semana */}
+            <NavSection label="Semana" />
+            <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
+            <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
 
             {/* 4º — Mês */}
             <NavSection label="Mês" />
