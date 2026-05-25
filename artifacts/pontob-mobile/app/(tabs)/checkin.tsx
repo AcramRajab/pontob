@@ -181,6 +181,7 @@ export default function CheckinScreen() {
   const [monthlyNextFocus, setMonthlyNextFocus] = useState("");
   const [monthlySubmitting, setMonthlySubmitting] = useState(false);
   const [monthlyDone, setMonthlyDone] = useState(false);
+  const [monthlyPreFilled, setMonthlyPreFilled] = useState(false);
 
   // ── History state ────────────────────────────────────────────────────────
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
@@ -328,6 +329,21 @@ export default function CheckinScreen() {
     }
   }, [existingWeeklyCheckin, weeklyPreFilled]);
 
+  // ── Pre-fill monthly form from existing check-in ─────────────────────────
+
+  useEffect(() => {
+    if (!monthlyPreFilled && thisMonthCheckin) {
+      setMonthlyKri(thisMonthCheckin.kriProgress ?? "");
+      setMonthlyWorked(thisMonthCheckin.initiativesThatWorked ?? "");
+      setMonthlyDidntWork(thisMonthCheckin.initiativesThatDidNotWork ?? "");
+      setMonthlyContinue(thisMonthCheckin.continueDoing ?? "");
+      setMonthlyStop(thisMonthCheckin.stopDoing ?? "");
+      setMonthlyStart(thisMonthCheckin.startDoing ?? "");
+      setMonthlyNextFocus(thisMonthCheckin.nextMonthFocus ?? "");
+      setMonthlyPreFilled(true);
+    }
+  }, [thisMonthCheckin, monthlyPreFilled]);
+
   // ── Pre-fill history edit form ────────────────────────────────────────────
 
   useEffect(() => {
@@ -435,13 +451,13 @@ export default function CheckinScreen() {
 
   async function handleMonthlySubmit() {
     if (!user?.franchiseId) { Alert.alert("Erro", "Franquia não identificada."); return; }
+    const isEdit = !!thisMonthCheckin;
     const goalId = monthlyGoalId ?? (activeGoals.length === 1 ? activeGoals[0].id : null);
-    if (!goalId) { Alert.alert("Selecione uma meta", "Escolha a meta relacionada a este check-in mensal."); return; }
+    if (!isEdit && !goalId) { Alert.alert("Selecione uma meta", "Escolha a meta relacionada a este check-in mensal."); return; }
     setMonthlySubmitting(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const body = {
-        goalId,
+      const body: Record<string, unknown> = {
         franchiseId: user.franchiseId,
         month: currentMonth,
         year: currentYear,
@@ -453,7 +469,10 @@ export default function CheckinScreen() {
         startDoing: monthlyStart.trim() || null,
         nextMonthFocus: monthlyNextFocus.trim() || null,
       };
-      const res = await apiFetch("/monthly-checkins", { method: "POST", body: JSON.stringify(body) });
+      if (goalId) body.goalId = goalId;
+      const url = isEdit ? `/monthly-checkins/${thisMonthCheckin!.id}` : "/monthly-checkins";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
@@ -1100,15 +1119,15 @@ export default function CheckinScreen() {
   // ── Monthly form ──────────────────────────────────────────────────────────
 
   function renderMonthlyForm() {
-    if (monthlyDone || alreadySubmittedMonthly) {
+    if (monthlyDone) {
       return (
         <View style={s.doneCard}>
           <Ionicons name="checkmark-circle" size={60} color={colors.success} />
-          <Text style={s.doneTitle}>{monthlyDone ? "Check-in feito!" : "Já registrado"}</Text>
+          <Text style={s.doneTitle}>{alreadySubmittedMonthly ? "Check-in atualizado!" : "Check-in feito!"}</Text>
           <Text style={s.doneText}>
-            {monthlyDone
-              ? "Check-in mensal registrado com sucesso!"
-              : `O check-in de ${MONTHS_PT[currentMonth - 1]} já foi registrado.`
+            {alreadySubmittedMonthly
+              ? "Check-in mensal atualizado com sucesso!"
+              : "Check-in mensal registrado com sucesso!"
             }
           </Text>
         </View>
@@ -1117,7 +1136,13 @@ export default function CheckinScreen() {
 
     return (
       <View style={s.content}>
-        {!isFirstOfMonth && (
+        {alreadySubmittedMonthly && (
+          <View style={s.editBanner}>
+            <Ionicons name="create-outline" size={16} color="#d97706" />
+            <Text style={s.editBannerText}>Editando check-in de {MONTHS_PT[currentMonth - 1]} — suas alterações substituirão o registro atual.</Text>
+          </View>
+        )}
+        {!isFirstOfMonth && !alreadySubmittedMonthly && (
           <View style={s.infoBanner}>
             <Ionicons name="information-circle-outline" size={18} color={colors.mutedForeground} />
             <Text style={s.infoText}>
@@ -1192,7 +1217,7 @@ export default function CheckinScreen() {
         >
           {monthlySubmitting
             ? <ActivityIndicator color={colors.primaryForeground} size="small" />
-            : <Text style={s.submitBtnText}>Registrar Check-in Mensal</Text>
+            : <Text style={s.submitBtnText}>{alreadySubmittedMonthly ? "Atualizar Check-in Mensal" : "Registrar Check-in Mensal"}</Text>
           }
         </Pressable>
       </View>
