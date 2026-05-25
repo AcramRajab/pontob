@@ -29,8 +29,8 @@ const SECTIONS = [
     dot: "bg-blue-500",
     bar: "bg-blue-400",
     indicators: [
-      { key: "reunioes_agendadas", label: "Reuniões agendadas", defaultWeeklyMeta: 10 },
-      { key: "reunioes_realizadas", label: "Reuniões realizadas", defaultWeeklyMeta: 5 },
+      { key: "reunioes_agendadas", label: "Reuniões agendadas", defaultWeeklyMeta: 10, fixedMeta: 10 },
+      { key: "reunioes_realizadas", label: "Reuniões realizadas", defaultWeeklyMeta: 5, fixedMeta: 5 },
       { key: "corretores_entraram", label: "Corretores entraram" },
       { key: "estagiarios_entraram", label: "Estagiários entraram" },
       { key: "corretores_sairam", label: "Corretores saíram" },
@@ -150,14 +150,16 @@ function Cell({
 }: {
   serverValue: string; onChange: (v: string) => void; disabled: boolean; isInteger?: boolean;
 }) {
-  const [localValue, setLocalValue] = useState(serverValue);
+  // Normalize: remove PostgreSQL numeric trailing zeros (e.g. "3.0000" → "3")
+  const norm = (v: string) => v !== "" && isInteger ? String(Math.round(Number(v))) : v;
+  const [localValue, setLocalValue] = useState(() => norm(serverValue));
   const [hovered, setHovered] = useState(false);
   const isFocused = useRef(false);
 
   // Sync from server only when not focused (user not actively typing)
   useEffect(() => {
-    if (!isFocused.current) setLocalValue(serverValue);
-  }, [serverValue]);
+    if (!isFocused.current) setLocalValue(norm(serverValue));
+  }, [serverValue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isEmpty = localValue === "" || localValue === "0";
   const hasValue = !isEmpty;
@@ -721,8 +723,8 @@ export default function Planner() {
                   <tbody>
                     {section.indicators.map((ind, rowIdx) => {
                       const total = weekTotal(ind.key);
-                      const meta = metaForIndicator(ind.key);
-                      const weeklyMeta = weeklyMetaForIndicator(ind.key);
+                      const fixedMeta = (ind as any).fixedMeta as number | undefined;
+                      const weeklyMeta = fixedMeta !== undefined ? fixedMeta : weeklyMetaForIndicator(ind.key);
                       const isOver = weeklyMeta !== null && total >= weeklyMeta && weeklyMeta > 0;
                       const p = weeklyMeta && weeklyMeta > 0 ? Math.min(Math.round((total / weeklyMeta) * 100), 100) : null;
                       const isValueKey = isVgh(ind.key);
@@ -774,26 +776,33 @@ export default function Planner() {
                             </span>
                           </td>
 
-                          {/* Meta/sem input */}
+                          {/* Meta/sem — fixed or editable */}
                           <td className="p-0 text-center">
-                            <div className="flex flex-col items-center">
-                              <Input
-                                type="number"
-                                min={0}
-                                step={isValueKey ? 1000 : 1}
-                                defaultValue={meta ?? ""}
-                                key={`${ind.key}-meta-${weekStartStr}`}
-                                disabled={!canWrite || isSubmitted}
-                                placeholder={defaultMeta != null ? String(defaultMeta) : "—"}
-                                className="h-8 w-full text-center text-xs font-medium border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5 disabled:opacity-40"
-                                onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
-                              />
-                              {weeklyMeta !== null && (
-                                <span className="text-[10px] text-muted-foreground/60 pb-0.5 leading-none">
-                                  {fmtWeekly(weeklyMeta, ind.key)}
-                                </span>
-                              )}
-                            </div>
+                            {fixedMeta !== undefined ? (
+                              <div className="flex flex-col items-center py-1.5 px-2">
+                                <span className="text-sm font-bold tabular-nums text-primary">{fixedMeta}</span>
+                                <span className="text-[10px] text-muted-foreground/60 leading-none">{fixedMeta}/sem</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={isValueKey ? 1000 : 1}
+                                  defaultValue={weeklyMeta ?? ""}
+                                  key={`${ind.key}-meta-${weekStartStr}`}
+                                  disabled={!canWrite || isSubmitted}
+                                  placeholder={defaultMeta != null ? String(defaultMeta) : "—"}
+                                  className="h-8 w-full text-center text-xs font-medium border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5 disabled:opacity-40"
+                                  onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
+                                />
+                                {weeklyMeta !== null && (
+                                  <span className="text-[10px] text-muted-foreground/60 pb-0.5 leading-none">
+                                    {fmtWeekly(weeklyMeta, ind.key)}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* Status */}
@@ -832,8 +841,8 @@ export default function Planner() {
                             </span>
                           </td>
                           {DAYS.map((_, dayIdx) => {
-                            const pVal = Number(getEntry(ng.plus, dayIdx).value) || 0;
-                            const mVal = Number(getEntry(ng.minus, dayIdx).value) || 0;
+                            const pVal = Math.round(Number(getEntry(ng.plus, dayIdx).value) || 0);
+                            const mVal = Math.round(Number(getEntry(ng.minus, dayIdx).value) || 0);
                             const dayNet = pVal - mVal;
                             const isZero = dayNet === 0 && pVal === 0 && mVal === 0;
                             return (
@@ -847,7 +856,7 @@ export default function Planner() {
                           })}
                           <td className="px-3 py-1 text-center border-l border-border/60">
                             <span className={cn("text-sm font-bold tabular-nums", net === 0 ? "text-muted-foreground/40" : isPos ? ng.colorPos : ng.colorNeg)}>
-                              {net === 0 ? "—" : (net > 0 ? `+${net}` : String(net))}
+                              {net === 0 ? "—" : (net > 0 ? `+${Math.round(net)}` : String(Math.round(net)))}
                             </span>
                           </td>
                           <td className="py-1" />
