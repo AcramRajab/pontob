@@ -160,48 +160,30 @@ function KriBlock({
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
 
-      {/* Values row — headers inline above each value */}
+      {/* Values row — META first (plan), then %, then REALIZADO (actual) */}
       <div className="flex items-end gap-3 mb-2.5">
-        {/* Realizado */}
+        {/* Meta — filled first, primary input */}
         <div className="flex-1 min-w-0">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Realizado</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Meta</span>
           {canWrite ? (
-            <div className="relative">
-              <Input
-                type="number"
-                min={0}
-                step={isVgh ? 1000 : 1}
-                key={String(actualRaw)}
-                defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
-                placeholder={isCarried && actual != null ? String(actual) : "—"}
-                className={cn(
-                  "h-8 pl-0 pr-0 text-xl font-bold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
-                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                  isCarried
-                    ? "text-muted-foreground/50 border-dashed border-muted-foreground/20 placeholder:text-muted-foreground/50 placeholder:font-bold placeholder:text-xl"
-                    : actual != null
-                    ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
-                    : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
-                )}
-                onChange={e => onActualChange(e.target.value)}
-              />
-              {isCarried && carriedFromQ != null && (
-                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
-                  ↑ do Q{carriedFromQ}
-                </div>
+            <Input
+              type="number"
+              min={0}
+              step={isVgh ? 1000 : 1}
+              defaultValue={targetRaw === null || targetRaw === "" ? "" : targetRaw}
+              placeholder="—"
+              className={cn(
+                "h-8 pl-0 pr-0 text-xl font-bold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                cfg.accent,
+                "placeholder:text-muted-foreground/20 placeholder:font-normal",
               )}
-            </div>
+              onChange={e => onChange(e.target.value)}
+            />
           ) : (
-            <div>
-              <span className={cn("text-xl font-bold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30 italic text-sm")}>
-                {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
-              </span>
-              {isCarried && carriedFromQ != null && (
-                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
-                  ↑ do Q{carriedFromQ}
-                </div>
-              )}
-            </div>
+            <span className={cn("text-xl font-bold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30 italic text-sm")}>
+              {hasTarget ? (isVgh ? formatVgh(target) : target) : "—"}
+            </span>
           )}
         </div>
 
@@ -218,28 +200,46 @@ function KriBlock({
           )}
         </div>
 
-        {/* Meta */}
+        {/* Realizado (YTD) — filled after, right-aligned */}
         <div className="flex-1 min-w-0 flex flex-col items-end">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Meta</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Realizado</span>
           {canWrite ? (
-            <Input
-              type="number"
-              min={0}
-              step={isVgh ? 1000 : 1}
-              defaultValue={targetRaw === null || targetRaw === "" ? "" : targetRaw}
-              placeholder="—"
-              className={cn(
-                "h-8 pr-0 pl-0 text-right text-sm font-semibold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
-                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                cfg.accent,
-                "placeholder:text-muted-foreground/20 placeholder:font-normal",
+            <div className="relative w-full">
+              <Input
+                type="number"
+                min={0}
+                step={isVgh ? 1000 : 1}
+                key={String(actualRaw)}
+                defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
+                placeholder={isCarried && actual != null ? String(actual) : "—"}
+                className={cn(
+                  "h-8 pl-0 pr-0 text-right text-sm font-semibold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
+                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+                  isCarried
+                    ? "text-muted-foreground/50 border-dashed border-muted-foreground/20 placeholder:text-muted-foreground/50 placeholder:font-semibold placeholder:text-sm"
+                    : actual != null
+                    ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
+                    : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
+                )}
+                onChange={e => onActualChange(e.target.value)}
+              />
+              {isCarried && carriedFromQ != null && (
+                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide text-right">
+                  ↑ do Q{carriedFromQ}
+                </div>
               )}
-              onChange={e => onChange(e.target.value)}
-            />
+            </div>
           ) : (
-            <span className={cn("text-sm font-semibold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30")}>
-              {hasTarget ? (isVgh ? formatVgh(target) : target) : "—"}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30")}>
+                {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
+              </span>
+              {isCarried && carriedFromQ != null && (
+                <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
+                  ↑ do Q{carriedFromQ}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
