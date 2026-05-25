@@ -186,6 +186,13 @@ export default function CheckinScreen() {
   // ── History state ────────────────────────────────────────────────────────
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
 
+  type HistoryEntry =
+    | { kind: "daily"; item: DailyCheckin; date: Date }
+    | { kind: "weekly"; item: WeeklyCheckin; date: Date }
+    | { kind: "monthly"; item: MonthlyCheckin; date: Date };
+
+  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<HistoryEntry | null>(null);
+
   // ── History edit state ────────────────────────────────────────────────────
   const [historyEditEntry, setHistoryEditEntry] = useState<
     | { kind: "daily"; item: DailyCheckin }
@@ -814,6 +821,60 @@ export default function CheckinScreen() {
     historyLine: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.foreground, lineHeight: 18 },
     historyMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 4 },
     emptyText: { fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", marginTop: 40 },
+    // Detail view
+    detailHeader: {
+      borderLeftWidth: 3,
+      paddingLeft: 12,
+      marginBottom: 20,
+    },
+    detailTitle: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+      lineHeight: 22,
+    },
+    detailField: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      marginBottom: 10,
+    },
+    detailFieldLabel: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 6,
+    },
+    detailFieldValue: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      lineHeight: 20,
+    },
+    detailBoolRow: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+    },
+    detailBoolBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    detailBoolBadgeText: {
+      fontSize: 12,
+      fontFamily: "Inter_600SemiBold",
+    },
   });
 
   // ── Tab definitions ───────────────────────────────────────────────────────
@@ -1261,11 +1322,6 @@ export default function CheckinScreen() {
       );
     }
 
-    type HistoryEntry =
-      | { kind: "daily"; item: DailyCheckin; date: Date }
-      | { kind: "weekly"; item: WeeklyCheckin; date: Date }
-      | { kind: "monthly"; item: MonthlyCheckin; date: Date };
-
     const entries: HistoryEntry[] = [];
 
     if (historyFilter === "all" || historyFilter === "daily") {
@@ -1349,7 +1405,14 @@ export default function CheckinScreen() {
               (entry.kind === "weekly" && entry.item.weekStartDate === lastWeekMondayStr);
 
             return (
-              <View key={`${entry.kind}-${entry.item.id}-${idx}`} style={s.historyCard}>
+              <Pressable
+                key={`${entry.kind}-${entry.item.id}-${idx}`}
+                style={({ pressed }) => [s.historyCard, pressed && { opacity: 0.7 }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSelectedHistoryEntry(entry);
+                }}
+              >
                 <View style={s.historyCardRow}>
                   <View style={[s.historyTypeBadge, { backgroundColor: cfg.bg }]}>
                     <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
@@ -1358,7 +1421,8 @@ export default function CheckinScreen() {
                     {isEditable && (
                       <Pressable
                         style={s.historyEditBtn}
-                        onPress={() => {
+                        onPress={(e) => {
+                          e.stopPropagation?.();
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           setHistoryEditEntry(
                             entry.kind === "daily"
@@ -1371,6 +1435,7 @@ export default function CheckinScreen() {
                         <Text style={s.historyEditBtnText}>Editar</Text>
                       </Pressable>
                     )}
+                    <Ionicons name="chevron-forward" size={14} color={colors.mutedForeground} />
                     <Text style={s.historyDate}>{dateStr2}</Text>
                   </View>
                 </View>
@@ -1378,7 +1443,7 @@ export default function CheckinScreen() {
                 {!!metaLine && (
                   <Text style={s.historyMeta} numberOfLines={2}>{metaLine}</Text>
                 )}
-              </View>
+              </Pressable>
             );
           })
         )}
@@ -1496,10 +1561,162 @@ export default function CheckinScreen() {
     );
   }
 
+  // ── History detail view ───────────────────────────────────────────────────
+
+  function renderHistoryDetail() {
+    if (!selectedHistoryEntry) return null;
+
+    const { kind, item } = selectedHistoryEntry;
+    const cfg = {
+      daily: { bg: colors.primary + "20", color: colors.primary, label: "Diário" },
+      weekly: { bg: "#f59e0b20", color: "#d97706", label: "Semanal" },
+      monthly: { bg: "#8b5cf620", color: "#7c3aed", label: "Mensal" },
+    }[kind];
+
+    function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
+      if (!value) return null;
+      return (
+        <View style={s.detailField}>
+          <Text style={s.detailFieldLabel}>{label}</Text>
+          <Text style={s.detailFieldValue}>{value}</Text>
+        </View>
+      );
+    }
+
+    function DetailBool({ label, value }: { label: string; value: boolean }) {
+      return (
+        <View style={s.detailBoolRow}>
+          <Text style={s.detailFieldLabel}>{label}</Text>
+          <View style={[s.detailBoolBadge, { backgroundColor: value ? colors.success + "20" : colors.muted }]}>
+            <Text style={[s.detailBoolBadgeText, { color: value ? colors.success : colors.mutedForeground }]}>
+              {value ? "Sim" : "Não"}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    function DetailProgress({ label, value }: { label: string; value: number | null | undefined }) {
+      if (value == null) return null;
+      return (
+        <View style={s.detailField}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+            <Text style={s.detailFieldLabel}>{label}</Text>
+            <Text style={[s.detailFieldLabel, { color: colors.primary }]}>{value}%</Text>
+          </View>
+          <View style={s.progBarBg}>
+            <View style={[s.progBarFill, { width: `${value}%` }]} />
+          </View>
+        </View>
+      );
+    }
+
+    let titleLine = "";
+    const isEditable =
+      (kind === "daily" && (item as DailyCheckin).date === yesterdayStr) ||
+      (kind === "weekly" && (item as WeeklyCheckin).weekStartDate === lastWeekMondayStr);
+
+    let content: React.ReactNode = null;
+
+    if (kind === "daily") {
+      const d = item as DailyCheckin;
+      titleLine = `Check-in Diário — ${new Date(d.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`;
+      const execLabel = d.executedToday === "sim" ? "Sim" : d.executedToday === "parcial" ? "Parcial" : "Não";
+      const execColor = d.executedToday === "sim" ? colors.success : d.executedToday === "parcial" ? "#d97706" : colors.destructive;
+      content = (
+        <>
+          <View style={s.detailField}>
+            <Text style={s.detailFieldLabel}>Executei hoje?</Text>
+            <View style={[s.detailBoolBadge, { backgroundColor: execColor + "20" }]}>
+              <Text style={[s.detailBoolBadgeText, { color: execColor }]}>{execLabel}</Text>
+            </View>
+          </View>
+          <DetailProgress label="Progresso geral" value={d.progressToday} />
+          <DetailField label="Impedimento" value={d.blocker} />
+          <DetailField label="Próximo passo" value={d.nextStep} />
+          <DetailBool label="Precisa de ajuda" value={d.needsHelp} />
+        </>
+      );
+    } else if (kind === "weekly") {
+      const w = item as WeeklyCheckin;
+      const startFmt = new Date(w.weekStartDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const endFmt = w.weekEndDate ? new Date(w.weekEndDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+      titleLine = `Check-in Semanal — ${startFmt}${endFmt ? ` a ${endFmt}` : ""}`;
+      content = (
+        <>
+          <DetailProgress label="Percentual de execução" value={w.executionPercentage} />
+          <DetailField label="O que foi feito esta semana?" value={w.progressSummary} />
+          <DetailField label="Impedimentos e bloqueios" value={w.blockers} />
+          <DetailField label="Prioridades para a próxima semana" value={w.nextWeekPriority} />
+          <DetailBool label="Precisa de suporte regional" value={w.needsRegionalSupport} />
+        </>
+      );
+    } else {
+      const m = item as MonthlyCheckin;
+      const monthName = MONTHS_PT[m.month - 1];
+      titleLine = `Check-in Mensal — ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${m.year}`;
+      content = (
+        <>
+          <DetailField label="Progresso dos KRIs" value={m.kriProgress} />
+          <DetailField label="Iniciativas que funcionaram" value={m.initiativesThatWorked} />
+          <DetailField label="Iniciativas que não funcionaram" value={m.initiativesThatDidNotWork} />
+          <DetailField label="Continuar fazendo" value={m.continueDoing} />
+          <DetailField label="Parar de fazer" value={m.stopDoing} />
+          <DetailField label="Começar a fazer" value={m.startDoing} />
+          <DetailField label="Foco do próximo mês" value={m.nextMonthFocus} />
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Pressable
+          style={s.editFormHeader}
+          onPress={() => setSelectedHistoryEntry(null)}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.primary} />
+          <Text style={s.backBtnText}>Voltar ao histórico</Text>
+        </Pressable>
+
+        <View style={s.content}>
+          <View style={[s.detailHeader, { borderLeftColor: cfg.color }]}>
+            <View style={[s.historyTypeBadge, { backgroundColor: cfg.bg, alignSelf: "flex-start", marginBottom: 8 }]}>
+              <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+            <Text style={s.detailTitle}>{titleLine}</Text>
+          </View>
+
+          {content}
+
+          {isEditable && (
+            <Pressable
+              style={[s.submitBtn, { backgroundColor: colors.secondary, marginTop: 16 }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectedHistoryEntry(null);
+                setHistoryEditEntry(
+                  kind === "daily"
+                    ? { kind: "daily", item: item as DailyCheckin }
+                    : { kind: "weekly", item: item as WeeklyCheckin },
+                );
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="create-outline" size={18} color={colors.foreground} />
+                <Text style={[s.submitBtnText, { color: colors.foreground }]}>Editar este check-in</Text>
+              </View>
+            </Pressable>
+          )}
+        </View>
+      </>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   function renderTabContent() {
     if (activeTab === "history" && historyEditEntry) return renderHistoryEditForm();
+    if (activeTab === "history" && selectedHistoryEntry) return renderHistoryDetail();
     switch (activeTab) {
       case "daily": return renderDailyForm();
       case "weekly": return renderWeeklyForm();
