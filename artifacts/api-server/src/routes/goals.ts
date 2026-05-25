@@ -137,9 +137,19 @@ router.get("/goals", requireAuth, async (req, res) => {
     const { franchiseId: fqId, dimensionId, status } = req.query;
     const role = req.session.userRole!;
 
-    const effectiveFranchiseId = role === "master_admin" || role === "staff_regional"
+    // Admins and sócios use the query param; regular users use their session franchise
+    const effectiveFranchiseId = role === "master_admin" || role === "staff_regional" || role === "socio"
       ? fqId ? parseInt(fqId as string) : undefined
       : req.session.franchiseId ?? undefined;
+
+    // For sócios, enforce access check when a specific franchise is requested
+    if (role === "socio" && effectiveFranchiseId != null) {
+      const linked: number[] = req.session.linkedFranchiseIds ?? [];
+      if (!linked.includes(effectiveFranchiseId)) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
 
     let baseQuery = db
       .select({

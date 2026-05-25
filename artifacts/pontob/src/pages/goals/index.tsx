@@ -77,6 +77,12 @@ export default function Goals() {
     return { currentYear: y, currentQDate: qDates[qIdx], currentQLabel: qLabels[qIdx] };
   }, []);
 
+  // Use the franchise that actually owns the goals (may differ from picker for sócios)
+  const goalsFranchiseId = useMemo(
+    () => (goals && goals.length > 0 ? (goals[0] as any).franchiseId : null) ?? franchiseId,
+    [goals, franchiseId]
+  );
+
   // Fetch visão milestones to get current-quarter targets
   const { data: visaoData } = useQuery<{
     milestones: Array<{
@@ -86,13 +92,13 @@ export default function Goals() {
       targetVgh: number | null;
     }>;
   }>({
-    queryKey: ["visao-milestones", franchiseId, currentYear],
+    queryKey: ["visao-milestones", goalsFranchiseId, currentYear],
     queryFn: async () => {
-      const res = await fetch(`/api/visao?franchiseId=${franchiseId}&year=${currentYear}`, { credentials: "include" });
+      const res = await fetch(`/api/visao?franchiseId=${goalsFranchiseId}&year=${currentYear}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: !!franchiseId,
+    enabled: !!goalsFranchiseId,
   });
 
   // Extract the current quarter's milestone targets
