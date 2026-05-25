@@ -20,6 +20,14 @@ import { useAuth } from "@/context/auth";
 import { useColors } from "@/hooks/useColors";
 import { apiFetch } from "@/lib/api";
 
+interface GoalInitiative {
+  id: number;
+  status: string;
+  initiativeName: string | null;
+  customName: string | null;
+  progressPercentage: number | null;
+}
+
 interface GoalInfo {
   id: number;
   title: string;
@@ -27,7 +35,7 @@ interface GoalInfo {
   dimensionName: string | null;
   keyProcessId: number | null;
   keyProcessName: string | null;
-  initiatives: Array<{ status: string }>;
+  initiatives: GoalInitiative[];
 }
 
 interface CatalogInitiative {
@@ -97,6 +105,7 @@ export default function InitiativeNewScreen() {
   const [show5W2H, setShow5W2H] = useState(false);
   const [ownerPickerVisible, setOwnerPickerVisible] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<number | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
@@ -165,6 +174,34 @@ export default function InitiativeNewScreen() {
       }
     },
   });
+
+  const concludeMutation = useMutation({
+    mutationFn: async (initiativeId: number) => {
+      const res = await apiFetch(`/goal-initiatives/${initiativeId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "concluida", progressPercentage: 100 }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      return res.json();
+    },
+    onMutate: (initiativeId) => {
+      setCompletingId(initiativeId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["goal", id] });
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+      setCompletingId(null);
+    },
+    onError: () => {
+      setCompletingId(null);
+    },
+  });
+
+  const activeGoalInits = (goal?.initiatives ?? []).filter(i => i.status === "ativa");
+  const isAtLimit = !goalLoading && !!goal && activeGoalInits.length >= 3;
 
   const buildPayload = (base: { strategicInitiativeId?: number; customName?: string }) => {
     const p = planning;
@@ -565,6 +602,124 @@ export default function InitiativeNewScreen() {
       fontFamily: "Inter_400Regular",
       color: colors.mutedForeground,
     },
+    limitBanner: {
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: "#fdba7440",
+      backgroundColor: "#fff7ed",
+      padding: 16,
+      marginBottom: 20,
+    },
+    limitDotsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 8,
+    },
+    limitDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: "#fb923c",
+    },
+    limitBannerTitle: {
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+      color: "#c2410c",
+      marginLeft: 2,
+    },
+    limitBannerDesc: {
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: "#9a3412",
+      lineHeight: 19,
+    },
+    limitStep: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      marginBottom: 10,
+    },
+    limitStepBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.muted,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+    },
+    limitStepBadgeText: {
+      fontSize: 12,
+      fontFamily: "Inter_700Bold",
+      color: colors.mutedForeground,
+    },
+    limitStepText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+      lineHeight: 19,
+      paddingTop: 2,
+    },
+    limitInitCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: colors.card,
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 8,
+    },
+    limitInitName: {
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      color: colors.foreground,
+      lineHeight: 20,
+      marginBottom: 6,
+    },
+    limitProgressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    limitProgressTrack: {
+      flex: 1,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.muted,
+      overflow: "hidden",
+    },
+    limitProgressFill: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.primary,
+    },
+    limitProgressPct: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+      minWidth: 28,
+      textAlign: "right",
+    },
+    concludeBtn: {
+      borderWidth: 1,
+      borderColor: "#bbf7d0",
+      borderRadius: colors.radius,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: "#f0fdf4",
+      minWidth: 72,
+      alignItems: "center",
+    },
+    concludeBtnText: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+      color: "#16a34a",
+    },
   });
 
   if (goalLoading) {
@@ -729,6 +884,73 @@ export default function InitiativeNewScreen() {
       )}
     </>
   );
+
+  if (isAtLimit) {
+    return (
+      <View style={s.container}>
+        {renderHeader(goal?.title, () => router.back())}
+        <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={s.limitBanner}>
+            <View style={s.limitDotsRow}>
+              {[0, 1, 2].map(i => (
+                <View key={i} style={s.limitDot} />
+              ))}
+              <Text style={s.limitBannerTitle}>3 de 3 slots em uso</Text>
+            </View>
+            <Text style={s.limitBannerDesc}>
+              Esta meta já tem 3 iniciativas ativas. Para adicionar uma nova, conclua uma das existentes abaixo.
+            </Text>
+          </View>
+
+          <Text style={[s.sectionLabel, { marginTop: 8 }]}>Como liberar um slot</Text>
+          {[
+            "Escolha uma das iniciativas abaixo para concluir",
+            'Toque em "Concluir" — o progresso vai para 100%',
+            "O slot é liberado e você pode adicionar a nova iniciativa",
+          ].map((text, idx) => (
+            <View key={idx} style={s.limitStep}>
+              <View style={s.limitStepBadge}>
+                <Text style={s.limitStepBadgeText}>{idx + 1}</Text>
+              </View>
+              <Text style={s.limitStepText}>{text}</Text>
+            </View>
+          ))}
+
+          <Text style={[s.sectionLabel, { marginTop: 16 }]}>Iniciativas ativas</Text>
+          {activeGoalInits.map(ini => (
+            <View key={ini.id} style={s.limitInitCard}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.limitInitName} numberOfLines={2}>
+                  {ini.initiativeName ?? ini.customName ?? "Iniciativa"}
+                </Text>
+                <View style={s.limitProgressRow}>
+                  <View style={s.limitProgressTrack}>
+                    <View style={[s.limitProgressFill, { width: `${ini.progressPercentage ?? 0}%` }]} />
+                  </View>
+                  <Text style={s.limitProgressPct}>{ini.progressPercentage ?? 0}%</Text>
+                </View>
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  s.concludeBtn,
+                  completingId === ini.id && { opacity: 0.6 },
+                  pressed && { opacity: 0.75 },
+                ]}
+                onPress={() => concludeMutation.mutate(ini.id)}
+                disabled={completingId !== null}
+              >
+                {completingId === ini.id ? (
+                  <ActivityIndicator size="small" color="#16a34a" />
+                ) : (
+                  <Text style={s.concludeBtnText}>Concluir</Text>
+                )}
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   if (step === "choose") {
     return (
