@@ -78,11 +78,25 @@ const Q_CONFIG = [
   },
 ];
 
-function formatVgh(v: number | null | undefined, compact = false) {
+function formatVgh(v: number | null | undefined) {
   if (v == null) return "—";
-  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
-  if (v >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}k`;
-  return "R$ " + v.toLocaleString("pt-BR");
+  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`;
+  if (v >= 1_000) return `R$ ${Math.round(v).toLocaleString("pt-BR")}`;
+  return "R$ " + Math.round(v).toLocaleString("pt-BR");
+}
+
+function formatNum(v: number | null | undefined) {
+  if (v == null) return "—";
+  return Math.round(v).toLocaleString("pt-BR");
+}
+
+/** Parse Brazilian-formatted number: "808.260" → 808260, "2.688.000" → 2688000, "808260" → 808260 */
+function parseBrNumber(s: string): number | null {
+  if (!s || s.trim() === "") return null;
+  // Detect Brazilian thousands format: if last group after dot has 3 digits, treat dots as thousands sep
+  const cleaned = s.replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
 }
 
 function pct(actual: number | null | undefined, target: number | null | undefined): number | null {
@@ -114,6 +128,74 @@ function generateStatement(
     : parts.slice(0, -1).join(", ") + " e " + parts[parts.length - 1];
 
   return `Em dezembro de ${year}, a ${franchiseName} terá ${body}.`;
+}
+
+/**
+ * Text input for currency values (VGH).
+ * - Accepts Brazilian format: "808.260" or "808260" or "2.688.000"
+ * - Shows formatted value when blurred, raw digits when focused
+ * - Emits the raw numeric string to onChange for saving
+ */
+function VghTextInput({
+  storedValue,
+  onChange,
+  className,
+  placeholder = "—",
+  textAlign = "left",
+}: {
+  storedValue: number | null;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+  textAlign?: "left" | "right";
+}) {
+  const [focused, setFocused] = useState(false);
+  // Draft holds what the user is currently typing (raw)
+  const [draft, setDraft] = useState(() =>
+    storedValue != null ? String(Math.round(storedValue)) : ""
+  );
+
+  // Sync draft when storedValue changes from outside (e.g. after save)
+  useEffect(() => {
+    if (!focused) {
+      setDraft(storedValue != null ? String(Math.round(storedValue)) : "");
+    }
+  }, [storedValue, focused]);
+
+  const displayValue = focused
+    ? draft
+    : storedValue != null
+    ? Math.round(storedValue).toLocaleString("pt-BR")
+    : "";
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={displayValue}
+      placeholder={placeholder}
+      onFocus={() => {
+        setFocused(true);
+        setDraft(storedValue != null ? String(Math.round(storedValue)) : "");
+      }}
+      onChange={e => {
+        const raw = e.target.value;
+        setDraft(raw);
+        const parsed = parseBrNumber(raw);
+        onChange(parsed != null ? String(parsed) : "");
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const parsed = parseBrNumber(draft);
+        onChange(parsed != null ? String(parsed) : "");
+      }}
+      className={cn(
+        "bg-transparent border-0 focus:outline-none p-0 m-0 w-full tabular-nums",
+        textAlign === "right" ? "text-right" : "text-left",
+        className,
+      )}
+    />
+  );
 }
 
 function KriBlock({
@@ -152,77 +234,138 @@ function KriBlock({
   const barColor = isGood ? "bg-green-500" : p != null && p >= 75 ? "bg-amber-400" : cfg.bar;
   const pctColor = isGood ? "text-green-600" : p != null && p >= 75 ? "text-amber-500" : "text-muted-foreground";
 
+  // Stored numeric values for VghTextInput
+  const storedTarget = target;
+  const storedActual = actual;
+
   return (
     <div className="py-3 border-b border-border/50 last:border-0">
       {/* Label */}
-      <div className="flex items-center gap-1.5 mb-2.5">
+      <div className="flex items-center gap-1.5 mb-2">
         <Icon className={cn("h-3 w-3 shrink-0", cfg.accent)} />
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
 
-      {/* Values row — META first (plan), then %, then REALIZADO (actual) */}
-      <div className="flex items-end gap-3 mb-2.5">
-        {/* Meta — filled first, primary input */}
+      {/* Values row — META | % | REALIZADO */}
+      <div className="flex items-end gap-2 mb-2">
+        {/* ── META ── */}
         <div className="flex-1 min-w-0">
           <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Meta</span>
           {canWrite ? (
-            <Input
-              type="number"
-              min={0}
-              step={isVgh ? 1000 : 1}
-              defaultValue={targetRaw === null || targetRaw === "" ? "" : targetRaw}
-              placeholder="—"
-              className={cn(
-                "h-8 pl-0 pr-0 text-xl font-bold border-0 border-b-2 border-dashed bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
-                "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                cfg.accent,
-                "placeholder:text-muted-foreground/20 placeholder:font-normal",
+            <div className={cn(
+              "border-b-2 border-dashed focus-within:border-solid pb-0.5",
+              hasTarget ? cfg.accentBorder : "border-muted-foreground/20",
+              "focus-within:border-primary/60"
+            )}>
+              {isVgh ? (
+                <>
+                  <VghTextInput
+                    storedValue={storedTarget}
+                    onChange={onChange}
+                    className={cn("text-base font-bold", cfg.accent, "placeholder:text-muted-foreground/20")}
+                    placeholder="—"
+                  />
+                  {hasTarget && (
+                    <span className="text-[9px] text-muted-foreground/50 block leading-none mt-0.5">
+                      {formatVgh(target)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    defaultValue={targetRaw === null || targetRaw === "" ? "" : String(targetRaw)}
+                    placeholder="—"
+                    className={cn(
+                      "bg-transparent border-0 focus:outline-none p-0 m-0 w-full tabular-nums text-base font-bold",
+                      cfg.accent,
+                      "placeholder:text-muted-foreground/20 placeholder:font-normal",
+                    )}
+                    onChange={e => onChange(e.target.value)}
+                  />
+                  {hasTarget && (
+                    <span className="text-[9px] text-muted-foreground/50 block leading-none mt-0.5">
+                      {formatNum(target)}
+                    </span>
+                  )}
+                </>
               )}
-              onChange={e => onChange(e.target.value)}
-            />
+            </div>
           ) : (
-            <span className={cn("text-xl font-bold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30 italic text-sm")}>
-              {hasTarget ? (isVgh ? formatVgh(target) : target) : "—"}
+            <span className={cn("text-base font-bold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30 italic text-sm")}>
+              {hasTarget ? (isVgh ? formatVgh(target) : formatNum(target)) : "—"}
             </span>
           )}
         </div>
 
-        {/* % badge — auto-width, never squeezes neighbours */}
-        <div className="shrink-0 flex flex-col items-center pb-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">%</span>
+        {/* ── % ── */}
+        <div className="shrink-0 flex flex-col items-center pb-0.5 w-12">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5 text-center">%</span>
           {p != null ? (
             <>
-              <span className={cn("text-base font-black leading-none tabular-nums", pctColor)}>{p}%</span>
+              <span className={cn("text-sm font-black leading-none tabular-nums text-center", pctColor)}>
+                {p > 999 ? ">999" : p}%
+              </span>
               <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">ating.</span>
             </>
           ) : (
-            <span className="text-sm text-muted-foreground/20">—</span>
+            <span className="text-sm text-muted-foreground/20 text-center">—</span>
           )}
         </div>
 
-        {/* Realizado (YTD) — filled after, right-aligned */}
+        {/* ── REALIZADO ── */}
         <div className="flex-1 min-w-0 flex flex-col items-end">
           <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/50 block mb-0.5">Realizado</span>
           {canWrite ? (
-            <div className="relative w-full">
-              <Input
-                type="number"
-                min={0}
-                step={isVgh ? 1000 : 1}
-                key={String(actualRaw)}
-                defaultValue={actualRaw === null || actualRaw === "" ? "" : actualRaw}
-                placeholder={isCarried && actual != null ? String(actual) : "—"}
-                className={cn(
-                  "h-8 pl-0 pr-0 text-right text-sm font-semibold border-0 border-b-2 bg-transparent rounded-none focus-visible:ring-0 focus-visible:border-solid w-full",
-                  "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-                  isCarried
-                    ? "text-muted-foreground/50 border-dashed border-muted-foreground/20 placeholder:text-muted-foreground/50 placeholder:font-semibold placeholder:text-sm"
-                    : actual != null
-                    ? isGood ? "text-green-600 border-green-300" : "text-foreground border-border"
-                    : "text-muted-foreground/30 border-dashed border-muted-foreground/20",
-                )}
-                onChange={e => onActualChange(e.target.value)}
-              />
+            <div className={cn(
+              "w-full border-b-2 pb-0.5 focus-within:border-solid",
+              isCarried
+                ? "border-dashed border-muted-foreground/20"
+                : actual != null
+                ? isGood ? "border-green-300 focus-within:border-green-400" : "border-border focus-within:border-primary/60"
+                : "border-dashed border-muted-foreground/20 focus-within:border-primary/60"
+            )}>
+              {isVgh ? (
+                <>
+                  <VghTextInput
+                    storedValue={storedActual}
+                    onChange={onActualChange}
+                    textAlign="right"
+                    className={cn(
+                      "text-sm font-semibold",
+                      isCarried ? "text-muted-foreground/50" :
+                      actual != null ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30",
+                      "placeholder:text-muted-foreground/30"
+                    )}
+                    placeholder={isCarried && actual != null ? formatVgh(actual) : "—"}
+                  />
+                  {actual != null && (
+                    <span className="text-[9px] text-muted-foreground/50 block leading-none mt-0.5 text-right">
+                      {formatVgh(actual)}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <input
+                  key={String(actualRaw)}
+                  type="text"
+                  inputMode="numeric"
+                  defaultValue={actualRaw === null || actualRaw === "" ? "" : String(actualRaw)}
+                  placeholder={isCarried && actual != null ? formatNum(actual) : "—"}
+                  className={cn(
+                    "bg-transparent border-0 focus:outline-none p-0 m-0 w-full tabular-nums text-sm font-semibold text-right",
+                    isCarried
+                      ? "text-muted-foreground/50 placeholder:text-muted-foreground/50"
+                      : actual != null
+                      ? isGood ? "text-green-600" : "text-foreground"
+                      : "text-muted-foreground/30",
+                    "placeholder:font-normal"
+                  )}
+                  onChange={e => onActualChange(e.target.value)}
+                />
+              )}
               {isCarried && carriedFromQ != null && (
                 <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide text-right">
                   ↑ do Q{carriedFromQ}
@@ -232,7 +375,7 @@ function KriBlock({
           ) : (
             <div className="flex flex-col items-end">
               <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30")}>
-                {actual != null ? (isVgh ? formatVgh(actual) : actual) : "—"}
+                {actual != null ? (isVgh ? formatVgh(actual) : formatNum(actual)) : "—"}
               </span>
               {isCarried && carriedFromQ != null && (
                 <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
@@ -572,7 +715,11 @@ export default function Visao() {
             const pCres  = pct(cfCres.value,  milestone?.targetCres  ?? null);
             const pVgh   = pct(cfVgh.value,   milestone?.targetVgh   ?? null);
             const pValues = [pCreci, pCres, pVgh].filter((v): v is number => v != null);
-            const overallPct = pValues.length > 0 ? Math.round(pValues.reduce((a, b) => a + b, 0) / pValues.length) : null;
+            // Cap each KRI at 100% before averaging so a single over-performing
+            // KRI doesn't inflate the composite score
+            const overallPct = pValues.length > 0
+              ? Math.round(pValues.reduce((a, b) => a + Math.min(b, 100), 0) / pValues.length)
+              : null;
             const overallColor = overallPct == null ? "" : overallPct >= 100 ? "text-green-600" : overallPct >= 75 ? "text-amber-500" : "text-muted-foreground";
 
             return (
