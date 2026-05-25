@@ -204,16 +204,16 @@ export function AppSidebar() {
             <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
             <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
 
+            {/* 4º — Mês */}
+            <NavSection label="Mês" />
+            <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
+
             {/* IA — acesso rápido aos agentes */}
             <NavSection label="Inteligência IA" />
             <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
             <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
             <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
             <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
-
-            {/* 4º — Mês */}
-            <NavSection label="Mês" />
-            <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
 
             {/* 5º — Acompanhamento */}
             <NavSection label="Acompanhamento" />
