@@ -12,7 +12,7 @@ import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle, UserCheck, UserX, Hourglass } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle, UserCheck, UserX, Hourglass, Filter, ArrowUpDown } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -282,13 +282,24 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
   const [approveTarget, setApproveTarget] = useState<{ id: number; name: string; email: string; franchiseName: string | null; role: string } | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{ id: number; name: string; franchiseName: string | null; role: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [filterFranchise, setFilterFranchise] = useState<string>("all");
+  const [filterRole, setFilterRole] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<string>("oldest");
 
-  const pending = invites
-    .filter((inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt)
+  const pending = invites.filter(
+    (inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt,
+  );
+
+  const franchiseOptions = [...new Set(pending.map((inv) => inv.franchiseName).filter(Boolean))] as string[];
+  const roleOptions = [...new Set(pending.map((inv) => inv.role).filter(Boolean))] as string[];
+
+  const displayed = pending
+    .filter((inv) => filterFranchise === "all" || inv.franchiseName === filterFranchise)
+    .filter((inv) => filterRole === "all" || inv.role === filterRole)
     .sort((a, b) => {
       const ta = a.usedAt ? new Date(a.usedAt).getTime() : 0;
       const tb = b.usedAt ? new Date(b.usedAt).getTime() : 0;
-      return ta - tb;
+      return sortOrder === "oldest" ? ta - tb : tb - ta;
     });
 
   const approve = useApproveInvite({
@@ -325,17 +336,74 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
 
   if (pending.length === 0) return null;
 
+  const hasFilters = filterFranchise !== "all" || filterRole !== "all";
+
   return (
     <>
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Hourglass className="h-4 w-4 text-amber-600 shrink-0" />
-          <p className="text-sm font-semibold text-amber-800">
-            Aguardando aprovação ({pending.length})
-          </p>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Hourglass className="h-4 w-4 text-amber-600 shrink-0" />
+            <p className="text-sm font-semibold text-amber-800">
+              Aguardando aprovação ({hasFilters ? `${displayed.length} de ${pending.length}` : pending.length})
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Filter className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+              <Select value={filterFranchise} onValueChange={setFilterFranchise}>
+                <SelectTrigger
+                  className="h-7 text-xs bg-white border-amber-200 text-amber-900 min-w-[140px]"
+                  data-testid="select-filter-franchise"
+                >
+                  <SelectValue placeholder="Todas as franquias" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as franquias</SelectItem>
+                  {franchiseOptions.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Select value={filterRole} onValueChange={setFilterRole}>
+              <SelectTrigger
+                className="h-7 text-xs bg-white border-amber-200 text-amber-900 min-w-[140px]"
+                data-testid="select-filter-role"
+              >
+                <SelectValue placeholder="Todos os perfis" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os perfis</SelectItem>
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>{roleLabel[role] ?? role}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+              <Select value={sortOrder} onValueChange={setSortOrder}>
+                <SelectTrigger
+                  className="h-7 text-xs bg-white border-amber-200 text-amber-900 min-w-[120px]"
+                  data-testid="select-sort-order"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="oldest">Mais antigos primeiro</SelectItem>
+                  <SelectItem value="newest">Mais recentes primeiro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
+        {displayed.length === 0 && (
+          <p className="text-sm text-amber-700/70 text-center py-2">
+            Nenhum cadastro corresponde aos filtros selecionados.
+          </p>
+        )}
         <div className="space-y-2">
-          {pending.map((inv) => (
+          {displayed.map((inv) => (
             <div
               key={inv.id}
               data-testid={`card-pending-approval-${inv.id}`}
