@@ -80,14 +80,14 @@ const Q_CONFIG = [
 ];
 
 function formatVgh(v: number | null | undefined) {
-  if (v == null) return "—";
+  if (v == null) return "R$ 0";
   if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`;
   if (v >= 1_000) return `R$ ${Math.round(v).toLocaleString("pt-BR")}`;
   return "R$ " + Math.round(v).toLocaleString("pt-BR");
 }
 
 function formatNum(v: number | null | undefined) {
-  if (v == null) return "—";
+  if (v == null) return "0";
   return Math.round(v).toLocaleString("pt-BR");
 }
 
@@ -270,7 +270,7 @@ function KriBlock({
                     storedValue={storedTarget}
                     onChange={onChange}
                     className={cn("text-base font-bold", cfg.accent, "placeholder:text-muted-foreground/20")}
-                    placeholder="—"
+                    placeholder="0"
                   />
                   {hasTarget && (
                     <span className="text-[9px] text-muted-foreground/50 block leading-none mt-0.5">
@@ -284,7 +284,7 @@ function KriBlock({
                     type="text"
                     inputMode="numeric"
                     defaultValue={targetRaw === null || targetRaw === "" ? "" : String(targetRaw)}
-                    placeholder="—"
+                    placeholder="0"
                     className={cn(
                       "bg-transparent border-0 focus:outline-none p-0 m-0 w-full tabular-nums text-base font-bold",
                       cfg.accent,
@@ -301,8 +301,8 @@ function KriBlock({
               )}
             </div>
           ) : (
-            <span className={cn("text-base font-bold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/30 italic text-sm")}>
-              {hasTarget ? (isVgh ? formatVgh(target) : formatNum(target)) : "—"}
+            <span className={cn("text-base font-bold tabular-nums", hasTarget ? cfg.accent : "text-muted-foreground/40")}>
+              {isVgh ? formatVgh(target) : formatNum(target)}
             </span>
           )}
         </div>
@@ -318,7 +318,7 @@ function KriBlock({
               <span className="text-[8px] text-muted-foreground/40 mt-0.5 font-medium">ating.</span>
             </>
           ) : (
-            <span className="text-sm text-muted-foreground/20 text-center">—</span>
+            <span className="text-sm font-black leading-none tabular-nums text-center text-muted-foreground/20">0%</span>
           )}
         </div>
 
@@ -346,7 +346,7 @@ function KriBlock({
                       actual != null ? (pctColor !== "text-muted-foreground" ? pctColor : "text-foreground") : "text-muted-foreground/30",
                       "placeholder:text-muted-foreground/30"
                     )}
-                    placeholder={isCarried && actual != null ? formatVgh(actual) : "—"}
+                    placeholder={isCarried && actual != null ? formatVgh(actual) : "0"}
                   />
                   {actual != null && (
                     <span className="text-[9px] text-muted-foreground/50 block leading-none mt-0.5 text-right">
@@ -360,7 +360,7 @@ function KriBlock({
                   type="text"
                   inputMode="numeric"
                   defaultValue={actualRaw === null || actualRaw === "" ? "" : String(actualRaw)}
-                  placeholder={isCarried && actual != null ? formatNum(actual) : "—"}
+                  placeholder={isCarried && actual != null ? formatNum(actual) : "0"}
                   className={cn(
                     "bg-transparent border-0 focus:outline-none p-0 m-0 w-full tabular-nums text-sm font-semibold text-right",
                     isCarried
@@ -381,8 +381,8 @@ function KriBlock({
             </div>
           ) : (
             <div className="flex flex-col items-end">
-              <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : pctColor !== "text-muted-foreground" ? pctColor : "text-foreground") : "text-muted-foreground/30")}>
-                {actual != null ? (isVgh ? formatVgh(actual) : formatNum(actual)) : "—"}
+              <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : pctColor !== "text-muted-foreground" ? pctColor : "text-foreground") : "text-muted-foreground/40")}>
+                {isVgh ? formatVgh(actual) : formatNum(actual)}
               </span>
               {isCarried && carriedFromQ != null && (
                 <div className="text-[8px] font-semibold text-muted-foreground/40 mt-0.5 uppercase tracking-wide">
