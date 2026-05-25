@@ -111,6 +111,14 @@ export default function CheckinScreen() {
   const isMonday = today.getDay() === 1;
   const isFirstOfMonth = today.getDate() === 1;
 
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const yesterdayStr = toISODate(yesterday);
+
+  const lastWeekDate = new Date(today);
+  lastWeekDate.setDate(today.getDate() - 7);
+  const lastWeekMondayStr = toISODate(getMondayOf(lastWeekDate));
+
   const monday = getMondayOf(today);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
@@ -165,6 +173,25 @@ export default function CheckinScreen() {
 
   // ── History state ────────────────────────────────────────────────────────
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
+
+  // ── History edit state ────────────────────────────────────────────────────
+  const [historyEditEntry, setHistoryEditEntry] = useState<
+    | { kind: "daily"; item: DailyCheckin }
+    | { kind: "weekly"; item: WeeklyCheckin }
+    | null
+  >(null);
+  const [editDailyExecuted, setEditDailyExecuted] = useState<ExecutedOption>("sim");
+  const [editDailyProgress, setEditDailyProgress] = useState(50);
+  const [editDailyBlocker, setEditDailyBlocker] = useState("");
+  const [editDailyNextStep, setEditDailyNextStep] = useState("");
+  const [editDailyNeedsHelp, setEditDailyNeedsHelp] = useState(false);
+  const [editWeeklyExecPct, setEditWeeklyExecPct] = useState(50);
+  const [editWeeklyProgressSummary, setEditWeeklyProgressSummary] = useState("");
+  const [editWeeklyBlockers, setEditWeeklyBlockers] = useState("");
+  const [editWeeklyNextPriority, setEditWeeklyNextPriority] = useState("");
+  const [editWeeklyNeedsSupport, setEditWeeklyNeedsSupport] = useState(false);
+  const [historyEditSubmitting, setHistoryEditSubmitting] = useState(false);
+  const [historyEditDone, setHistoryEditDone] = useState(false);
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -290,6 +317,28 @@ export default function CheckinScreen() {
     }
   }, [existingWeeklyCheckin, weeklyPreFilled]);
 
+  // ── Pre-fill history edit form ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!historyEditEntry) return;
+    if (historyEditEntry.kind === "daily") {
+      const d = historyEditEntry.item;
+      setEditDailyExecuted(d.executedToday as ExecutedOption);
+      setEditDailyProgress(d.progressToday ?? 50);
+      setEditDailyBlocker(d.blocker ?? "");
+      setEditDailyNextStep(d.nextStep ?? "");
+      setEditDailyNeedsHelp(d.needsHelp);
+    } else {
+      const w = historyEditEntry.item;
+      setEditWeeklyExecPct(w.executionPercentage ?? 50);
+      setEditWeeklyProgressSummary(w.progressSummary ?? "");
+      setEditWeeklyBlockers(w.blockers ?? "");
+      setEditWeeklyNextPriority(w.nextWeekPriority ?? "");
+      setEditWeeklyNeedsSupport(w.needsRegionalSupport);
+    }
+    setHistoryEditDone(false);
+  }, [historyEditEntry]);
+
   // ── Submit handlers ───────────────────────────────────────────────────────
 
   async function handleDailySubmit() {
@@ -410,6 +459,55 @@ export default function CheckinScreen() {
       Alert.alert("Erro", "Erro de conexão. Tente novamente.");
     } finally {
       setMonthlySubmitting(false);
+    }
+  }
+
+  async function handleHistoryEditSubmit() {
+    if (!historyEditEntry) return;
+    setHistoryEditSubmitting(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      let res: Response;
+      if (historyEditEntry.kind === "daily") {
+        const body = {
+          executedToday: editDailyExecuted,
+          progressToday: editDailyProgress,
+          blocker: editDailyBlocker.trim() || null,
+          nextStep: editDailyNextStep.trim() || null,
+          needsHelp: editDailyNeedsHelp,
+        };
+        res = await apiFetch(`/daily-checkins/${historyEditEntry.item.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+      } else {
+        const body = {
+          progressSummary: editWeeklyProgressSummary.trim() || null,
+          blockers: editWeeklyBlockers.trim() || null,
+          nextWeekPriority: editWeeklyNextPriority.trim() || null,
+          needsRegionalSupport: editWeeklyNeedsSupport,
+          executionPercentage: editWeeklyExecPct,
+        };
+        res = await apiFetch(`/weekly-checkins/${historyEditEntry.item.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+      }
+      if (res.ok || res.status === 200) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
+        queryClient.invalidateQueries({ queryKey: ["all-weekly-checkins"] });
+        setHistoryEditDone(true);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        const err = (await res.json()) as { error?: string };
+        Alert.alert("Erro", err.error ?? "Não foi possível atualizar o check-in");
+      }
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Erro", "Erro de conexão. Tente novamente.");
+    } finally {
+      setHistoryEditSubmitting(false);
     }
   }
 
@@ -615,6 +713,47 @@ export default function CheckinScreen() {
       gap: 8,
     },
     editBannerText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#d97706", lineHeight: 18 },
+    // History edit form header
+    editFormHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      gap: 10,
+    },
+    backBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingVertical: 6,
+      paddingRight: 12,
+    },
+    backBtnText: {
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      color: colors.primary,
+    },
+    editFormTitle: {
+      fontSize: 16,
+      fontFamily: "Inter_700Bold",
+      color: colors.foreground,
+    },
+    historyEditBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 12,
+      backgroundColor: colors.primary + "15",
+      borderWidth: 1,
+      borderColor: colors.primary + "30",
+    },
+    historyEditBtnText: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.primary,
+    },
     // History
     historyFilter: { flexDirection: "row", gap: 8, marginBottom: 16 },
     historyFilterBtn: {
@@ -1145,13 +1284,35 @@ export default function CheckinScreen() {
               metaLine = m.nextMonthFocus ? `Foco: ${m.nextMonthFocus}` : m.kriProgress ?? "";
             }
 
+            const isEditable =
+              (entry.kind === "daily" && entry.item.date === yesterdayStr) ||
+              (entry.kind === "weekly" && entry.item.weekStartDate === lastWeekMondayStr);
+
             return (
               <View key={`${entry.kind}-${entry.item.id}-${idx}`} style={s.historyCard}>
                 <View style={s.historyCardRow}>
                   <View style={[s.historyTypeBadge, { backgroundColor: cfg.bg }]}>
                     <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
-                  <Text style={s.historyDate}>{dateStr2}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    {isEditable && (
+                      <Pressable
+                        style={s.historyEditBtn}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setHistoryEditEntry(
+                            entry.kind === "daily"
+                              ? { kind: "daily", item: entry.item }
+                              : { kind: "weekly", item: entry.item as WeeklyCheckin },
+                          );
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={12} color={colors.primary} />
+                        <Text style={s.historyEditBtnText}>Editar</Text>
+                      </Pressable>
+                    )}
+                    <Text style={s.historyDate}>{dateStr2}</Text>
+                  </View>
                 </View>
                 <Text style={s.historyLine}>{mainLine}</Text>
                 {!!metaLine && (
@@ -1165,9 +1326,120 @@ export default function CheckinScreen() {
     );
   }
 
+  // ── History edit form ─────────────────────────────────────────────────────
+
+  function renderHistoryEditForm() {
+    if (!historyEditEntry) return null;
+
+    if (historyEditDone) {
+      return (
+        <>
+          <Pressable
+            style={s.editFormHeader}
+            onPress={() => { setHistoryEditEntry(null); setHistoryEditDone(false); }}
+          >
+            <Ionicons name="chevron-back" size={20} color={colors.primary} />
+            <Text style={s.backBtnText}>Voltar ao histórico</Text>
+          </Pressable>
+          <View style={s.doneCard}>
+            <Ionicons name="checkmark-circle" size={60} color={colors.success} />
+            <Text style={s.doneTitle}>Check-in atualizado!</Text>
+            <Text style={s.doneText}>As alterações foram salvas com sucesso.</Text>
+          </View>
+        </>
+      );
+    }
+
+    const isDaily = historyEditEntry.kind === "daily";
+
+    return (
+      <>
+        <Pressable
+          style={s.editFormHeader}
+          onPress={() => setHistoryEditEntry(null)}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.primary} />
+          <Text style={s.backBtnText}>Voltar ao histórico</Text>
+        </Pressable>
+
+        <View style={s.content}>
+          <View style={s.editBanner}>
+            <Ionicons name="create-outline" size={16} color="#d97706" />
+            <Text style={s.editBannerText}>
+              {isDaily
+                ? `Editando check-in de ${new Date(historyEditEntry.item.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })} — suas alterações substituirão o registro atual.`
+                : `Editando check-in da semana de ${new Date((historyEditEntry.item as WeeklyCheckin).weekStartDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — suas alterações substituirão o registro atual.`
+              }
+            </Text>
+          </View>
+
+          {isDaily ? (
+            <>
+              <View style={s.section}>
+                <Text style={s.secLabel}>Executei hoje?</Text>
+                <View style={s.executedRow}>
+                  {EXECUTED_OPTS.map(({ key, label }) => {
+                    const active = editDailyExecuted === key;
+                    const isNao = key === "nao";
+                    return (
+                      <Pressable
+                        key={key}
+                        style={[s.execOpt, active && (isNao ? s.execOptNao : s.execOptSim)]}
+                        onPress={() => { setEditDailyExecuted(key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                      >
+                        <Text style={[s.execOptText, active && (isNao ? s.execOptTextNao : s.execOptTextSim)]}>
+                          {label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {renderProgressControl(editDailyProgress, setEditDailyProgress, "Progresso geral")}
+              {renderTextSection("Impedimento (opcional)", "O que te impediu de avançar mais?", editDailyBlocker, setEditDailyBlocker)}
+              {renderTextSection("Próximo passo", "O que você vai fazer amanhã?", editDailyNextStep, setEditDailyNextStep)}
+              {renderSwitchRow("Preciso de ajuda", "Solicitar suporte à equipe regional", editDailyNeedsHelp, setEditDailyNeedsHelp)}
+            </>
+          ) : (
+            <>
+              <View style={s.section}>
+                <Text style={s.secLabel}>Semana</Text>
+                {(() => {
+                  const w = historyEditEntry.item as WeeklyCheckin;
+                  const startFmt = new Date(w.weekStartDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+                  const endFmt = w.weekEndDate ? new Date(w.weekEndDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "";
+                  return <Text style={[s.historyDate, { fontSize: 14 }]}>{startFmt}{endFmt ? ` a ${endFmt}` : ""}</Text>;
+                })()}
+              </View>
+
+              {renderProgressControl(editWeeklyExecPct, setEditWeeklyExecPct, "Percentual de execução da semana")}
+              {renderTextSection("O que foi feito esta semana?", "Resumo das iniciativas e atividades executadas...", editWeeklyProgressSummary, setEditWeeklyProgressSummary)}
+              {renderTextSection("Impedimentos e bloqueios", "O que dificultou a execução esta semana?", editWeeklyBlockers, setEditWeeklyBlockers)}
+              {renderTextSection("Prioridades para a próxima semana", "Quais são os focos da próxima semana?", editWeeklyNextPriority, setEditWeeklyNextPriority)}
+              {renderSwitchRow("Preciso de suporte regional", "Solicitar apoio da equipe RE/MAX SC", editWeeklyNeedsSupport, setEditWeeklyNeedsSupport)}
+            </>
+          )}
+
+          <Pressable
+            style={({ pressed }) => [s.submitBtn, (historyEditSubmitting || pressed) && s.submitBtnDisabled]}
+            onPress={handleHistoryEditSubmit}
+            disabled={historyEditSubmitting}
+          >
+            {historyEditSubmitting
+              ? <ActivityIndicator color={colors.primaryForeground} size="small" />
+              : <Text style={s.submitBtnText}>Salvar Alterações</Text>
+            }
+          </Pressable>
+        </View>
+      </>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   function renderTabContent() {
+    if (activeTab === "history" && historyEditEntry) return renderHistoryEditForm();
     switch (activeTab) {
       case "daily": return renderDailyForm();
       case "weekly": return renderWeeklyForm();
