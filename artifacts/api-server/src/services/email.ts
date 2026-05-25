@@ -208,7 +208,7 @@ export async function sendUserInvitation(opts: {
     staff_regional: "Equipe Regional",
   };
 
-  const url = opts.appUrl || `https://${process.env.REPLIT_DEV_DOMAIN || "app"}/login`;
+  const url = opts.appUrl || `https://${process.env.REPLIT_DOMAINS?.split(",")[0] || "app"}/login`;
 
   await getTransporter().sendMail({
     from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
