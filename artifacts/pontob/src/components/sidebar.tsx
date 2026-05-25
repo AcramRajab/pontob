@@ -193,6 +193,13 @@ export function AppSidebar() {
             <NavItem href="/kpis" icon={LineChart} label="KPIs" active={at("/kpis")} />
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
+            {/* IA — acesso rápido aos agentes */}
+            <NavSection label="Inteligência IA" />
+            <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
+            <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
+            <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
+            <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
+
             {/* 2º — Dia */}
             <NavSection label="Dia" />
             <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
@@ -226,13 +233,6 @@ export function AppSidebar() {
                 <NavItem href="/my-team" icon={UserCog} label="Minha Equipe" active={at("/my-team")} />
               </>
             )}
-
-            {/* Inteligência */}
-            <NavSection label="Inteligência" />
-            <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
-            <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
-            <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
-            <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
 
             {/* Suporte */}
             <NavDivider />
