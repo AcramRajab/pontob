@@ -129,87 +129,96 @@ export function AppSidebar() {
       {/* ── NAV ── */}
       <SidebarContent className="py-2 overflow-y-auto flex-1">
 
-        {/* 1º — Planejamento (foundation: do this first when onboarding) */}
-        <NavSection label="Planejamento" />
-        {!isFranqueado && (
-          <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
-        )}
-        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-          <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
-        )}
-        <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
-
-        {/* 2º — Rotina Diária */}
-        <NavSection label="Rotina" />
-        <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
-        <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
-        <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
-
-        {/* 3º — Semana */}
-        <NavSection label="Semana" />
-        <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
-        <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
-
-        {/* 4º — Mês */}
-        <NavSection label="Mês" />
-        <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
-
-        {/* 5º — Acompanhamento (results & monitoring) */}
-        <NavSection label="Acompanhamento" />
-        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-          <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
-        )}
-        <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
-        <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
-        {!isFranqueado && (
+        {isAdminPanel ? (
+          /* ── ADMIN / STAFF REGIONAL sidebar ─────────────────────────────
+             Compact: only management & monitoring tools. No operational
+             franchise cadence (Rotina / Semana / Mês) since admins oversee
+             franchises, they don't run the daily method themselves.        */
           <>
+            {/* Acompanhamento */}
+            <NavSection label="Acompanhamento" />
+            <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
+            <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
+            <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
+            <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
             <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
             <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
-            <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
-          </>
-        )}
-        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-          <NavItem href="/trash" icon={Trash2} label="Lixeira" active={at("/trash")} />
-        )}
 
-        {/* Regional */}
-        {(isMasterAdmin || isStaffRegional) && (
-          <>
+            {/* Regional */}
             <NavSection label="Regional" />
             <NavItem href="/regional" icon={Map} label="Regional" active={at("/regional")} />
-          </>
-        )}
 
-        {/* Pessoas */}
-        {(isMasterAdmin || isStaffRegional) && (
-          <>
+            {/* Pessoas */}
             <NavSection label="Pessoas" />
             <NavItem href="/recrutamento" icon={Briefcase} label="Recrutamento" active={at("/recrutamento") || startsWith("/recrutamento/vagas")} />
             <NavItem href="/recrutamento/secretaria" icon={Bot} label="Secretária IA" active={startsWith("/recrutamento/secretaria")} />
+
+            {/* Suporte */}
+            <NavDivider />
+            <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />
+            <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
+            <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
+
+            {/* Administração */}
+            {isMasterAdmin && (
+              <>
+                <NavSection label="Administração" />
+                <NavItem href="/admin/franchises" icon={Building} label="Franquias" active={at("/admin/franchises")} />
+                <NavItem href="/admin/users" icon={Users} label="Usuários" active={at("/admin/users")} />
+                <NavItem href="/admin/history" icon={ClipboardList} label="Histórico Alt." active={at("/admin/history")} />
+              </>
+            )}
           </>
-        )}
-
-        {/* Minha Franquia */}
-        {isFranqueado && (
+        ) : (
+          /* ── FRANQUEADO / RESPONSÁVEL sidebar ───────────────────────────
+             Full operational flow matching the tutorial's chronology:
+             Planejamento → Rotina → Semana → Mês → Acompanhamento        */
           <>
-            <NavSection label="Franquia" />
-            <NavItem href="/my-team" icon={UserCog} label="Minha Equipe" active={at("/my-team")} />
-          </>
-        )}
+            {/* 1º — Planejamento (foundation: do these first when onboarding) */}
+            <NavSection label="Planejamento" />
+            {isFranqueado && (
+              <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
+            )}
+            <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
-        {/* Suporte */}
-        <NavDivider />
-        {!isFranqueado && <NavItem href="/agents" icon={Bot} label="Agentes IA" active={at("/agents")} />}
-        <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
-        <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
+            {/* 2º — Rotina Diária */}
+            <NavSection label="Rotina" />
+            <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
+            <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
+            <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
 
-        {/* Admin */}
-        {isMasterAdmin && (
-          <>
-            <NavSection label="Administração" />
-            <NavItem href="/admin/franchises" icon={Building} label="Franquias" active={at("/admin/franchises")} />
-            <NavItem href="/admin/users" icon={Users} label="Usuários" active={at("/admin/users")} />
-            <NavItem href="/admin/history" icon={ClipboardList} label="Histórico Alt." active={at("/admin/history")} />
+            {/* 3º — Semana */}
+            <NavSection label="Semana" />
+            <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
+            <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
+
+            {/* 4º — Mês */}
+            <NavSection label="Mês" />
+            <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
+
+            {/* 5º — Acompanhamento */}
+            <NavSection label="Acompanhamento" />
+            {isFranqueado && (
+              <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
+            )}
+            <NavItem href="/history" icon={History} label="Histórico" active={at("/history")} />
+            <NavItem href="/ranking" icon={Trophy} label="Ranking" active={at("/ranking")} />
+            {isFranqueado && (
+              <NavItem href="/trash" icon={Trash2} label="Lixeira" active={at("/trash")} />
+            )}
+
+            {/* Minha Franquia */}
+            {isFranqueado && (
+              <>
+                <NavSection label="Franquia" />
+                <NavItem href="/my-team" icon={UserCog} label="Minha Equipe" active={at("/my-team")} />
+              </>
+            )}
+
+            {/* Suporte */}
+            <NavDivider />
+            <NavItem href="/catalog" icon={BookOpen} label="Catálogo" active={at("/catalog")} />
+            <NavItem href="/help" icon={HelpCircle} label="Ajuda" active={at("/help")} />
           </>
         )}
       </SidebarContent>
