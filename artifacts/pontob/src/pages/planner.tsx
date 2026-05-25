@@ -144,6 +144,7 @@ function Cell({
   serverValue: string; onChange: (v: string) => void; disabled: boolean;
 }) {
   const [localValue, setLocalValue] = useState(serverValue);
+  const [hovered, setHovered] = useState(false);
   const isFocused = useRef(false);
 
   // Sync from server only when not focused (user not actively typing)
@@ -152,26 +153,51 @@ function Cell({
   }, [serverValue]);
 
   const isEmpty = localValue === "" || localValue === "0";
+  const hasValue = !isEmpty;
+
+  function clearValue() {
+    setLocalValue("");
+    onChange("");
+  }
 
   return (
-    <Input
-      type="number"
-      min={0}
-      step="any"
-      value={localValue}
-      disabled={disabled}
-      className={cn(
-        "h-8 w-full text-center text-sm font-medium px-1 border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5",
-        "disabled:opacity-40",
-        isEmpty && !disabled ? "text-muted-foreground/40" : ""
+    <div
+      className="relative"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Input
+        type="number"
+        min={0}
+        step="any"
+        value={localValue}
+        disabled={disabled}
+        className={cn(
+          "h-8 w-full text-center text-sm font-medium border-0 rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors",
+          "disabled:opacity-40",
+          hasValue
+            ? "bg-primary/10 text-foreground font-semibold focus-visible:bg-primary/15"
+            : "bg-transparent text-muted-foreground/30 focus-visible:bg-primary/5",
+          hovered && !disabled ? "bg-muted/40" : "",
+        )}
+        onFocus={() => { isFocused.current = true; }}
+        onBlur={() => { isFocused.current = false; }}
+        onChange={e => {
+          setLocalValue(e.target.value);
+          onChange(e.target.value);
+        }}
+      />
+      {hasValue && !disabled && hovered && (
+        <button
+          className="absolute right-0.5 top-1/2 -translate-y-1/2 h-4 w-4 rounded flex items-center justify-center hover:bg-red-100 text-muted-foreground/50 hover:text-red-500 transition-colors z-10"
+          onClick={clearValue}
+          tabIndex={-1}
+          title="Limpar valor"
+        >
+          <span className="text-[10px] leading-none font-bold">✕</span>
+        </button>
       )}
-      onFocus={() => { isFocused.current = true; }}
-      onBlur={() => { isFocused.current = false; }}
-      onChange={e => {
-        setLocalValue(e.target.value);
-        onChange(e.target.value);
-      }}
-    />
+    </div>
   );
 }
 
@@ -673,7 +699,7 @@ export default function Planner() {
                               <td
                                 key={dayIdx}
                                 className={cn(
-                                  "p-0 text-center border-l border-border/20 first:border-0",
+                                  "p-0 text-center border-l border-border/20 first:border-0 overflow-visible",
                                   isCurrentWeek && dayIdx === todayDayIdx ? "bg-primary/5" : ""
                                 )}
                               >
@@ -800,12 +826,15 @@ export default function Planner() {
             return (
               <div className="rounded-2xl border bg-card overflow-hidden">
                 {/* Header */}
-                <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2">
+                <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between gap-2 flex-wrap gap-y-1">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold capitalize">Resultado de {plannerMonthName}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">Acumulado no período</span>
+                  <span className="text-xs text-muted-foreground">
+                    Acumulado das células da grade semanal acima · para editar, passe o mouse sobre a célula e clique ✕, ou use{" "}
+                    <Link href="/planner-registro" className="underline underline-offset-2 hover:text-foreground">Registro diário</Link>
+                  </span>
                 </div>
 
                 <div className="p-4 space-y-3">
