@@ -233,15 +233,13 @@ function KriBlock({
   const isGood = p != null && p >= 100;
   const hasTarget = target != null && target !== 0;
   const barColor = p == null ? cfg.bar
-    : p >= 100 ? "bg-green-500"
-    : p >= 75  ? "bg-amber-400"
-    : p >= 50  ? "bg-orange-400"
-    : "bg-red-400";
+    : p >= 80 ? "bg-blue-500"
+    : p >= 51 ? "bg-slate-700"
+    : "bg-red-500";
   const pctColor = p == null ? "text-muted-foreground"
-    : p >= 100 ? "text-green-600"
-    : p >= 75  ? "text-amber-500"
-    : p >= 50  ? "text-orange-500"
-    : "text-red-500";
+    : p >= 80 ? "text-blue-600"
+    : p >= 51 ? "text-foreground"
+    : "text-red-600";
 
   // Stored numeric values for VghTextInput
   const storedTarget = target;
@@ -345,7 +343,7 @@ function KriBlock({
                     className={cn(
                       "text-sm font-semibold",
                       isCarried ? "text-muted-foreground/50" :
-                      actual != null ? (isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30",
+                      actual != null ? (pctColor !== "text-muted-foreground" ? pctColor : "text-foreground") : "text-muted-foreground/30",
                       "placeholder:text-muted-foreground/30"
                     )}
                     placeholder={isCarried && actual != null ? formatVgh(actual) : "—"}
@@ -368,7 +366,7 @@ function KriBlock({
                     isCarried
                       ? "text-muted-foreground/50 placeholder:text-muted-foreground/50"
                       : actual != null
-                      ? isGood ? "text-green-600" : "text-foreground"
+                      ? (pctColor !== "text-muted-foreground" ? pctColor : "text-foreground")
                       : "text-muted-foreground/30",
                     "placeholder:font-normal"
                   )}
@@ -383,7 +381,7 @@ function KriBlock({
             </div>
           ) : (
             <div className="flex flex-col items-end">
-              <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : isGood ? "text-green-600" : "text-foreground") : "text-muted-foreground/30")}>
+              <span className={cn("text-sm font-semibold tabular-nums", actual != null ? (isCarried ? "text-muted-foreground/50" : pctColor !== "text-muted-foreground" ? pctColor : "text-foreground") : "text-muted-foreground/30")}>
                 {actual != null ? (isVgh ? formatVgh(actual) : formatNum(actual)) : "—"}
               </span>
               {isCarried && carriedFromQ != null && (
@@ -780,10 +778,9 @@ export default function Visao() {
               ? Math.round(pValues.reduce((a, b) => a + Math.min(b, 100), 0) / pValues.length)
               : null;
             const overallColor = overallPct == null ? ""
-              : overallPct >= 100 ? "text-green-600"
-              : overallPct >= 75  ? "text-amber-500"
-              : overallPct >= 50  ? "text-orange-500"
-              : "text-red-500";
+              : overallPct >= 80 ? "text-blue-600"
+              : overallPct >= 51 ? "text-foreground"
+              : "text-red-600";
 
             return (
               <div
@@ -829,7 +826,7 @@ export default function Visao() {
                         )}
                         <div className={cn(
                           "text-[9px] font-semibold px-1.5 py-0.5 rounded-full",
-                          hasData ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground/60"
+                          hasData ? "bg-blue-100 text-blue-700" : "bg-muted text-muted-foreground/60"
                         )}>
                           {hasData ? "com dados" : "sem dados"}
                         </div>

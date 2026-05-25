@@ -19,7 +19,7 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { progressColorClass } from "@/lib/progress-color";
+import { progressColorClass, progressBarClass } from "@/lib/progress-color";
 import { ProgressLegend } from "@/components/progress-legend";
 
 function formatGoalValue(v: number | null | undefined, unit?: string | null): string {
@@ -415,7 +415,7 @@ export default function Goals() {
 
                         {/* Bar + percentage */}
                         <div className="flex items-center gap-3">
-                          <Progress value={pct} className="h-1.5 flex-1" />
+                          <Progress value={pct} className={cn("h-1.5 flex-1", progressBarClass(pct))} />
                           <span className={cn("text-xs font-semibold tabular-nums w-9 text-right shrink-0", progressColorClass(pct))}>
                             {pct}%
                           </span>
