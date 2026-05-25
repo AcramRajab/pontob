@@ -193,7 +193,7 @@ export default function NewGoalInitiative() {
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground/70 border-t border-primary/10 pt-2.5 mt-1">
-            Esta iniciativa já foi benchmarked pelas franquias premiere da RE/MAX SC. Foque em executar — o quê e o porquê já estão definidos acima.
+            Esta iniciativa já foi benchmarked pelas franquias premiere da RE/MAX Brasil. Foque em executar — o quê e o porquê já estão definidos acima.
           </p>
         </div>
       )}

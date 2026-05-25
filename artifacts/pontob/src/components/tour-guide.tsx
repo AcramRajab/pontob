@@ -90,7 +90,7 @@ const STEPS: TourStep[] = [
     icon: <Trophy className="h-12 w-12 text-amber-400 mx-auto" />,
     title: "Ranking e Benchmarking da rede",
     badge: "Visão comparativa",
-    description: "O Ranking mostra como sua franquia se posiciona na rede RE/MAX SC em pontuação, execução e consistência. Os resultados que você registra nos check-ins alimentam o benchmarking de iniciativas — mostrando quais ações geraram mais resultado em cada KRI para todas as franquias.",
+    description: "O Ranking mostra como sua franquia se posiciona na rede RE/MAX SC em pontuação, execução e consistência. Os resultados que você registra nos check-ins alimentam o benchmarking de iniciativas — mostrando quais ações geraram mais resultado em cada KRI para todas as franquias premiere da RE/MAX Brasil.",
     tip: "Use o ranking como aprendizado: as franquias líderes mostram quais iniciativas funcionam melhor para cada KRI da rede.",
   },
   {
