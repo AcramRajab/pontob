@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -40,7 +39,48 @@ interface CatalogInitiative {
   description: string | null;
 }
 
-type Step = "choose" | "catalog-list" | "custom-form";
+interface FranchiseUser {
+  id: number;
+  name: string;
+  role: string;
+}
+
+type Step = "choose" | "catalog-list" | "catalog-configure" | "custom-form";
+
+interface PlanningFields {
+  desiredResult: string;
+  startDate: string;
+  endDate: string;
+  ownerUserId: string;
+  whatWillBeDone: string;
+  whyItMatters: string;
+  whoIsResponsible: string;
+  whereItWillBeDone: string;
+  howItWillBeDone: string;
+  investmentOrEffort: string;
+}
+
+const emptyPlanning = (): PlanningFields => ({
+  desiredResult: "",
+  startDate: "",
+  endDate: "",
+  ownerUserId: "",
+  whatWillBeDone: "",
+  whyItMatters: "",
+  whoIsResponsible: "",
+  whereItWillBeDone: "",
+  howItWillBeDone: "",
+  investmentOrEffort: "",
+});
+
+const W2H_FIELDS: Array<{ key: keyof PlanningFields; label: string; placeholder: string }> = [
+  { key: "whatWillBeDone", label: "O que será feito? (What)", placeholder: "Descreva a ação concreta" },
+  { key: "whyItMatters", label: "Por que é importante? (Why)", placeholder: "Qual o propósito desta iniciativa?" },
+  { key: "whoIsResponsible", label: "Quem é responsável? (Who)", placeholder: "Nome do responsável" },
+  { key: "whereItWillBeDone", label: "Onde será executado? (Where)", placeholder: "Local ou contexto de execução" },
+  { key: "howItWillBeDone", label: "Como será feito? (How)", placeholder: "Método de execução" },
+  { key: "investmentOrEffort", label: "Quanto custa / tempo envolvido? (How much)", placeholder: "Investimento, horas, recursos" },
+];
 
 export default function InitiativeNewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,8 +92,10 @@ export default function InitiativeNewScreen() {
 
   const [step, setStep] = useState<Step>("choose");
   const [selectedInitiative, setSelectedInitiative] = useState<CatalogInitiative | null>(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
   const [customName, setCustomName] = useState("");
+  const [planning, setPlanning] = useState<PlanningFields>(emptyPlanning());
+  const [show5W2H, setShow5W2H] = useState(false);
+  const [ownerPickerVisible, setOwnerPickerVisible] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -82,8 +124,20 @@ export default function InitiativeNewScreen() {
     staleTime: 60_000,
   });
 
+  const franchiseId = user?.franchiseId;
+  const { data: franchiseUsers = [] } = useQuery({
+    queryKey: ["users", franchiseId],
+    queryFn: async () => {
+      const res = await apiFetch(`/users?franchiseId=${franchiseId}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<FranchiseUser[]>;
+    },
+    enabled: !!franchiseId && (step === "catalog-configure" || step === "custom-form"),
+    staleTime: 60_000,
+  });
+
   const linkMutation = useMutation({
-    mutationFn: async (body: { strategicInitiativeId?: number; customName?: string }) => {
+    mutationFn: async (body: Record<string, unknown>) => {
       const res = await apiFetch(`/goals/${id}/initiatives`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -99,7 +153,6 @@ export default function InitiativeNewScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["goal", id] });
       queryClient.invalidateQueries({ queryKey: ["goals"] });
-      setConfirmVisible(false);
       router.back();
     },
     onError: (err: Error & { status?: number }) => {
@@ -113,28 +166,53 @@ export default function InitiativeNewScreen() {
     },
   });
 
-  const handleCatalogItemPress = (item: CatalogInitiative) => {
-    setSelectedInitiative(item);
-    setLinkError(null);
-    setConfirmVisible(true);
+  const buildPayload = (base: { strategicInitiativeId?: number; customName?: string }) => {
+    const p = planning;
+    return {
+      ...base,
+      desiredResult: p.desiredResult.trim() || undefined,
+      startDate: p.startDate.trim() || undefined,
+      endDate: p.endDate.trim() || undefined,
+      ownerUserId: p.ownerUserId ? parseInt(p.ownerUserId) : undefined,
+      whatWillBeDone: p.whatWillBeDone.trim() || undefined,
+      whyItMatters: p.whyItMatters.trim() || undefined,
+      whoIsResponsible: p.whoIsResponsible.trim() || undefined,
+      whereItWillBeDone: p.whereItWillBeDone.trim() || undefined,
+      howItWillBeDone: p.howItWillBeDone.trim() || undefined,
+      investmentOrEffort: p.investmentOrEffort.trim() || undefined,
+    };
   };
 
-  const handleCatalogConfirm = () => {
+  const handleCatalogItemPress = (item: CatalogInitiative) => {
+    setSelectedInitiative(item);
+    setPlanning(emptyPlanning());
+    setShow5W2H(false);
+    setLinkError(null);
+    setStep("catalog-configure");
+  };
+
+  const handleCatalogSubmit = () => {
     if (!selectedInitiative || linkMutation.isPending) return;
     setLinkError(null);
-    linkMutation.mutate({ strategicInitiativeId: selectedInitiative.id });
+    linkMutation.mutate(buildPayload({ strategicInitiativeId: selectedInitiative.id }));
   };
 
   const handleCustomSubmit = () => {
     const name = customName.trim();
     if (!name) {
-      Alert.alert("Nome obrigatório", "Digite um nome para a iniciativa.");
+      setLinkError("Digite um nome para a iniciativa.");
       return;
     }
     if (linkMutation.isPending) return;
     setLinkError(null);
-    linkMutation.mutate({ customName: name });
+    linkMutation.mutate(buildPayload({ customName: name }));
   };
+
+  const updatePlanning = (key: keyof PlanningFields, value: string) => {
+    setPlanning(prev => ({ ...prev, [key]: value }));
+  };
+
+  const selectedOwnerName = franchiseUsers.find(u => String(u.id) === planning.ownerUserId)?.name;
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -226,7 +304,12 @@ export default function InitiativeNewScreen() {
       fontSize: 13,
       fontFamily: "Inter_600SemiBold",
       color: colors.foreground,
-      marginBottom: 8,
+      marginBottom: 6,
+    },
+    inputLabelOptional: {
+      fontSize: 11,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
     },
     input: {
       borderWidth: 1,
@@ -239,6 +322,20 @@ export default function InitiativeNewScreen() {
       color: colors.foreground,
       backgroundColor: colors.background,
       marginBottom: 16,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: colors.input,
+      borderRadius: colors.radius,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      backgroundColor: colors.background,
+      marginBottom: 16,
+      minHeight: 72,
+      textAlignVertical: "top",
     },
     primaryBtn: {
       backgroundColor: colors.primary,
@@ -270,67 +367,6 @@ export default function InitiativeNewScreen() {
       color: colors.destructive,
       lineHeight: 18,
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.45)",
-      justifyContent: "flex-end",
-    },
-    modalSheet: {
-      backgroundColor: colors.card,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      paddingTop: 12,
-      paddingBottom: botPad + 16,
-      paddingHorizontal: 20,
-    },
-    modalHandle: {
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      alignSelf: "center",
-      marginBottom: 16,
-    },
-    modalTitle: {
-      fontSize: 15,
-      fontFamily: "Inter_600SemiBold",
-      color: colors.foreground,
-      marginBottom: 4,
-    },
-    modalSub: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-      color: colors.mutedForeground,
-      marginBottom: 6,
-      lineHeight: 18,
-    },
-    modalMetaRow: {
-      flexDirection: "row",
-      gap: 6,
-      marginBottom: 16,
-      flexWrap: "wrap",
-    },
-    modalMetaChip: {
-      backgroundColor: colors.muted,
-      borderRadius: 20,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    modalMetaText: {
-      fontSize: 11,
-      fontFamily: "Inter_500Medium",
-      color: colors.mutedForeground,
-    },
-    cancelBtn: {
-      paddingVertical: 12,
-      alignItems: "center",
-      marginTop: 8,
-    },
-    cancelBtnText: {
-      fontSize: 14,
-      fontFamily: "Inter_400Regular",
-      color: colors.mutedForeground,
-    },
     emptyText: {
       fontSize: 13,
       fontFamily: "Inter_400Regular",
@@ -354,6 +390,181 @@ export default function InitiativeNewScreen() {
       fontFamily: "Inter_400Regular",
       color: colors.mutedForeground,
     },
+    catalogGuide: {
+      backgroundColor: colors.primary + "0d",
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: colors.primary + "33",
+      padding: 14,
+      marginBottom: 20,
+      gap: 8,
+    },
+    catalogGuideHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 4,
+    },
+    catalogGuideLabel: {
+      fontSize: 10,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.primary,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    catalogGuideRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    catalogGuideBadge: {
+      fontSize: 9,
+      fontFamily: "Inter_700Bold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginTop: 2,
+      minWidth: 24,
+    },
+    catalogGuideValue: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      lineHeight: 19,
+    },
+    sectionCard: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      marginBottom: 14,
+    },
+    sectionCardTitle: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+      marginBottom: 12,
+    },
+    dateRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    dateCol: {
+      flex: 1,
+    },
+    accordionToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: colors.radius * 2,
+      marginBottom: 14,
+      backgroundColor: colors.card,
+    },
+    accordionToggleLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    accordionToggleText: {
+      fontSize: 14,
+      fontFamily: "Inter_500Medium",
+      color: colors.mutedForeground,
+    },
+    accordionContent: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      marginBottom: 14,
+      gap: 4,
+    },
+    ownerBtn: {
+      borderWidth: 1,
+      borderColor: colors.input,
+      borderRadius: colors.radius,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 16,
+      backgroundColor: colors.background,
+    },
+    ownerBtnText: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+    },
+    ownerBtnPlaceholder: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "flex-end",
+    },
+    modalSheet: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 12,
+      paddingBottom: botPad + 16,
+      paddingHorizontal: 0,
+      maxHeight: "70%",
+    },
+    modalHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      alignSelf: "center",
+      marginBottom: 12,
+    },
+    modalPickerTitle: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+      paddingHorizontal: 20,
+      marginBottom: 12,
+    },
+    pickerItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerItemText: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+    },
+    pickerItemSelected: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.primary,
+    },
+    cancelBtn: {
+      paddingVertical: 14,
+      alignItems: "center",
+      marginTop: 4,
+    },
+    cancelBtnText: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+    },
   });
 
   if (goalLoading) {
@@ -364,12 +575,9 @@ export default function InitiativeNewScreen() {
     );
   }
 
-  const renderHeader = (subtitle?: string) => (
+  const renderHeader = (subtitle?: string, onBack?: () => void) => (
     <View style={s.header}>
-      <Pressable style={s.backBtn} onPress={() => {
-        if (step === "choose") router.back();
-        else setStep("choose");
-      }}>
+      <Pressable style={s.backBtn} onPress={onBack ?? (() => router.back())}>
         <Ionicons name="chevron-back" size={24} color={colors.foreground} />
       </Pressable>
       <View style={{ flex: 1 }}>
@@ -383,10 +591,149 @@ export default function InitiativeNewScreen() {
     </View>
   );
 
+  const renderOwnerPicker = () => (
+    <Modal
+      visible={ownerPickerVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setOwnerPickerVisible(false)}
+    >
+      <Pressable style={s.modalOverlay} onPress={() => setOwnerPickerVisible(false)}>
+        <Pressable style={s.modalSheet} onPress={() => {}}>
+          <View style={s.modalHandle} />
+          <Text style={s.modalPickerTitle}>Selecionar Responsável</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Pressable
+              style={s.pickerItem}
+              onPress={() => { updatePlanning("ownerUserId", ""); setOwnerPickerVisible(false); }}
+            >
+              <Text style={planning.ownerUserId === "" ? s.pickerItemSelected : s.pickerItemText}>
+                Sem responsável
+              </Text>
+              {planning.ownerUserId === "" && (
+                <Ionicons name="checkmark" size={18} color={colors.primary} />
+              )}
+            </Pressable>
+            {franchiseUsers.map(u => (
+              <Pressable
+                key={u.id}
+                style={s.pickerItem}
+                onPress={() => { updatePlanning("ownerUserId", String(u.id)); setOwnerPickerVisible(false); }}
+              >
+                <Text style={String(u.id) === planning.ownerUserId ? s.pickerItemSelected : s.pickerItemText}>
+                  {u.name}
+                </Text>
+                {String(u.id) === planning.ownerUserId && (
+                  <Ionicons name="checkmark" size={18} color={colors.primary} />
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable style={s.cancelBtn} onPress={() => setOwnerPickerVisible(false)}>
+            <Text style={s.cancelBtnText}>Cancelar</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
+  const renderPlanningSection = () => (
+    <>
+      <View style={s.sectionCard}>
+        <Text style={s.sectionCardTitle}>
+          Planejamento <Text style={s.inputLabelOptional}>(opcional)</Text>
+        </Text>
+
+        <Text style={s.inputLabel}>Resultado Esperado</Text>
+        <TextInput
+          style={s.textArea}
+          value={planning.desiredResult}
+          onChangeText={v => updatePlanning("desiredResult", v)}
+          placeholder="O que você quer alcançar com esta iniciativa?"
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          numberOfLines={2}
+        />
+
+        <Text style={s.inputLabel}>Responsável</Text>
+        <Pressable style={s.ownerBtn} onPress={() => setOwnerPickerVisible(true)}>
+          {selectedOwnerName ? (
+            <Text style={s.ownerBtnText}>{selectedOwnerName}</Text>
+          ) : (
+            <Text style={s.ownerBtnPlaceholder}>Selecionar responsável</Text>
+          )}
+          <Ionicons name="chevron-down" size={16} color={colors.mutedForeground} />
+        </Pressable>
+
+        <Text style={s.inputLabel}>Datas</Text>
+        <View style={s.dateRow}>
+          <View style={s.dateCol}>
+            <Text style={[s.inputLabel, { fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }]}>Início</Text>
+            <TextInput
+              style={[s.input, { marginBottom: 0 }]}
+              value={planning.startDate}
+              onChangeText={v => updatePlanning("startDate", v)}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+          </View>
+          <View style={s.dateCol}>
+            <Text style={[s.inputLabel, { fontSize: 11, color: colors.mutedForeground, marginBottom: 4 }]}>Término</Text>
+            <TextInput
+              style={[s.input, { marginBottom: 0 }]}
+              value={planning.endDate}
+              onChangeText={v => updatePlanning("endDate", v)}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+          </View>
+        </View>
+      </View>
+
+      <Pressable style={s.accordionToggle} onPress={() => setShow5W2H(v => !v)}>
+        <View style={s.accordionToggleLeft}>
+          <Ionicons name="clipboard-outline" size={18} color={colors.mutedForeground} />
+          <Text style={s.accordionToggleText}>
+            5W2H — Planejamento detalhado{" "}
+            <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular" }}>(opcional)</Text>
+          </Text>
+        </View>
+        <Ionicons
+          name={show5W2H ? "chevron-up" : "chevron-down"}
+          size={16}
+          color={colors.mutedForeground}
+        />
+      </Pressable>
+
+      {show5W2H && (
+        <View style={s.accordionContent}>
+          {W2H_FIELDS.map(f => (
+            <View key={f.key}>
+              <Text style={s.inputLabel}>{f.label}</Text>
+              <TextInput
+                style={s.textArea}
+                value={planning[f.key]}
+                onChangeText={v => updatePlanning(f.key, v)}
+                placeholder={f.placeholder}
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                numberOfLines={2}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+    </>
+  );
+
   if (step === "choose") {
     return (
       <View style={s.container}>
-        {renderHeader(goal?.title)}
+        {renderHeader(goal?.title, () => router.back())}
         <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
           {goal && (goal.dimensionName || goal.keyProcessName) && (
             <View style={s.goalInfoBox}>
@@ -415,7 +762,12 @@ export default function InitiativeNewScreen() {
 
           <Pressable
             style={({ pressed }) => [s.choiceCard, pressed && { opacity: 0.75 }]}
-            onPress={() => { setStep("custom-form"); setLinkError(null); }}
+            onPress={() => {
+              setStep("custom-form");
+              setLinkError(null);
+              setPlanning(emptyPlanning());
+              setShow5W2H(false);
+            }}
           >
             <View style={[s.iconBox, { backgroundColor: colors.muted }]}>
               <Ionicons name="pencil-outline" size={20} color={colors.mutedForeground} />
@@ -436,7 +788,7 @@ export default function InitiativeNewScreen() {
   if (step === "catalog-list") {
     return (
       <View style={s.container}>
-        {renderHeader(goal?.dimensionName ?? undefined)}
+        {renderHeader(goal?.dimensionName ?? undefined, () => setStep("choose"))}
         <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
           {catalogLoading ? (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -459,76 +811,66 @@ export default function InitiativeNewScreen() {
                       <Text style={s.itemSub}>{item.keyProcessName}</Text>
                     ) : null}
                   </View>
-                  <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
                 </Pressable>
               ))}
             </>
           )}
         </ScrollView>
+      </View>
+    );
+  }
 
-        <Modal
-          visible={confirmVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => { setConfirmVisible(false); setLinkError(null); }}
-        >
-          <KeyboardAvoidingView
-            style={s.modalOverlay}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-          >
-            <Pressable style={{ flex: 1 }} onPress={() => {
-              if (!linkMutation.isPending) { setConfirmVisible(false); setLinkError(null); }
-            }} />
-            <View style={s.modalSheet}>
-              <View style={s.modalHandle} />
-              <Text style={s.modalTitle}>{selectedInitiative?.name}</Text>
-
-              {selectedInitiative?.keyProcessName ? (
-                <View style={s.modalMetaRow}>
-                  <View style={s.modalMetaChip}>
-                    <Text style={s.modalMetaText}>{selectedInitiative.keyProcessName}</Text>
+  if (step === "catalog-configure") {
+    return (
+      <View style={s.container}>
+        {renderHeader(selectedInitiative?.name ?? undefined, () => setStep("catalog-list"))}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+            {selectedInitiative && (selectedInitiative.kri || selectedInitiative.kpi) && (
+              <View style={s.catalogGuide}>
+                <View style={s.catalogGuideHeader}>
+                  <Ionicons name="book-outline" size={12} color={colors.primary} />
+                  <Text style={s.catalogGuideLabel}>Guia de execução — Catálogo RE/MAX SC</Text>
+                </View>
+                {selectedInitiative.kri && (
+                  <View style={s.catalogGuideRow}>
+                    <Text style={s.catalogGuideBadge}>KRI</Text>
+                    <Text style={s.catalogGuideValue}>{selectedInitiative.kri}</Text>
                   </View>
-                </View>
-              ) : null}
-
-              {selectedInitiative?.kri ? (
-                <>
-                  <Text style={[s.modalSub, { fontSize: 11, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5, color: colors.mutedForeground, marginBottom: 2 }]}>
-                    KRI
-                  </Text>
-                  <Text style={[s.modalSub, { marginBottom: 10 }]}>{selectedInitiative.kri}</Text>
-                </>
-              ) : null}
-
-              {linkError ? (
-                <View style={s.errorBanner}>
-                  <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} style={{ marginTop: 1 }} />
-                  <Text style={s.errorText}>{linkError}</Text>
-                </View>
-              ) : null}
-
-              <Pressable
-                style={[s.primaryBtn, linkMutation.isPending && { opacity: 0.6 }]}
-                onPress={handleCatalogConfirm}
-                disabled={linkMutation.isPending}
-              >
-                {linkMutation.isPending ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Text style={s.primaryBtnText}>Vincular Iniciativa</Text>
                 )}
-              </Pressable>
+                {selectedInitiative.kpi && (
+                  <View style={s.catalogGuideRow}>
+                    <Text style={s.catalogGuideBadge}>KPI</Text>
+                    <Text style={s.catalogGuideValue}>{selectedInitiative.kpi}</Text>
+                  </View>
+                )}
+              </View>
+            )}
 
-              <Pressable
-                style={s.cancelBtn}
-                onPress={() => { setConfirmVisible(false); setLinkError(null); }}
-                disabled={linkMutation.isPending}
-              >
-                <Text style={s.cancelBtnText}>Cancelar</Text>
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
+            {renderPlanningSection()}
+
+            {linkError ? (
+              <View style={s.errorBanner}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.destructive} style={{ marginTop: 1 }} />
+                <Text style={s.errorText}>{linkError}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              style={[s.primaryBtn, linkMutation.isPending && { opacity: 0.6 }]}
+              onPress={handleCatalogSubmit}
+              disabled={linkMutation.isPending}
+            >
+              {linkMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <Text style={s.primaryBtnText}>Vincular Iniciativa</Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+        {renderOwnerPicker()}
       </View>
     );
   }
@@ -536,13 +878,13 @@ export default function InitiativeNewScreen() {
   if (step === "custom-form") {
     return (
       <View style={s.container}>
-        {renderHeader(goal?.title)}
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        {renderHeader(goal?.title, () => setStep("choose"))}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-            <Text style={s.inputLabel}>Nome da Iniciativa *</Text>
+            <Text style={s.inputLabel}>
+              Nome da Iniciativa{" "}
+              <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
             <TextInput
               style={s.input}
               value={customName}
@@ -552,6 +894,8 @@ export default function InitiativeNewScreen() {
               autoFocus
               maxLength={200}
             />
+
+            {renderPlanningSection()}
 
             {linkError ? (
               <View style={s.errorBanner}>
@@ -573,6 +917,7 @@ export default function InitiativeNewScreen() {
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
+        {renderOwnerPicker()}
       </View>
     );
   }
