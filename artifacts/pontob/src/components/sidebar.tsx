@@ -172,7 +172,7 @@ export function AppSidebar() {
         ) : (
           /* ── FRANQUEADO / RESPONSÁVEL sidebar ───────────────────────────
              Full operational flow matching the tutorial's chronology:
-             Planejamento → Rotina → Semana → Mês → Acompanhamento        */
+             Planejamento → Semana → Rotina → Mês → Acompanhamento        */
           <>
             {/* 1º — Planejamento (foundation: do these first when onboarding) */}
             <NavSection label="Planejamento" />
@@ -182,16 +182,16 @@ export function AppSidebar() {
             )}
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
-            {/* 2º — Rotina Diária */}
-            <NavSection label="Rotina" />
-            <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
-            <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
-            <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
-
-            {/* 3º — Semana */}
+            {/* 2º — Semana (plan the week first, then execute daily) */}
             <NavSection label="Semana" />
             <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
             <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
+
+            {/* 3º — Rotina Diária */}
+            <NavSection label="Rotina" />
+            <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
+            <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
+            <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
 
             {/* 4º — Mês */}
             <NavSection label="Mês" />
