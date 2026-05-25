@@ -587,8 +587,10 @@ router.post("/invites/:id/reject", requireAuth, requireRole("master_admin", "sta
       .where(eq(usersTable.id, invite.usedByUserId))
       .limit(1);
 
+    const reason = typeof req.body?.reason === "string" && req.body.reason.trim() ? req.body.reason.trim() : undefined;
+
     if (user) {
-      sendRejectionNotice({ toEmail: user.email, toName: user.name }).catch(() => {});
+      sendRejectionNotice({ toEmail: user.email, toName: user.name, reason }).catch(() => {});
       await db.delete(usersTable).where(eq(usersTable.id, user.id));
     }
     await db.update(inviteTokensTable).set({ rejectedAt: new Date() }).where(eq(inviteTokensTable.id, invite.id));

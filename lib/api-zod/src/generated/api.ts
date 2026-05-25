@@ -307,6 +307,15 @@ export const RejectInviteParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const RejectInviteBody = zod.object({
+  reason: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional reason for rejection, included in the notification email",
+    ),
+});
+
 export const RejectInviteResponse = zod.object({
   ok: zod.boolean(),
 });

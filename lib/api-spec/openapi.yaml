@@ -361,6 +361,16 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Optional reason for rejection, included in the notification email
       responses:
         "200":
           description: Rejected

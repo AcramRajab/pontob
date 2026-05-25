@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { Users, Plus, Pencil, Trash2, Eye, EyeOff, MailCheck, Clock, Send, Link2, Copy, Check, Mail, ShieldX, CheckCircle2, XCircle, AlertCircle, UserCheck, UserX, Hourglass } from "lucide-react";
 import { useState } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 const roleLabel: Record<string, string> = {
   master_admin: "Admin Master",
@@ -280,6 +281,7 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
   const qc = useQueryClient();
   const [approveTarget, setApproveTarget] = useState<{ id: number; name: string; email: string; franchiseName: string | null; role: string } | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{ id: number; name: string; franchiseName: string | null; role: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const pending = invites
     .filter((inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt)
@@ -311,10 +313,12 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
         qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
         toast({ title: "Cadastro rejeitado", description: "O usuário foi removido permanentemente." });
         setRejectTarget(null);
+        setRejectReason("");
       },
       onError: (err: any) => {
         toast({ title: err?.message ?? "Erro ao rejeitar usuário", variant: "destructive" });
         setRejectTarget(null);
+        setRejectReason("");
       },
     },
   });
@@ -407,28 +411,42 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!rejectTarget} onOpenChange={v => { if (!v) setRejectTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Rejeitar cadastro?</AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={!!rejectTarget} onOpenChange={v => { if (!v) { setRejectTarget(null); setRejectReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rejeitar cadastro?</DialogTitle>
+            <DialogDescription>
               O cadastro de <strong>{rejectTarget?.name}</strong> da franquia{" "}
               <strong>{rejectTarget?.franchiseName ?? "—"}</strong> será <strong>removido permanentemente</strong>.
               O usuário não terá acesso à plataforma.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90 text-white"
-              onClick={() => rejectTarget && reject.mutate({ id: rejectTarget.id })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="reject-reason">Motivo da rejeição <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            <Textarea
+              id="reject-reason"
+              data-testid="textarea-reject-reason"
+              placeholder="Ex: Franquia já possui responsável cadastrado, e-mail não reconhecido..."
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground">Se informado, o motivo será incluído no e-mail de notificação enviado ao usuário.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRejectTarget(null); setRejectReason(""); }}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              data-testid="button-confirm-reject"
+              onClick={() => rejectTarget && reject.mutate({ id: rejectTarget.id, data: { reason: rejectReason.trim() || undefined } })}
               disabled={reject.isPending}
             >
               {reject.isPending ? "Rejeitando..." : "Rejeitar cadastro"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

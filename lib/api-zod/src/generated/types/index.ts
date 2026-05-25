@@ -112,6 +112,7 @@ export * from "./regionalVision";
 export * from "./regionalVisionFranchise";
 export * from "./regionalVisionQuarter";
 export * from "./rejectInvite200";
+export * from "./rejectInviteBody";
 export * from "./revokeInvite200";
 export * from "./strategicInitiative";
 export * from "./strategicInitiativeDeactivationImpact";

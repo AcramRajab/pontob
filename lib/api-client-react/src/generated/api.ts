@@ -87,6 +87,7 @@ import type {
   RegionalDashboard,
   RegionalVision,
   RejectInvite200,
+  RejectInviteBody,
   RevokeInvite200,
   StrategicInitiative,
   StrategicInitiativeDeactivationImpact,
@@ -1519,11 +1520,14 @@ export const getRejectInviteUrl = (id: number) => {
 
 export const rejectInvite = async (
   id: number,
+  rejectInviteBody?: RejectInviteBody,
   options?: RequestInit,
 ): Promise<RejectInvite200> => {
   return customFetch<RejectInvite200>(getRejectInviteUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rejectInviteBody),
   });
 };
 
@@ -1534,14 +1538,14 @@ export const getRejectInviteMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectInvite>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<RejectInviteBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof rejectInvite>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<RejectInviteBody> },
   TContext
 > => {
   const mutationKey = ["rejectInvite"];
@@ -1555,11 +1559,11 @@ export const getRejectInviteMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof rejectInvite>>,
-    { id: number }
+    { id: number; data: BodyType<RejectInviteBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return rejectInvite(id, requestOptions);
+    return rejectInvite(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1568,7 +1572,7 @@ export const getRejectInviteMutationOptions = <
 export type RejectInviteMutationResult = NonNullable<
   Awaited<ReturnType<typeof rejectInvite>>
 >;
-
+export type RejectInviteMutationBody = BodyType<RejectInviteBody>;
 export type RejectInviteMutationError = ErrorType<void>;
 
 /**
@@ -1581,14 +1585,14 @@ export const useRejectInvite = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof rejectInvite>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<RejectInviteBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof rejectInvite>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<RejectInviteBody> },
   TContext
 > => {
   return useMutation(getRejectInviteMutationOptions(options));

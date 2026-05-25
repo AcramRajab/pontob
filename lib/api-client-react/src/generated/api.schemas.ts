@@ -1430,6 +1430,11 @@ export type ApproveInvite200 = {
   ok: boolean;
 };
 
+export type RejectInviteBody = {
+  /** Optional reason for rejection, included in the notification email */
+  reason?: string;
+};
+
 export type RejectInvite200 = {
   ok: boolean;
 };

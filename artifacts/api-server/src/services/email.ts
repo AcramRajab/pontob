@@ -563,8 +563,17 @@ export async function sendApprovalGranted(opts: {
 export async function sendRejectionNotice(opts: {
   toEmail: string;
   toName: string;
+  reason?: string;
 }) {
   if (!isEmailConfigured()) return;
+
+  const reasonBlock = opts.reason
+    ? `
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px 20px;margin:20px 0;">
+            <p style="margin:0 0 6px;font-size:13px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Motivo informado</p>
+            <p style="margin:0;color:#374151;font-size:14px;line-height:1.6;">${opts.reason}</p>
+          </div>`
+    : "";
 
   await getTransporter().sendMail({
     from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
@@ -581,6 +590,7 @@ export async function sendRejectionNotice(opts: {
           <p style="color:#374151;line-height:1.6;">
             Infelizmente seu cadastro no <strong>Método Ponto B</strong> não foi aprovado pela equipe regional.
           </p>
+          ${reasonBlock}
           <p style="color:#374151;line-height:1.6;">
             Se você acredita que isso foi um engano, entre em contato diretamente com a equipe da RE/MAX Santa Catarina para esclarecimentos.
           </p>
