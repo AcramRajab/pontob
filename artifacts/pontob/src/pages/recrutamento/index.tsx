@@ -1,58 +1,68 @@
 import { Link } from "wouter";
-import { useListVagas, getListVagasQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Users, Briefcase, CheckCircle2, PauseCircle } from "lucide-react";
+import { Loader2, Plus, Users, CheckCircle2, XCircle, Clock, Phone, Mail, MessageCircle, ChevronRight } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
+import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
-const statusLabel: Record<string, string> = {
-  ativa: "Ativa",
-  pausada: "Pausada",
-  preenchida: "Preenchida",
-  rascunho: "Rascunho",
-};
-const statusColor: Record<string, string> = {
-  ativa: "text-green-700 border-green-200 bg-green-50",
-  pausada: "text-yellow-700 border-yellow-200 bg-yellow-50",
-  preenchida: "text-blue-700 border-blue-200 bg-blue-50",
-  rascunho: "text-gray-500 border-gray-200 bg-gray-50",
+const resultadoConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  aprovado: {
+    label: "Aprovado",
+    color: "text-green-700 border-green-200 bg-green-50",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  reprovado: {
+    label: "Reprovado",
+    color: "text-red-700 border-red-200 bg-red-50",
+    icon: <XCircle className="h-3 w-3" />,
+  },
 };
 
-const STAGES = ["interessado", "triagem", "entrevista", "proposta", "contratado"];
-const stageLabel: Record<string, string> = {
-  interessado: "Interessados",
-  triagem: "Triagem",
-  entrevista: "Entrevista",
-  proposta: "Proposta",
-  contratado: "Contratados",
-  arquivado: "Arquivados",
-};
+function whatsappUrl(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return `https://wa.me/${digits.startsWith("55") ? digits : `55${digits}`}`;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 export default function Recrutamento() {
-  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
+  const { user } = useAuth();
+  const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId } = useFranchiseContext();
+  const effectiveFranchiseId = franchiseId ?? user?.franchiseId;
 
-  const params = franchiseId ? { franchiseId } : {};
-  const { data: vagas = [], isLoading } = useListVagas(params, {
-    query: { enabled: !!franchiseId, queryKey: getListVagasQueryKey(params) },
+  const { data: candidatos = [], isLoading } = useQuery<any[]>({
+    queryKey: ["recruiting-candidatos", effectiveFranchiseId],
+    queryFn: async () => {
+      if (!effectiveFranchiseId) return [];
+      const res = await fetch(`/api/recruiting/candidatos?franchiseId=${effectiveFranchiseId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!effectiveFranchiseId,
   });
 
-  const ativas = vagas.filter((v: any) => v.status === "ativa");
-  const totalCandidatos = vagas.reduce((sum: number, v: any) => sum + (v.candidatosCount || 0), 0);
+  const aprovados = candidatos.filter((c) => c.resultadoFinal === "aprovado").length;
+  const reprovados = candidatos.filter((c) => c.resultadoFinal === "reprovado").length;
+  const pendentes = candidatos.filter((c) => !c.resultadoFinal).length;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Recrutamento</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Gerencie vagas e o pipeline de candidatos</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Pipeline de candidatos e resultados das entrevistas</p>
         </div>
-        {franchiseId && (
+        {effectiveFranchiseId && (
           <Button asChild>
-            <Link href="/recrutamento/vagas/new">
+            <Link href="/recrutamento/candidatos/new">
               <Plus className="h-4 w-4 mr-2" />
-              Nova Vaga
+              Novo Candidato
             </Link>
           </Button>
         )}
@@ -66,8 +76,8 @@ export default function Recrutamento() {
         />
       )}
 
-      {(isAdmin || isSocio) && !franchiseId ? (
-        <AdminEmptyState message="Selecione uma franquia para ver as vagas de recrutamento." />
+      {(isAdmin || isSocio) && !effectiveFranchiseId ? (
+        <AdminEmptyState message="Selecione uma franquia para ver os candidatos." />
       ) : isLoading ? (
         <div className="flex h-48 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -75,20 +85,7 @@ export default function Recrutamento() {
       ) : (
         <>
           {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-green-100 p-2">
-                    <Briefcase className="h-4 w-4 text-green-700" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{ativas.length}</p>
-                    <p className="text-xs text-muted-foreground">Vagas ativas</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
@@ -96,8 +93,8 @@ export default function Recrutamento() {
                     <Users className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{totalCandidatos}</p>
-                    <p className="text-xs text-muted-foreground">Candidatos no pipeline</p>
+                    <p className="text-2xl font-bold">{candidatos.length}</p>
+                    <p className="text-xs text-muted-foreground">Total de candidatos</p>
                   </div>
                 </div>
               </CardContent>
@@ -105,79 +102,123 @@ export default function Recrutamento() {
             <Card>
               <CardContent className="pt-4">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-blue-100 p-2">
-                    <CheckCircle2 className="h-4 w-4 text-blue-700" />
+                  <div className="rounded-lg bg-green-100 p-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-700" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">
-                      {vagas.filter((v: any) => v.status === "preenchida").length}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Vagas preenchidas</p>
+                    <p className="text-2xl font-bold text-green-700">{aprovados}</p>
+                    <p className="text-xs text-muted-foreground">Aprovados</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-amber-100 p-2">
+                    <Clock className="h-4 w-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-amber-700">{pendentes}</p>
+                    <p className="text-xs text-muted-foreground">Em avaliação</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Vagas list */}
-          {vagas.length === 0 ? (
+          {/* Candidatos list */}
+          {candidatos.length === 0 ? (
             <Card>
               <CardContent className="pt-8 pb-8 text-center">
-                <Briefcase className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhuma vaga cadastrada ainda</p>
-                <p className="text-xs text-muted-foreground mt-1">Crie a primeira vaga para começar a recrutar</p>
+                <Users className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">Nenhum candidato cadastrado ainda</p>
+                <p className="text-xs text-muted-foreground mt-1">Cadastre o primeiro candidato para começar</p>
                 <Button asChild className="mt-4">
-                  <Link href="/recrutamento/vagas/new">
+                  <Link href="/recrutamento/candidatos/new">
                     <Plus className="h-4 w-4 mr-2" />
-                    Criar primeira vaga
+                    Cadastrar primeiro candidato
                   </Link>
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {vagas.map((vaga: any) => (
-                <Link key={vaga.id} href={`/recrutamento/vagas/${vaga.id}`}>
-                  <Card className="cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
-                    <CardContent className="py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold text-sm truncate">{vaga.title}</p>
-                            <Badge variant="outline" className={`text-xs shrink-0 ${statusColor[vaga.status] || ""}`}>
-                              {statusLabel[vaga.status] || vaga.status}
-                            </Badge>
-                          </div>
-                          {vaga.goalTitle && (
-                            <p className="text-xs text-muted-foreground truncate">Ligada à meta: {vaga.goalTitle}</p>
-                          )}
-                          {vaga.profileSummary && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{vaga.profileSummary}</p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2 shrink-0">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Users className="h-3.5 w-3.5" />
-                            <span>{vaga.candidatosCount || 0} candidato{(vaga.candidatosCount || 0) !== 1 ? "s" : ""}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Mini funnel */}
-                      {vaga.candidatosCount > 0 && (
-                        <div className="mt-3 pt-3 border-t flex gap-1.5">
-                          {STAGES.map((stage) => (
-                            <div key={stage} className="flex-1 text-center">
-                              <p className="text-xs text-muted-foreground leading-tight">{stageLabel[stage]}</p>
+            <div className="space-y-2">
+              {candidatos.map((c: any) => {
+                const resultado = c.resultadoFinal ? resultadoConfig[c.resultadoFinal] : null;
+                return (
+                  <Link key={c.id} href={`/recrutamento/candidatos/${c.id}`}>
+                    <Card className="cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all">
+                      <CardContent className="py-3.5 px-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-semibold text-sm truncate">{c.name}</p>
+                              {resultado ? (
+                                <Badge variant="outline" className={cn("text-xs shrink-0 flex items-center gap-1", resultado.color)}>
+                                  {resultado.icon}
+                                  {resultado.label}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs shrink-0 text-amber-700 border-amber-200 bg-amber-50 flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Em avaliação
+                                </Badge>
+                              )}
                             </div>
-                          ))}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              {c.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {c.phone}
+                                </span>
+                              )}
+                              {c.email && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <Mail className="h-3 w-3" />
+                                  {c.email}
+                                </span>
+                              )}
+                              <span className="shrink-0">{formatDate(c.createdAt)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {c.phone && (
+                              <a
+                                href={whatsappUrl(c.phone)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Button variant="outline" size="sm" className="h-7 px-2 gap-1 text-green-600 border-green-200 hover:bg-green-50">
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              </a>
+                            )}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+                          </div>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+
+                        {/* Preview of interview notes */}
+                        {(c.notasEntrevistaOnline || c.notasEntrevistaPresencial) && (
+                          <div className="mt-2 pt-2 border-t border-border/40">
+                            {c.notasEntrevistaOnline && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                <span className="font-medium text-foreground/60">Online:</span> {c.notasEntrevistaOnline}
+                              </p>
+                            )}
+                            {c.notasEntrevistaPresencial && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                <span className="font-medium text-foreground/60">Presencial:</span> {c.notasEntrevistaPresencial}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </>

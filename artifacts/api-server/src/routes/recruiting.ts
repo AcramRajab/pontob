@@ -200,20 +200,91 @@ router.post("/vagas/:id/candidatos", requireAuth, requireWriteAccess, async (req
   }
 });
 
+// POST /recruiting/candidatos — create standalone candidate (no vaga required)
+router.post("/recruiting/candidatos", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, name, email, phone, notasEntrevistaOnline, notasEntrevistaPresencial, resultadoFinal } = req.body;
+    if (!franchiseId || !name) {
+      res.status(400).json({ error: "franchiseId and name are required" });
+      return;
+    }
+    if (!canAccessFranchise(req, franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    const [candidato] = await db.insert(candidatosTable).values({
+      franchiseId,
+      name,
+      email: email || null,
+      phone: phone || null,
+      notasEntrevistaOnline: notasEntrevistaOnline || null,
+      notasEntrevistaPresencial: notasEntrevistaPresencial || null,
+      resultadoFinal: resultadoFinal || null,
+      stage: "entrevista",
+    }).returning();
+    res.status(201).json(candidato);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /candidatos/:id — fetch single candidato
+router.get("/candidatos/:id", requireAuth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [candidato] = await db
+      .select({
+        franchiseId: candidatosTable.franchiseId,
+        vagaFranchiseId: vagasTable.franchiseId,
+        id: candidatosTable.id,
+        vagaId: candidatosTable.vagaId,
+        name: candidatosTable.name,
+        email: candidatosTable.email,
+        phone: candidatosTable.phone,
+        source: candidatosTable.source,
+        currentRole: candidatosTable.currentRole,
+        notes: candidatosTable.notes,
+        notasEntrevistaOnline: candidatosTable.notasEntrevistaOnline,
+        notasEntrevistaPresencial: candidatosTable.notasEntrevistaPresencial,
+        resultadoFinal: candidatosTable.resultadoFinal,
+        stage: candidatosTable.stage,
+        recommendation: candidatosTable.recommendation,
+        interviewAt: candidatosTable.interviewAt,
+        createdAt: candidatosTable.createdAt,
+        updatedAt: candidatosTable.updatedAt,
+      })
+      .from(candidatosTable)
+      .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
+      .where(eq(candidatosTable.id, id));
+
+    if (!candidato) { res.status(404).json({ error: "Not found" }); return; }
+    const effectiveFranchiseId = candidato.franchiseId ?? candidato.vagaFranchiseId;
+    if (!effectiveFranchiseId || !canAccessFranchise(req, effectiveFranchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    res.json(candidato);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // PATCH /candidatos/:id
 router.patch("/candidatos/:id", requireAuth, requireWriteAccess, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const [existing] = await db
-      .select({ franchiseId: vagasTable.franchiseId })
+      .select({
+        franchiseId: candidatosTable.franchiseId,
+        vagaFranchiseId: vagasTable.franchiseId,
+      })
       .from(candidatosTable)
       .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
       .where(eq(candidatosTable.id, id));
 
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
-    if (!canAccessFranchise(req, existing.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const effectiveFranchiseId = existing.franchiseId ?? existing.vagaFranchiseId;
+    if (!effectiveFranchiseId || !canAccessFranchise(req, effectiveFranchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
 
-    const { name, email, phone, source, currentRole, notes, stage, recommendation, interviewAt } = req.body;
+    const { name, email, phone, source, currentRole, notes, notasEntrevistaOnline, notasEntrevistaPresencial, resultadoFinal, stage, recommendation, interviewAt } = req.body;
     const [updated] = await db.update(candidatosTable).set({
       ...(name !== undefined && { name }),
       ...(email !== undefined && { email }),
@@ -221,6 +292,9 @@ router.patch("/candidatos/:id", requireAuth, requireWriteAccess, async (req, res
       ...(source !== undefined && { source }),
       ...(currentRole !== undefined && { currentRole }),
       ...(notes !== undefined && { notes }),
+      ...(notasEntrevistaOnline !== undefined && { notasEntrevistaOnline }),
+      ...(notasEntrevistaPresencial !== undefined && { notasEntrevistaPresencial }),
+      ...(resultadoFinal !== undefined && { resultadoFinal }),
       ...(stage !== undefined && { stage }),
       ...(recommendation !== undefined && { recommendation }),
       ...(interviewAt !== undefined && { interviewAt: interviewAt ? new Date(interviewAt) : null }),
@@ -238,13 +312,17 @@ router.delete("/candidatos/:id", requireAuth, requireWriteAccess, async (req, re
   try {
     const id = parseInt(req.params.id);
     const [existing] = await db
-      .select({ franchiseId: vagasTable.franchiseId })
+      .select({
+        franchiseId: candidatosTable.franchiseId,
+        vagaFranchiseId: vagasTable.franchiseId,
+      })
       .from(candidatosTable)
       .leftJoin(vagasTable, eq(candidatosTable.vagaId, vagasTable.id))
       .where(eq(candidatosTable.id, id));
 
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
-    if (!canAccessFranchise(req, existing.franchiseId!)) { res.status(403).json({ error: "Forbidden" }); return; }
+    const effectiveFranchiseId = existing.franchiseId ?? existing.vagaFranchiseId;
+    if (!effectiveFranchiseId || !canAccessFranchise(req, effectiveFranchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
     await db.delete(candidatosTable).where(eq(candidatosTable.id, id));
     res.status(204).send();
   } catch (err) {
@@ -298,7 +376,7 @@ router.post("/recruiting/candidatos/:id/atividades", requireAuth, requireWriteAc
   }
 });
 
-// GET /recruiting/candidatos — all candidatos for a franchise with vaga info
+// GET /recruiting/candidatos — all candidatos for a franchise (standalone + vaga-linked)
 router.get("/recruiting/candidatos", requireAuth, async (req, res) => {
   try {
     const { franchiseId: fqId } = req.query;
@@ -314,31 +392,43 @@ router.get("/recruiting/candidatos", requireAuth, async (req, res) => {
       return;
     }
 
+    // 1) Standalone candidatos (franchiseId set directly, no vaga)
+    const standaloneCandidatos = await db
+      .select()
+      .from(candidatosTable)
+      .where(and(eq(candidatosTable.franchiseId, effectiveFranchiseId)));
+
+    // 2) Vaga-linked candidatos (via active vagas)
     const vagas = await db
       .select()
       .from(vagasTable)
       .where(and(eq(vagasTable.franchiseId, effectiveFranchiseId), eq(vagasTable.status, "ativa")));
 
-    if (vagas.length === 0) {
-      res.json([]);
-      return;
+    const vagaMap = Object.fromEntries(vagas.map((v) => [v.id, v]));
+    let vagaLinkedCandidatos: (typeof candidatosTable.$inferSelect)[] = [];
+    if (vagas.length > 0) {
+      vagaLinkedCandidatos = await db
+        .select()
+        .from(candidatosTable)
+        .where(and(
+          inArray(candidatosTable.vagaId, vagas.map(v => v.id)),
+        ));
     }
 
-    const vagaIds = vagas.map((v) => v.id);
-    const candidatos = await db
-      .select()
-      .from(candidatosTable)
-      .where(inArray(candidatosTable.vagaId, vagaIds));
+    // Merge (standalone takes priority, avoid duplicates by id)
+    const seen = new Set<number>(standaloneCandidatos.map(c => c.id));
+    const merged = [
+      ...standaloneCandidatos,
+      ...vagaLinkedCandidatos.filter(c => !seen.has(c.id)),
+    ];
 
-    const vagaMap = Object.fromEntries(vagas.map((v) => [v.id, v]));
-
-    const result = candidatos.map((c) => ({
+    const result = merged.map((c) => ({
       ...c,
-      vagaTitle: vagaMap[c.vagaId]?.title ?? "",
+      vagaTitle: c.vagaId != null ? (vagaMap[c.vagaId]?.title ?? "") : "",
       daysSinceUpdate: Math.floor(
         (Date.now() - new Date(c.updatedAt).getTime()) / 86_400_000
       ),
-    }));
+    })).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json(result);
   } catch (err) {

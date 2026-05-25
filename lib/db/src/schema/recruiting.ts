@@ -23,13 +23,17 @@ export type Vaga = typeof vagasTable.$inferSelect;
 
 export const candidatosTable = pgTable("candidatos", {
   id: serial("id").primaryKey(),
-  vagaId: integer("vaga_id").notNull().references(() => vagasTable.id),
+  franchiseId: integer("franchise_id").references(() => franchisesTable.id),
+  vagaId: integer("vaga_id").references(() => vagasTable.id),
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
   source: text("source"),
   currentRole: text("current_role"),
   notes: text("notes"),
+  notasEntrevistaOnline: text("notas_entrevista_online"),
+  notasEntrevistaPresencial: text("notas_entrevista_presencial"),
+  resultadoFinal: text("resultado_final"),
   stage: text("stage").notNull().default("interessado"),
   recommendation: text("recommendation"),
   interviewAt: timestamp("interview_at", { withTimezone: true }),

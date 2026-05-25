@@ -38,6 +38,8 @@ import Recrutamento from "@/pages/recrutamento/index";
 import VagaNew from "@/pages/recrutamento/vagas-new";
 import VagaDetail from "@/pages/recrutamento/vaga-detail";
 import Secretaria from "@/pages/recrutamento/secretaria";
+import CandidatoNew from "@/pages/recrutamento/candidatos-new";
+import CandidatoDetail from "@/pages/recrutamento/candidato-detail";
 import Planner from "@/pages/planner";
 import PlannerRegistro from "@/pages/planner-registro";
 import PlannerHistorico from "@/pages/planner-historico";
@@ -156,6 +158,12 @@ function Router() {
         </Route>
         <Route path="/recrutamento/secretaria">
           <ProtectedRoute><Secretaria /></ProtectedRoute>
+        </Route>
+        <Route path="/recrutamento/candidatos/new">
+          <ProtectedRoute><CandidatoNew /></ProtectedRoute>
+        </Route>
+        <Route path="/recrutamento/candidatos/:id">
+          {() => <ProtectedRoute><CandidatoDetail /></ProtectedRoute>}
         </Route>
         <Route path="/recrutamento/vagas/new">
           <ProtectedRoute><VagaNew /></ProtectedRoute>
