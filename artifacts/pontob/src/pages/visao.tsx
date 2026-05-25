@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useListGoals, getListGoalsQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Pencil, Check, X, Users, Building2, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
@@ -529,6 +530,47 @@ export default function Visao() {
   const hasStatement = !!data?.visao?.statement;
   const currentYear = new Date().getFullYear();
 
+  // Current quarter index (0-based): Jan-Mar=0, Apr-Jun=1, Jul-Sep=2, Oct-Dec=3
+  const currentQuarterIdx = useMemo(() => {
+    const m = new Date().getMonth(); // 0-based
+    return Math.floor(m / 3);
+  }, []);
+  // Only highlight current quarter if viewing the current year
+  const activeQuarterIdx = year === currentYear ? currentQuarterIdx : -1;
+
+  // Fetch goals to auto-populate current quarter's actuals
+  const goalParams = { franchiseId: franchiseId ?? undefined };
+  const { data: goals } = useListGoals(
+    goalParams,
+    { query: { enabled: !!franchiseId, queryKey: getListGoalsQueryKey(goalParams) } }
+  );
+
+  // Map goals to KRI types by keyword matching on title
+  const goalCreci = useMemo(() =>
+    goals?.find(g => {
+      const t = (g.title ?? "").toLowerCase();
+      const u = (g.unit ?? "").toLowerCase();
+      return t.includes("creci") || t.includes("corretor") || u.includes("corretor");
+    }) ?? null,
+    [goals]
+  );
+  const goalCres = useMemo(() =>
+    goals?.find(g => {
+      const t = (g.title ?? "").toLowerCase();
+      const u = (g.unit ?? "").toLowerCase();
+      return t.includes("cres") || t.includes("representaç") || u.includes("contrat") || u.includes("representaç");
+    }) ?? null,
+    [goals]
+  );
+  const goalVgh = useMemo(() =>
+    goals?.find(g => {
+      const t = (g.title ?? "").toLowerCase();
+      const u = (g.unit ?? "").toLowerCase();
+      return t.includes("vgh") || t.includes("honorário") || u === "r$" || u.includes("honorário");
+    }) ?? null,
+    [goals]
+  );
+
   // Derive Q4 milestone (last quarter) for auto-generation
   const q4Date = QUARTERS[3].date(year);
   const q4Milestone = data?.milestones?.find((m: any) => m.quarterDate === q4Date) ?? null;
@@ -699,25 +741,33 @@ export default function Visao() {
             const actual = getActual(qDate);
             const cfg = Q_CONFIG[idx];
             const isFinal = idx === 3;
+            const isCurrent = idx === activeQuarterIdx;
             const hasTargets = !!(milestone?.targetCreci || milestone?.targetCres || milestone?.targetVgh);
 
-            // Carry-forward: find the most recent actual for each KRI from prior quarters
-            type CarryResult = { value: number | null; fromQ: number | null };
-            function carryForward(field: "actualCreci" | "actualCres" | "actualVgh"): CarryResult {
+            // Carry-forward: find the most recent actual for each KRI from prior quarters.
+            // For the current quarter, if no manual actual, fall back to goals' currentValue.
+            type CarryResult = { value: number | null; fromQ: number | null; fromGoal?: boolean };
+            function carryForward(
+              field: "actualCreci" | "actualCres" | "actualVgh",
+              goalValue: number | null | undefined,
+            ): CarryResult {
               const own = actual?.[field] ?? null;
               if (own != null) return { value: own, fromQ: null };
+              // Current quarter: prefer live goal value over carry-forward from prior quarters
+              if (isCurrent && goalValue != null) return { value: goalValue, fromQ: null, fromGoal: true };
               for (let i = idx - 1; i >= 0; i--) {
                 const prev = getActual(QUARTERS[i].date(year));
                 if (prev?.[field] != null) return { value: prev[field] as number, fromQ: i + 1 };
               }
               return { value: null, fromQ: null };
             }
-            const cfCreci = carryForward("actualCreci");
-            const cfCres  = carryForward("actualCres");
-            const cfVgh   = carryForward("actualVgh");
+            const cfCreci = carryForward("actualCreci", goalCreci?.currentValue);
+            const cfCres  = carryForward("actualCres",  goalCres?.currentValue);
+            const cfVgh   = carryForward("actualVgh",   goalVgh?.currentValue);
 
-            // "com dados" only when this quarter has its OWN actuals (not carried from a prior quarter)
-            const hasData = actual?.actualCreci != null || actual?.actualCres != null || actual?.actualVgh != null;
+            // "com dados" when quarter has OWN actuals OR (current quarter) live goal values
+            const hasData = actual?.actualCreci != null || actual?.actualCres != null || actual?.actualVgh != null
+              || (isCurrent && (goalCreci?.currentValue != null || goalCres?.currentValue != null || goalVgh?.currentValue != null));
 
             // Overall % average using effective (carried) actuals vs this quarter's targets
             const pCreci = pct(cfCreci.value, milestone?.targetCreci ?? null);
@@ -740,7 +790,8 @@ export default function Visao() {
                 key={qDate}
                 className={cn(
                   "rounded-2xl border bg-card overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-px",
-                  isFinal ? "ring-1 " + cfg.ring : ""
+                  isFinal ? "ring-1 " + cfg.ring : "",
+                  isCurrent ? "ring-2 " + cfg.ring + " shadow-md" : ""
                 )}
               >
                 {/* Card header strip */}
@@ -766,6 +817,11 @@ export default function Visao() {
                         </div>
                       )}
                       <div className="flex items-center gap-1">
+                        {isCurrent && (
+                          <span className={cn("text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full", cfg.accentBg, "text-white")}>
+                            Atual
+                          </span>
+                        )}
                         {isFinal && (
                           <span className={cn("text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full", cfg.accentBg, "text-white")}>
                             Final
@@ -792,7 +848,7 @@ export default function Visao() {
                     label="Corretores CRECI"
                     target={milestone?.targetCreci ?? null}
                     actual={cfCreci.value}
-                    actualRaw={actual?.actualCreci ?? ""}
+                    actualRaw={actual?.actualCreci ?? (isCurrent && cfCreci.fromGoal ? (goalCreci?.currentValue ?? "") : "")}
                     targetRaw={milestone?.targetCreci ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
@@ -806,7 +862,7 @@ export default function Visao() {
                     label="Representações (CREs)"
                     target={milestone?.targetCres ?? null}
                     actual={cfCres.value}
-                    actualRaw={actual?.actualCres ?? ""}
+                    actualRaw={actual?.actualCres ?? (isCurrent && cfCres.fromGoal ? (goalCres?.currentValue ?? "") : "")}
                     targetRaw={milestone?.targetCres ?? ""}
                     canWrite={canWrite}
                     cfg={cfg}
@@ -820,7 +876,7 @@ export default function Visao() {
                     label="VGH (Honorários)"
                     target={milestone?.targetVgh ?? null}
                     actual={cfVgh.value}
-                    actualRaw={actual?.actualVgh ?? ""}
+                    actualRaw={actual?.actualVgh ?? (isCurrent && cfVgh.fromGoal ? (goalVgh?.currentValue ?? "") : "")}
                     targetRaw={milestone?.targetVgh ?? ""}
                     isVgh
                     canWrite={canWrite}
