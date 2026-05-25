@@ -39,6 +39,33 @@ router.get("/planner/ytd", requireAuth, async (req, res) => {
 
     if (!effectiveFranchiseId) { res.status(400).json({ error: "franchiseId required" }); return; }
 
+    // ── Current-quarter calculation ────────────────────────────────────────
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+
+    type QInfo = { label: string; date: string; endMonth: number; endDay: number };
+    const QUARTERS: QInfo[] = [
+      { label: "Q1", date: `${year}-03-31`, endMonth: 3,  endDay: 31 },
+      { label: "Q2", date: `${year}-06-30`, endMonth: 6,  endDay: 30 },
+      { label: "Q3", date: `${year}-09-30`, endMonth: 9,  endDay: 30 },
+      { label: "Q4", date: `${year}-12-31`, endMonth: 12, endDay: 31 },
+    ];
+    const currentQ = month <= 3 ? QUARTERS[0] : month <= 6 ? QUARTERS[1] : month <= 9 ? QUARTERS[2] : QUARTERS[3];
+
+    // Days from Jan 1 to end of current quarter
+    const qEndDate = new Date(year, currentQ.endMonth - 1, currentQ.endDay);
+    const jan1 = new Date(year, 0, 1);
+    const daysToQEnd = Math.round((qEndDate.getTime() - jan1.getTime()) / 86_400_000) + 1;
+    // Days from Jan 1 to today (capped at daysToQEnd)
+    const daysSinceJan1 = Math.min(
+      Math.round((now.getTime() - jan1.getTime()) / 86_400_000) + 1,
+      daysToQEnd,
+    );
+    // Days left until quarter end
+    const daysLeft = Math.max(0, Math.round((qEndDate.getTime() - now.getTime()) / 86_400_000));
+    // What fraction of the quarter period has elapsed (0–1)
+    const elapsedFraction = daysToQEnd > 0 ? daysSinceJan1 / daysToQEnd : 1;
+
     const KEY_INDICATORS = ["corretores_entraram", "novos_contratos_representacao", "venda_assinada"];
 
     const [rows, milestoneRows] = await Promise.all([
@@ -61,7 +88,7 @@ router.get("/planner/ytd", requireAuth, async (req, res) => {
         .where(and(
           eq(franchiseVisaoMilestonesTable.franchiseId, effectiveFranchiseId),
           eq(franchiseVisaoMilestonesTable.year, year),
-          eq(franchiseVisaoMilestonesTable.quarterDate, `${year}-12-31`),
+          eq(franchiseVisaoMilestonesTable.quarterDate, currentQ.date),
         ))
         .limit(1),
     ]);
@@ -71,19 +98,49 @@ router.get("/planner/ytd", requireAuth, async (req, res) => {
 
     const milestone = milestoneRows[0] ?? null;
 
+    const ytd = {
+      corretores: totals["corretores_entraram"] ?? 0,
+      contratos: totals["novos_contratos_representacao"] ?? 0,
+      vendas: totals["venda_assinada"] ?? 0,
+    };
+    const targets = {
+      corretores: milestone?.targetCreci ?? null,
+      contratos: milestone?.targetCres ?? null,
+      vendas: milestone?.targetVgh ?? null,
+    };
+
+    // ── On-track status per indicator ─────────────────────────────────────
+    // Expected at today = target * elapsedFraction
+    // onTrackRatio = ytd / expected (1.0 = exactly on track)
+    function onTrackRatio(actual: number, target: number | null): number | null {
+      if (target == null || target === 0) return null;
+      const expected = target * elapsedFraction;
+      if (expected === 0) return null;
+      return actual / expected;
+    }
+
+    const ratios = {
+      corretores: onTrackRatio(ytd.corretores, targets.corretores),
+      contratos:  onTrackRatio(ytd.contratos,  targets.contratos),
+      vendas:     onTrackRatio(ytd.vendas,      targets.vendas),
+    };
+
+    // Overall on-track: average of available ratios; ≥ 0.85 = on track
+    const validRatios = Object.values(ratios).filter((r): r is number => r !== null);
+    const avgRatio = validRatios.length > 0 ? validRatios.reduce((a, b) => a + b, 0) / validRatios.length : null;
+    const onTrack = avgRatio !== null ? avgRatio >= 0.85 : null;
+
     res.json({
       year,
       franchiseId: effectiveFranchiseId,
-      ytd: {
-        corretores: totals["corretores_entraram"] ?? 0,
-        contratos: totals["novos_contratos_representacao"] ?? 0,
-        vendas: totals["venda_assinada"] ?? 0,
-      },
-      targets: {
-        corretores: milestone?.targetCreci ?? null,
-        contratos: milestone?.targetCres ?? null,
-        vendas: milestone?.targetVgh ?? null,
-      },
+      quarterLabel: currentQ.label,
+      quarterDate: currentQ.date,
+      daysLeft,
+      elapsedPct: Math.round(elapsedFraction * 100),
+      onTrack,
+      onTrackRatios: ratios,
+      ytd,
+      targets,
     });
   } catch (err) {
     req.log.error(err);

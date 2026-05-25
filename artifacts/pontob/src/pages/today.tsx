@@ -211,6 +211,12 @@ export default function Today() {
   const { data: ytdData } = useQuery<{
     ytd: { corretores: number; contratos: number; vendas: number };
     targets: { corretores: number | null; contratos: number | null; vendas: number | null };
+    quarterLabel: string;
+    quarterDate: string;
+    daysLeft: number;
+    elapsedPct: number;
+    onTrack: boolean | null;
+    onTrackRatios: { corretores: number | null; contratos: number | null; vendas: number | null };
   } | null>({
     queryKey: ["planner-ytd", franchiseId, currentYear],
     queryFn: async () => {
@@ -383,63 +389,139 @@ export default function Today() {
           />
 
           {/* ── Visão Anual KRI strip ───────────────────────────── */}
-          {ytdData && (ytdData.targets.corretores || ytdData.targets.contratos || ytdData.targets.vendas) && (
-            <div className="rounded-xl border bg-card overflow-hidden">
-              <div className="px-4 py-2 border-b bg-muted/30 flex items-center justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <TrendingUp className="h-3 w-3 text-primary" />
-                  Visão {new Date().getFullYear()} — meta Q4
-                </span>
-                <a href="/visao" className="text-[10px] text-primary/70 hover:text-primary transition-colors">editar →</a>
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-border">
-                {[
-                  {
-                    label: "Corretores",
-                    ytd: ytdData.ytd.corretores,
-                    target: ytdData.targets.corretores,
-                    color: "bg-blue-500",
-                    fmt: (v: number) => String(v),
-                  },
-                  {
-                    label: "CREs",
-                    ytd: ytdData.ytd.contratos,
-                    target: ytdData.targets.contratos,
-                    color: "bg-violet-500",
-                    fmt: (v: number) => String(v),
-                  },
-                  {
-                    label: "VGH",
-                    ytd: ytdData.ytd.vendas,
-                    target: ytdData.targets.vendas,
-                    color: "bg-emerald-500",
-                    fmt: (v: number) =>
-                      v >= 1_000_000
-                        ? `R$${(v / 1_000_000).toFixed(1)}M`
-                        : v >= 1_000
-                        ? `R$${Math.round(v / 1_000)}k`
-                        : `R$${v}`,
-                  },
-                ].map(({ label, ytd, target, color, fmt }) => {
-                  const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
-                  return (
-                    <div key={label} className="px-3 py-2.5">
-                      <p className="text-[10px] font-medium text-muted-foreground mb-1">{label}</p>
-                      <div className="flex items-baseline gap-1 mb-1.5">
-                        <span className="text-base font-bold tabular-nums">{fmt(ytd)}</span>
-                        {target != null && <span className="text-[10px] text-muted-foreground">/{fmt(target)}</span>}
-                      </div>
-                      {p != null && (
-                        <div className="h-1 bg-muted rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${color}`} style={{ width: `${p}%` }} />
+          {ytdData && (ytdData.targets.corretores || ytdData.targets.contratos || ytdData.targets.vendas) && (() => {
+            const ql = ytdData.quarterLabel ?? "Q4";
+            const onTrack = ytdData.onTrack;
+            const daysLeft = ytdData.daysLeft ?? 0;
+            const elapsedPct = ytdData.elapsedPct ?? 100;
+
+            // Per-indicator on-track colour
+            function indColor(ratio: number | null | undefined) {
+              if (ratio == null) return "bg-blue-500";
+              if (ratio >= 1) return "bg-emerald-500";
+              if (ratio >= 0.85) return "bg-amber-400";
+              return "bg-red-400";
+            }
+
+            const fmtVgh = (v: number) =>
+              v >= 1_000_000 ? `R$${(v / 1_000_000).toFixed(1)}M`
+              : v >= 1_000 ? `R$${Math.round(v / 1_000)}k`
+              : `R$${v}`;
+
+            const indicators = [
+              { label: "Corretores", ytd: ytdData.ytd.corretores, target: ytdData.targets.corretores, ratio: ytdData.onTrackRatios?.corretores, fmt: (v: number) => String(v) },
+              { label: "CREs",       ytd: ytdData.ytd.contratos,  target: ytdData.targets.contratos,  ratio: ytdData.onTrackRatios?.contratos,  fmt: (v: number) => String(v) },
+              { label: "VGH",        ytd: ytdData.ytd.vendas,     target: ytdData.targets.vendas,     ratio: ytdData.onTrackRatios?.vendas,     fmt: fmtVgh },
+            ];
+
+            // Initiatives for today (already pinned or top-3 active)
+            const initiativesToShow = pinnedList.length > 0
+              ? pinnedList.slice(0, 3)
+              : top3Goals.flatMap((g: any) => (g.initiatives ?? []).filter((i: any) => i.status === "ativa")).slice(0, 3);
+
+            return (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                {/* ── Header ── */}
+                <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <TrendingUp className="h-3 w-3 text-primary" />
+                    Visão {currentYear} — meta {ql}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {onTrack === true && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        ✓ No caminho
+                      </span>
+                    )}
+                    {onTrack === false && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
+                        ↓ Abaixo do esperado
+                      </span>
+                    )}
+                    {daysLeft > 0 && (
+                      <span className="text-[10px] text-muted-foreground/60">{daysLeft}d restantes</span>
+                    )}
+                    <a href="/visao" className="text-[10px] text-primary/70 hover:text-primary transition-colors">editar →</a>
+                  </div>
+                </div>
+
+                {/* ── Quarter progress bar ── */}
+                <div className="px-4 pt-2 pb-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider">Progresso do trimestre</span>
+                    <span className="text-[9px] text-muted-foreground/50">{elapsedPct}% do período decorrido</span>
+                  </div>
+                  <div className="h-0.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary/30 rounded-full" style={{ width: `${elapsedPct}%` }} />
+                  </div>
+                </div>
+
+                {/* ── Indicators ── */}
+                <div className="grid grid-cols-3 divide-x divide-border">
+                  {indicators.map(({ label, ytd, target, ratio, fmt }) => {
+                    const p = target && target > 0 ? Math.min(Math.round((ytd / target) * 100), 100) : null;
+                    const barColor = indColor(ratio);
+                    return (
+                      <div key={label} className="px-3 py-2.5">
+                        <p className="text-[10px] font-medium text-muted-foreground mb-1">{label}</p>
+                        <div className="flex items-baseline gap-1 mb-1.5">
+                          <span className="text-base font-bold tabular-nums">{fmt(ytd)}</span>
+                          {target != null && <span className="text-[10px] text-muted-foreground">/{fmt(target)}</span>}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        {p != null && (
+                          <div className="h-1 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${p}%` }} />
+                          </div>
+                        )}
+                        {ratio != null && (
+                          <p className={cn("text-[9px] mt-0.5", ratio >= 0.85 ? "text-emerald-600" : "text-red-500")}>
+                            {ratio >= 1 ? "Acima da meta" : ratio >= 0.85 ? `${Math.round(ratio * 100)}% do esperado` : `${Math.round(ratio * 100)}% do esperado`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* ── Contextual message + initiatives ── */}
+                {onTrack === true && (
+                  <div className="px-4 py-2.5 border-t bg-emerald-50/50">
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      O ritmo está bom — mantenha as iniciativas em execução e registre os check-ins diários.
+                    </p>
+                  </div>
+                )}
+                {onTrack === false && (
+                  <div className="px-4 py-2.5 border-t bg-red-50/40 space-y-2">
+                    <p className="text-[11px] text-red-700 font-medium">
+                      O ritmo está abaixo do esperado para {ql}. Defina quando cada iniciativa será executada.
+                    </p>
+                    {initiativesToShow.length > 0 && (
+                      <div className="space-y-1">
+                        {initiativesToShow.map((ini: any) => (
+                          <Link key={ini.id} href={`/initiatives/${ini.id}/edit`}>
+                            <div className="flex items-center gap-2 text-[11px] text-red-800/80 hover:text-red-900 cursor-pointer group">
+                              <ArrowRightCircle className="h-3 w-3 shrink-0 text-red-400 group-hover:text-red-600" />
+                              <span className="truncate">{ini.title ?? ini.name}</span>
+                              <span className="ml-auto shrink-0 text-red-400 group-hover:text-red-600">agendar →</span>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    {initiativesToShow.length === 0 && (
+                      <Link href="/initiatives">
+                        <div className="flex items-center gap-1.5 text-[11px] text-red-700/70 hover:text-red-800 cursor-pointer">
+                          <ArrowRightCircle className="h-3 w-3" />
+                          Ver iniciativas ativas →
+                        </div>
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
           {ytdData && !ytdData.targets.corretores && !ytdData.targets.contratos && !ytdData.targets.vendas && (
             <a href="/visao" className="flex items-center gap-2 rounded-xl border border-dashed border-primary/30 bg-primary/3 px-4 py-3 text-sm text-primary/80 hover:bg-primary/5 transition-colors">
               <Target className="h-4 w-4 shrink-0" />
