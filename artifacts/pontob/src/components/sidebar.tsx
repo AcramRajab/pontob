@@ -129,29 +129,32 @@ export function AppSidebar() {
       {/* ── NAV ── */}
       <SidebarContent className="py-2 overflow-y-auto flex-1">
 
-        {/* Rotina Diária */}
+        {/* 1º — Planejamento (foundation: do this first when onboarding) */}
+        <NavSection label="Planejamento" />
+        {!isFranqueado && (
+          <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
+        )}
+        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
+          <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
+        )}
+        <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
+
+        {/* 2º — Rotina Diária */}
         <NavSection label="Rotina" />
         <NavItem href="/today" icon={CheckSquare} label="Hoje" active={at("/today")} />
         <NavItem href="/planner/registro" icon={PlusCircle} label="Registro de Eventos" active={at("/planner/registro")} />
         <NavItem href="/checkin/daily" icon={CalendarCheck} label="Check-in Diário" active={at("/checkin/daily")} />
 
-        {/* Semana */}
+        {/* 3º — Semana */}
         <NavSection label="Semana" />
         <NavItem href="/planner" icon={TableIcon} label="Planner Semanal" active={at("/planner")} />
         <NavItem href="/checkin/weekly" icon={CalendarDays} label="Check-in Semanal" active={at("/checkin/weekly")} />
 
-        {/* Metas */}
-        <NavSection label="Metas" />
-        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-          <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
-        )}
-        <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
+        {/* 4º — Mês */}
+        <NavSection label="Mês" />
         <NavItem href="/checkin/monthly" icon={CalendarRange} label="Check-in Mensal" active={at("/checkin/monthly")} />
-        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
-          <NavItem href="/trash" icon={Trash2} label="Lixeira" active={at("/trash")} />
-        )}
 
-        {/* Acompanhamento */}
+        {/* 5º — Acompanhamento (results & monitoring) */}
         <NavSection label="Acompanhamento" />
         {(isMasterAdmin || isStaffRegional || isFranqueado) && (
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={at("/dashboard")} />
@@ -162,9 +165,11 @@ export function AppSidebar() {
           <>
             <NavItem href="/jornada" icon={Navigation} label="Mapa de Jornada" active={at("/jornada")} />
             <NavItem href="/coaching" icon={BrainCircuit} label="Coaching IA" active={at("/coaching")} />
-            <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
             <NavItem href="/planner/historico" icon={LineChart} label="Histórico Planner" active={at("/planner/historico")} />
           </>
+        )}
+        {(isMasterAdmin || isStaffRegional || isFranqueado) && (
+          <NavItem href="/trash" icon={Trash2} label="Lixeira" active={at("/trash")} />
         )}
 
         {/* Regional */}
