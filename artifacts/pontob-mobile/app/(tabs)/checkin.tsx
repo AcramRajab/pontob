@@ -207,7 +207,7 @@ export default function CheckinScreen() {
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
-  const { data: todayCheckins } = useQuery({
+  const { data: todayCheckins, isLoading: loadingTodayCheckins } = useQuery({
     queryKey: ["today-checkins", user?.franchiseId, todayStr],
     queryFn: async () => {
       const p = new URLSearchParams();
@@ -220,7 +220,7 @@ export default function CheckinScreen() {
     enabled: !!user,
   });
 
-  const { data: thisWeekCheckin } = useQuery({
+  const { data: thisWeekCheckin, isLoading: loadingThisWeekCheckin } = useQuery({
     queryKey: ["weekly-checkins", user?.franchiseId, weekStartDate],
     queryFn: async () => {
       const p = new URLSearchParams();
@@ -910,9 +910,31 @@ export default function CheckinScreen() {
     );
   }
 
+  // ── Skeleton ─────────────────────────────────────────────────────────────
+
+  function renderFormSkeleton() {
+    return (
+      <View style={[s.content, { gap: 20 }]}>
+        {[80, 60, 100, 100, 56].map((h, i) => (
+          <View
+            key={i}
+            style={{
+              height: h,
+              borderRadius: colors.radius,
+              backgroundColor: colors.muted,
+              opacity: 0.6,
+            }}
+          />
+        ))}
+      </View>
+    );
+  }
+
   // ── Daily form ────────────────────────────────────────────────────────────
 
   function renderDailyForm() {
+    if (loadingTodayCheckins || (!!existingDailyCheckin && !dailyPreFilled)) return renderFormSkeleton();
+
     if (dailyDone) {
       return (
         <View style={s.doneCard}>
@@ -1029,6 +1051,8 @@ export default function CheckinScreen() {
   }
 
   function renderWeeklyForm() {
+    if (loadingThisWeekCheckin || (!!existingWeeklyCheckin && !weeklyPreFilled)) return renderFormSkeleton();
+
     if (weeklyDone) {
       return (
         <View style={s.doneCard}>
