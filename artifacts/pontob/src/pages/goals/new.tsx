@@ -7,7 +7,7 @@ import {
   useListFranchises, getListFranchisesQueryKey,
   useCreateGoal,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,42 @@ export default function GoalNew() {
     },
   });
 
+  const watchedFranchiseId = watch("franchiseId");
+  const formFranchiseId = (isAdmin || isSocio)
+    ? (watchedFranchiseId ? parseInt(watchedFranchiseId) : null)
+    : ((user as any)?.franchiseId ?? null);
+
+  const currentYear = new Date().getFullYear();
+
+  // Fetch visão quarterly actuals to auto-fill "Valor Atual" with YTD
+  const { data: visaoData } = useQuery<{
+    quarterActuals: Array<{
+      quarterDate: string;
+      actualCreci: number | null;
+      actualCres: number | null;
+      actualVgh: number | null;
+    }>;
+  }>({
+    queryKey: ["visao-kri-ytd", formFranchiseId, currentYear],
+    queryFn: async () => {
+      const res = await fetch(`/api/visao?franchiseId=${formFranchiseId}&year=${currentYear}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!formFranchiseId,
+  });
+
+  // Carry-forward: most recent non-null actual for a KRI type
+  function getYtdActual(type: KriType): number | null {
+    if (!visaoData?.quarterActuals?.length) return null;
+    const key = type === "corretores" ? "actualCreci" : type === "cres" ? "actualCres" : "actualVgh";
+    let ytd: number | null = null;
+    for (const qa of visaoData.quarterActuals) {
+      if (qa[key] != null) ytd = qa[key];
+    }
+    return ytd;
+  }
+
   const dimensionId = watch("dimensionId");
   const kpKey = getListKeyProcessesQueryKey({ dimensionId: dimensionId ? parseInt(dimensionId) : undefined });
   const { data: keyProcesses = [] } = useListKeyProcesses(
@@ -134,6 +170,10 @@ export default function GoalNew() {
     setValue("title", `Meta de ${found.label} ${year}`);
     setValue("kriDescription", found.subtitle);
 
+    // Auto-fill "Valor Atual" with YTD actual (if already loaded)
+    const ytd = getYtdActual(type);
+    setValue("currentValue", ytd != null ? String(ytd) : "");
+
     // Auto-fill dimension + trigger key process load
     const suggest = KRI_SUGGEST[type];
     const dim = (dimensions as any[]).find((d: any) => d.name === suggest.dimensionName);
@@ -145,6 +185,16 @@ export default function GoalNew() {
 
     setStep(2);
   }
+
+  // If visão data loads after KRI was already selected (e.g. admin picks franchise after choosing KRI),
+  // update the "Valor Atual" field automatically
+  useEffect(() => {
+    if (kriType && visaoData) {
+      const ytd = getYtdActual(kriType);
+      if (ytd != null) setValue("currentValue", String(ytd));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visaoData, kriType]);
 
   async function onSubmit(form: GoalForm) {
     if (!kriType) return;
@@ -319,7 +369,14 @@ export default function GoalNew() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Valor Atual</Label>
+              <Label className="flex items-center gap-1.5">
+                Valor Atual
+                {kriType && getYtdActual(kriType) != null && (
+                  <span className="text-[10px] font-normal text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 leading-none">
+                    YTD automático
+                  </span>
+                )}
+              </Label>
               <Input type="number" step="any" min={0} placeholder="0" {...register("currentValue")} />
             </div>
             <div className="space-y-1.5">
