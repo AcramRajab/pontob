@@ -150,6 +150,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       const timer = setTimeout(() => setActive(true), 800);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [user, sessionSkipped]);
 
   const startTour = useCallback(() => {
