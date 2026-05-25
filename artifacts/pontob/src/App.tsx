@@ -16,6 +16,7 @@ import GoalDetail from "@/pages/goals/detail";
 import GoalNew from "@/pages/goals/new";
 import GoalEdit from "@/pages/goals/edit";
 import KpisNew from "@/pages/goals/kpis-new";
+import Kpis from "@/pages/kpis";
 import InitiativesNew from "@/pages/goals/initiatives-new";
 import InitiativesEdit from "@/pages/goals/initiatives-edit";
 import Initiatives from "@/pages/initiatives";
@@ -98,6 +99,9 @@ function Router() {
         </Route>
         <Route path="/goals">
           <ProtectedRoute><Goals /></ProtectedRoute>
+        </Route>
+        <Route path="/kpis">
+          <ProtectedRoute><Kpis /></ProtectedRoute>
         </Route>
         <Route path="/initiatives">
           <ProtectedRoute><Initiatives /></ProtectedRoute>

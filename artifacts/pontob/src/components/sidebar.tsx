@@ -190,7 +190,7 @@ export function AppSidebar() {
             <NavSection label="Planejamento" />
             <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
             <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals") && !startsWith("/goals/")} />
-            <NavItem href="/goals" icon={LineChart} label="KPIs" active={startsWith("/goals/")} />
+            <NavItem href="/kpis" icon={LineChart} label="KPIs" active={at("/kpis")} />
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
             {/* 2º — Semana (plan the week first, then execute daily) */}
