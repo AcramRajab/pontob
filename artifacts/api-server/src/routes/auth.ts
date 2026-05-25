@@ -1,8 +1,10 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, franchisesTable, userFranchisesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import crypto from "crypto";
+import { db, usersTable, franchisesTable, userFranchisesTable, passwordResetTokensTable } from "@workspace/db";
+import { eq, and, gt } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { sendPasswordResetEmail } from "../services/email";
 
 const router = Router();
 
@@ -128,6 +130,82 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      res.status(400).json({ error: "E-mail obrigatório" });
+      return;
+    }
+
+    const [user] = await db
+      .select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, active: usersTable.active })
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase().trim()))
+      .limit(1);
+
+    if (!user || !user.active) {
+      res.json({ ok: true });
+      return;
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await db.insert(passwordResetTokensTable).values({ userId: user.id, token, expiresAt });
+
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost";
+    const resetLink = `https://${domain}/reset-password?token=${token}`;
+
+    await sendPasswordResetEmail({ toEmail: user.email, toName: user.name, resetLink });
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+router.post("/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      res.status(400).json({ error: "Token e nova senha são obrigatórios" });
+      return;
+    }
+    if (typeof password !== "string" || password.length < 8) {
+      res.status(400).json({ error: "A senha deve ter pelo menos 8 caracteres" });
+      return;
+    }
+
+    const [row] = await db
+      .select()
+      .from(passwordResetTokensTable)
+      .where(
+        and(
+          eq(passwordResetTokensTable.token, token),
+          eq(passwordResetTokensTable.used, false),
+          gt(passwordResetTokensTable.expiresAt, new Date()),
+        )
+      )
+      .limit(1);
+
+    if (!row) {
+      res.status(400).json({ error: "Link inválido ou expirado. Solicite um novo link de redefinição." });
+      return;
+    }
+
+    const newHash = await bcrypt.hash(password, 12);
+    await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, row.userId));
+    await db.update(passwordResetTokensTable).set({ used: true }).where(eq(passwordResetTokensTable.id, row.id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Erro interno" });
   }
 });
 

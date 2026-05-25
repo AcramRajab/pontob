@@ -675,3 +675,47 @@ export async function sendCheckinReminder(opts: {
     `,
   });
 }
+
+export async function sendPasswordResetEmail(opts: {
+  toEmail: string;
+  toName: string;
+  resetLink: string;
+}) {
+  if (!isEmailConfigured()) return;
+  await getTransporter().sendMail({
+    from: `"Método Ponto B" <${process.env.GMAIL_USER}>`,
+    to: opts.toEmail,
+    subject: `🔑 Redefinição de senha — Método Ponto B`,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#111;">
+        <div style="background:#1e40af;padding:28px 24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:20px;">Método Ponto B</h1>
+          <p style="color:#bfdbfe;margin:4px 0 0;font-size:13px;">RE/MAX Santa Catarina</p>
+        </div>
+        <div style="background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:32px 24px;">
+          <h2 style="font-size:18px;margin-top:0;color:#111;">Olá, ${opts.toName.split(" ")[0]}</h2>
+          <p style="color:#374151;line-height:1.6;">
+            Recebemos uma solicitação para redefinir a senha da sua conta no Método Ponto B.
+            Clique no botão abaixo para criar uma nova senha.
+          </p>
+          <div style="text-align:center;margin:28px 0;">
+            <a href="${opts.resetLink}"
+               style="background:#1e40af;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;">
+              Redefinir minha senha →
+            </a>
+          </div>
+          <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;margin:20px 0;">
+            <p style="margin:0;font-size:13px;color:#92400e;">
+              ⏱️ Este link é válido por <strong>1 hora</strong>. Após esse prazo, solicite uma nova redefinição.
+            </p>
+          </div>
+          <p style="font-size:13px;color:#6b7280;">
+            Se você não solicitou a redefinição de senha, ignore este e-mail. Sua senha permanecerá a mesma.
+          </p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;"/>
+          <p style="font-size:12px;color:#9ca3af;margin:0;">Método Ponto B — RE/MAX Santa Catarina</p>
+        </div>
+      </div>
+    `,
+  });
+}

@@ -24,6 +24,8 @@ export default function Login() {
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [loginError, setLoginError] = useState<{ type: "invalid" | "pending" | "generic"; message?: string } | null>(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState("");
 
   const rawRedirect = new URLSearchParams(window.location.search).get("redirect") ?? "";
   const redirectTo = rawRedirect.startsWith("/") ? rawRedirect : "/today";
@@ -53,9 +55,28 @@ export default function Login() {
     }
   }
 
-  function handleForgotSubmit(e: React.FormEvent) {
+  async function handleForgotSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (forgotEmail) setForgotSent(true);
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    setForgotError("");
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setForgotError(data.error ?? "Erro ao enviar e-mail. Tente novamente.");
+      } else {
+        setForgotSent(true);
+      }
+    } catch {
+      setForgotError("Erro de conexão. Tente novamente.");
+    } finally {
+      setForgotLoading(false);
+    }
   }
 
   return (
@@ -181,35 +202,19 @@ export default function Login() {
                   <Mail className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Solicitação registrada</p>
+                  <p className="font-semibold">E-mail enviado!</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Um administrador redefinirá a senha da conta <strong>{forgotEmail}</strong> e entrará em contato com você.
+                    Se o e-mail <strong>{forgotEmail}</strong> está cadastrado, você receberá um link para redefinir sua senha em instantes.
                   </p>
+                  <p className="text-xs text-muted-foreground mt-2">Verifique também a pasta de spam.</p>
                 </div>
-              </div>
-              <div className="rounded-lg bg-muted p-4 space-y-2 text-sm">
-                <p className="font-medium text-foreground">Fale diretamente com o suporte:</p>
-                <a
-                  href="mailto:suporte@remaxsc.com.br"
-                  className="flex items-center gap-2 text-primary hover:underline"
-                >
-                  <Mail className="h-4 w-4" />
-                  suporte@remaxsc.com.br
-                </a>
-                <a
-                  href="tel:+5548999999999"
-                  className="flex items-center gap-2 text-primary hover:underline"
-                >
-                  <Phone className="h-4 w-4" />
-                  (48) 9 9999-9999
-                </a>
               </div>
               <Button className="w-full" onClick={() => setForgotOpen(false)}>Fechar</Button>
             </div>
           ) : (
             <form onSubmit={handleForgotSubmit} className="space-y-4 py-1">
               <p className="text-sm text-muted-foreground">
-                Informe o e-mail da sua conta. Um administrador irá redefinir sua senha e entrar em contato.
+                Informe o e-mail da sua conta e enviaremos um link para redefinir sua senha.
               </p>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">E-mail da conta</label>
@@ -222,12 +227,15 @@ export default function Login() {
                   autoFocus
                 />
               </div>
+              {forgotError && (
+                <p className="text-sm text-destructive">{forgotError}</p>
+              )}
               <div className="flex gap-2">
                 <Button variant="outline" type="button" className="flex-1" onClick={() => setForgotOpen(false)}>
                   Cancelar
                 </Button>
-                <Button type="submit" className="flex-1">
-                  Solicitar recuperação
+                <Button type="submit" className="flex-1" disabled={forgotLoading}>
+                  {forgotLoading ? "Enviando..." : "Enviar link"}
                 </Button>
               </div>
             </form>

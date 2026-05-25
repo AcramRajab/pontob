@@ -11,3 +11,4 @@ export * from "./planner";
 export * from "./visao";
 export * from "./audit";
 export * from "./invites";
+export * from "./password-reset";

@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
+import ResetPassword from "@/pages/reset-password";
 import Today from "@/pages/today";
 import Dashboard from "@/pages/dashboard";
 import Goals from "@/pages/goals/index";
@@ -69,6 +70,7 @@ function Router() {
         <Route path="/convite/:token" component={Convite} />
         <Route path="/solicitar-acesso" component={SolicitarAcesso} />
         <Route path="/login" component={Login} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/today">
           <ProtectedRoute><Today /></ProtectedRoute>
         </Route>
