@@ -189,9 +189,8 @@ export function AppSidebar() {
             {/* 1º — Planejamento (foundation: do these first when onboarding) */}
             <NavSection label="Planejamento" />
             <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
-            {isFranqueado && (
-              <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
-            )}
+            <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals") && !startsWith("/goals/")} />
+            <NavItem href="/goals" icon={LineChart} label="KPIs" active={startsWith("/goals/")} />
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
             {/* 2º — Semana (plan the week first, then execute daily) */}
