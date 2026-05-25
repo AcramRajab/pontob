@@ -788,7 +788,12 @@ router.get("/dashboard/socio-overview", requireAuth, async (req, res) => {
           franchiseId: goalsTable.franchiseId,
           goalCount: sql<number>`count(*)`.mapWith(Number),
           avgScore: sql<number>`round(avg(${goalsTable.score})::numeric, 0)`.mapWith(Number),
-          avgProgress: sql<number>`round(avg(${goalsTable.progressPercentage})::numeric, 0)`.mapWith(Number),
+          avgProgress: sql<number>`round(avg(
+            CASE WHEN ${goalsTable.targetValue} > 0
+              THEN LEAST(100, ROUND((${goalsTable.currentValue}::numeric / ${goalsTable.targetValue}::numeric) * 100, 0))
+              ELSE 0
+            END
+          )::numeric, 0)`.mapWith(Number),
         })
         .from(goalsTable)
         .where(and(inArray(goalsTable.franchiseId, linkedFranchiseIds), isNull(goalsTable.deletedAt)))

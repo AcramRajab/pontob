@@ -219,6 +219,7 @@ router.post("/goals", requireAuth, requireWriteAccess, async (req, res) => {
       kriDescription, currentValue, targetValue, unit,
       startDate, endDate, ownerUserId, frequency,
       status: "em_andamento",
+      progressPercentage: calcProgress(currentValue, targetValue),
     }).returning();
     const enriched = await enrichGoal({ ...g, franchiseName: null, dimensionName: null, keyProcessName: null, ownerName: null });
     res.status(201).json(enriched);
