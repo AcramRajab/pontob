@@ -2,19 +2,63 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { Badge, Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/auth";
 import { useColors } from "@/hooks/useColors";
+import { apiFetch } from "@/lib/api";
 
 const ADMIN_ROLES = ["master_admin", "staff_regional"];
+
+interface TodayOverview {
+  todayCheckins: Array<{ id: number; executedToday: string; date: string }>;
+}
+
+function useDailyCheckinMissing(): boolean {
+  const { user } = useAuth();
+  const { data, isSuccess } = useQuery({
+    queryKey: ["dashboard-today", user?.franchiseId],
+    queryFn: async () => {
+      const params = user?.franchiseId
+        ? `?franchiseId=${user.franchiseId}`
+        : "";
+      const res = await apiFetch(`/dashboard/today${params}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json() as Promise<TodayOverview>;
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  if (!isSuccess) return false;
+  return (data?.todayCheckins?.length ?? 0) === 0;
+}
+
+function BadgeDot() {
+  return (
+    <View
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: "#ef4444",
+        borderWidth: 1.5,
+        borderColor: "transparent",
+      }}
+    />
+  );
+}
 
 function NativeTabLayout() {
   const { user } = useAuth();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+  const dailyCheckinMissing = useDailyCheckinMissing();
 
   return (
     <NativeTabs>
@@ -33,6 +77,7 @@ function NativeTabLayout() {
             selected: "checkmark.circle.fill",
           }}
         />
+        <Badge hidden={!dailyCheckinMissing} />
         <Label>Check-in</Label>
       </NativeTabs.Trigger>
       {isAdmin && (
@@ -57,6 +102,7 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+  const dailyCheckinMissing = useDailyCheckinMissing();
 
   return (
     <Tabs
@@ -121,20 +167,24 @@ function ClassicTabLayout() {
         name="checkin"
         options={{
           title: "Check-in",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView
-                name="checkmark.circle"
-                tintColor={color}
-                size={24}
-              />
-            ) : (
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={22}
-                color={color}
-              />
-            ),
+          tabBarIcon: ({ color }) => (
+            <View style={{ position: "relative" }}>
+              {isIOS ? (
+                <SymbolView
+                  name="checkmark.circle"
+                  tintColor={color}
+                  size={24}
+                />
+              ) : (
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={22}
+                  color={color}
+                />
+              )}
+              {dailyCheckinMissing && <BadgeDot />}
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
