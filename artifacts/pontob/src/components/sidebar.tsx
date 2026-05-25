@@ -176,6 +176,7 @@ export function AppSidebar() {
           <>
             {/* 1º — Planejamento (foundation: do these first when onboarding) */}
             <NavSection label="Planejamento" />
+            <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
             {isFranqueado && (
               <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals")} />
             )}
