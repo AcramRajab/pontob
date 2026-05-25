@@ -189,7 +189,7 @@ export function AppSidebar() {
             {/* 1º — Planejamento (foundation: do these first when onboarding) */}
             <NavSection label="Planejamento" />
             <NavItem href="/visao" icon={Eye} label="Visão Anual" active={at("/visao")} />
-            <NavItem href="/goals" icon={Target} label="Metas" active={startsWith("/goals") && !startsWith("/goals/")} />
+            <NavItem href="/goals" icon={Target} label="Metas (KRI)" active={startsWith("/goals") && !startsWith("/goals/")} />
             <NavItem href="/kpis" icon={LineChart} label="KPIs" active={at("/kpis")} />
             <NavItem href="/initiatives" icon={ArrowRightCircle} label="Iniciativas" active={startsWith("/initiatives")} />
 
