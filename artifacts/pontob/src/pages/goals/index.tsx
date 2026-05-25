@@ -1,7 +1,7 @@
 import { useAuth } from "@/lib/auth";
 import { useListGoals, getListGoalsQueryKey, useDeleteGoal } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Target, Trash2, BarChart2, Zap, Building2, TrendingUp } from "lucide-react";
+import { Loader2, Plus, Target, Trash2, BarChart2, Zap, Building2, TrendingUp, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { progressColorClass } from "@/lib/progress-color";
 import { ProgressLegend } from "@/components/progress-legend";
 
@@ -90,6 +93,7 @@ export default function Goals() {
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -112,6 +116,16 @@ export default function Goals() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Visão Geral — Todas as Franquias
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 cursor-help text-muted-foreground/50 hover:text-muted-foreground transition-colors" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-[260px] space-y-1.5 text-xs leading-relaxed">
+                <p><strong>Progresso médio:</strong> média de quanto foi realizado em relação ao alvo em cada meta (realizado ÷ meta × 100).</p>
+                <p><strong>Pts score:</strong> pontuação de execução baseada em check-ins, KPIs atualizados e iniciativas concluídas. Máx. 100 pts por meta.</p>
+                <p><strong>Iniciativas:</strong> número de iniciativas estratégicas ativas nesta franquia.</p>
+              </TooltipContent>
+            </Tooltip>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {socioOverview.map(f => {
@@ -149,10 +163,18 @@ export default function Goals() {
                   <div className="space-y-2">
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3" />
-                          Progresso médio
-                        </span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                              <TrendingUp className="h-3 w-3" />
+                              Progresso médio
+                              <HelpCircle className="h-2.5 w-2.5 opacity-40" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-[220px] text-xs leading-relaxed">
+                            Média do <strong>realizado ÷ meta</strong> em todas as metas desta franquia. Verde ≥70%, amarelo ≥40%, vermelho &lt;40%.
+                          </TooltipContent>
+                        </Tooltip>
                         <span className={cn(
                           "font-bold",
                           progress >= 70 ? "text-green-600" : progress >= 40 ? "text-yellow-600" : "text-red-500"
@@ -167,13 +189,21 @@ export default function Goals() {
                       <span className="text-muted-foreground">
                         <span className="font-semibold text-foreground">{f.goalCount}</span> {f.goalCount === 1 ? "meta" : "metas"}
                       </span>
-                      <span className="text-muted-foreground">
-                        <span className={cn(
-                          "font-semibold",
-                          score >= 70 ? "text-green-600" : score >= 40 ? "text-yellow-600" : "text-red-500"
-                        )}>{score}</span>
-                        {" "}pts score
-                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-muted-foreground flex items-center gap-1 cursor-help">
+                            <span className={cn(
+                              "font-semibold",
+                              score >= 70 ? "text-green-600" : score >= 40 ? "text-yellow-600" : "text-red-500"
+                            )}>{score}</span>
+                            {" "}pts score
+                            <HelpCircle className="h-2.5 w-2.5 opacity-40" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-[220px] text-xs leading-relaxed">
+                          <strong>Score de execução</strong> (máx. 100 pts por meta): considera check-ins realizados, KPIs atualizados e iniciativas concluídas. Reflete a <em>consistência</em> de execução, não só o resultado.
+                        </TooltipContent>
+                      </Tooltip>
                       <span className="text-muted-foreground">
                         <span className="font-semibold text-foreground">{f.activeInitiatives}</span> iniciativas
                       </span>
@@ -238,10 +268,26 @@ export default function Goals() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          <div className="flex flex-col items-end">
-                            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60">Score</span>
-                            <span className="text-xl font-bold leading-none tabular-nums">{goal.score}</span>
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex flex-col items-end cursor-help">
+                                <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/60 flex items-center gap-0.5">
+                                  Score <HelpCircle className="h-2.5 w-2.5" />
+                                </span>
+                                <span className="text-xl font-bold leading-none tabular-nums">{goal.score}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-[240px] text-xs leading-relaxed space-y-1">
+                              <p><strong>Score de execução</strong> desta meta (0–100 pts).</p>
+                              <p>Calculado a partir de:</p>
+                              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                                <li>40% — resultado do KRI</li>
+                                <li>30% — execução das iniciativas</li>
+                                <li>20% — consistência de check-ins</li>
+                                <li>10% — atualização dos KPIs</li>
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
                           {canWrite && (
                             <Button
                               variant="ghost"
@@ -429,5 +475,6 @@ export default function Goals() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 }
