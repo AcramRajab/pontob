@@ -246,6 +246,30 @@ router.post("/planner", requireAuth, requireWriteAccess, async (req, res) => {
   }
 });
 
+// DELETE /planner/week — clear all daily entries for a week (reset)
+router.delete("/planner/week", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const { franchiseId, weekStartDate } = req.query;
+    if (!franchiseId || !weekStartDate) {
+      res.status(400).json({ error: "franchiseId and weekStartDate required" });
+      return;
+    }
+    const fid = Number(franchiseId);
+    if (!canAccessFranchise(req, fid)) { res.status(403).json({ error: "Forbidden" }); return; }
+
+    await db.delete(weeklyPlannerEntriesTable).where(
+      and(
+        eq(weeklyPlannerEntriesTable.franchiseId, fid),
+        eq(weeklyPlannerEntriesTable.weekStartDate, String(weekStartDate)),
+      )
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // PATCH /planner/week — save gaps/actions text (auto-save)
 router.patch("/planner/week", requireAuth, requireWriteAccess, async (req, res) => {
   try {

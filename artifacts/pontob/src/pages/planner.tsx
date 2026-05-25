@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw, ClipboardList, ArrowUp, ArrowDown, Minus, BadgePlus, XCircle, HandCoins } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Send, AlertCircle, Users, Building2, TrendingUp, ExternalLink, RotateCcw, ClipboardList, ArrowUp, ArrowDown, Minus, BadgePlus, XCircle, HandCoins, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -29,12 +29,16 @@ const SECTIONS = [
     dot: "bg-blue-500",
     bar: "bg-blue-400",
     indicators: [
-      { key: "reunioes_agendadas", label: "Reuniões agendadas" },
-      { key: "reunioes_realizadas", label: "Reuniões realizadas" },
+      { key: "reunioes_agendadas", label: "Reuniões agendadas", defaultWeeklyMeta: 10 },
+      { key: "reunioes_realizadas", label: "Reuniões realizadas", defaultWeeklyMeta: 5 },
       { key: "corretores_entraram", label: "Corretores entraram" },
       { key: "estagiarios_entraram", label: "Estagiários entraram" },
       { key: "corretores_sairam", label: "Corretores saíram" },
       { key: "estagiarios_sairam", label: "Estagiários saíram" },
+    ],
+    netGainRows: [
+      { label: "↳ Net Corretores", plus: "corretores_entraram", minus: "corretores_sairam", colorPos: "text-blue-600", colorNeg: "text-red-500" },
+      { label: "↳ Net Estagiários", plus: "estagiarios_entraram", minus: "estagiarios_sairam", colorPos: "text-sky-600", colorNeg: "text-rose-500" },
     ],
   },
   {
@@ -49,6 +53,9 @@ const SECTIONS = [
       { key: "novos_contratos_representacao", label: "Novos contratos de representação" },
       { key: "contratos_cancelados", label: "Contratos cancelados" },
       { key: "contratos_vendidos", label: "Contratos vendidos" },
+    ],
+    netGainRows: [
+      { label: "↳ Net CREs ativas", plus: "novos_contratos_representacao", minus: "contratos_cancelados", colorPos: "text-violet-600", colorNeg: "text-red-500" },
     ],
   },
   {
@@ -139,9 +146,9 @@ async function submitWeek(body: object) {
 
 // Single editable cell
 function Cell({
-  serverValue, onChange, disabled,
+  serverValue, onChange, disabled, isInteger = true,
 }: {
-  serverValue: string; onChange: (v: string) => void; disabled: boolean;
+  serverValue: string; onChange: (v: string) => void; disabled: boolean; isInteger?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(serverValue);
   const [hovered, setHovered] = useState(false);
@@ -169,7 +176,7 @@ function Cell({
       <Input
         type="number"
         min={0}
-        step="any"
+        step={isInteger ? 1 : "any"}
         value={localValue}
         disabled={disabled}
         className={cn(
@@ -181,7 +188,15 @@ function Cell({
           hovered && !disabled ? "bg-muted/40" : "",
         )}
         onFocus={() => { isFocused.current = true; }}
-        onBlur={() => { isFocused.current = false; }}
+        onBlur={(e) => {
+          isFocused.current = false;
+          // Round to integer on blur for non-currency fields
+          if (isInteger && e.target.value !== "") {
+            const rounded = String(Math.round(Number(e.target.value)));
+            setLocalValue(rounded);
+            onChange(rounded);
+          }
+        }}
         onChange={e => {
           setLocalValue(e.target.value);
           onChange(e.target.value);
@@ -213,6 +228,7 @@ export default function Planner() {
   const weekDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [localGaps, setLocalGaps] = useState<Record<string, string>>({});
   const [localActions, setLocalActions] = useState<Record<string, string>>({});
 
@@ -304,6 +320,24 @@ export default function Planner() {
     onError: () => toast({ title: "Erro ao reabrir semana", variant: "destructive" }),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/planner/week?franchiseId=${franchiseId}&weekStartDate=${weekStartStr}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planner", franchiseId, weekStartStr] });
+      queryClient.invalidateQueries({ queryKey: ["planner-monthly", franchiseId] });
+      queryClient.invalidateQueries({ queryKey: ["planner-ytd", franchiseId] });
+      toast({ title: "Semana zerada", description: "Todos os dados desta semana foram apagados." });
+    },
+    onError: () => toast({ title: "Erro ao zerar semana", variant: "destructive" }),
+  });
+
   // Sync local state when data loads
   useEffect(() => {
     if (data?.week) {
@@ -321,7 +355,12 @@ export default function Planner() {
     if (!data?.entries) return { value: "", meta: "" };
     const e = data.entries.find((e: any) => e.indicatorKey === indicatorKey && e.dayOfWeek === dayOfWeek);
     if (!e) return { value: "", meta: "" };
-    return { value: e.value != null ? String(e.value) : "", meta: e.meta != null ? String(e.meta) : "" };
+    const isVghKey = indicatorKey.includes("venda");
+    const rawVal = e.value != null ? Number(e.value) : null;
+    const displayVal = rawVal != null ? (isVghKey ? String(rawVal) : String(Math.round(rawVal))) : "";
+    const rawMeta = e.meta != null ? Number(e.meta) : null;
+    const displayMeta = rawMeta != null ? String(Math.round(rawMeta)) : "";
+    return { value: displayVal, meta: displayMeta };
   }, [data]);
 
   const handleCellChange = useCallback((indicatorKey: string, dayOfWeek: number, field: "value" | "meta", raw: string) => {
@@ -364,28 +403,26 @@ export default function Planner() {
 
   function weekTotal(indicatorKey: string): number {
     if (!data?.entries) return 0;
-    return data.entries.filter((e: any) => e.indicatorKey === indicatorKey).reduce((s: number, e: any) => s + (e.value ?? 0), 0);
+    return data.entries.filter((e: any) => e.indicatorKey === indicatorKey).reduce((s: number, e: any) => s + (Number(e.value) || 0), 0);
   }
 
-  /** Monthly target as stored (user-entered). */
+  /** Weekly target as stored (user enters weekly target directly). */
   function metaForIndicator(indicatorKey: string): number | null {
     if (!data?.entries) return null;
-    const metas = data.entries.filter((e: any) => e.indicatorKey === indicatorKey && e.meta != null).map((e: any) => e.meta);
+    const metas = data.entries.filter((e: any) => e.indicatorKey === indicatorKey && e.meta != null).map((e: any) => Number(e.meta));
     return metas.length ? metas[metas.length - 1] : null;
   }
 
-  /** Weekly target = monthly ÷ weeks in the current month. */
+  /** Weekly target — same as stored (meta IS the weekly target). */
   function weeklyMetaForIndicator(indicatorKey: string): number | null {
-    const monthly = metaForIndicator(indicatorKey);
-    if (monthly === null) return null;
-    return monthly / numWeeksInMonth;
+    return metaForIndicator(indicatorKey);
   }
 
   const isVgh = (key: string) => key.includes("venda");
   const fmtNum = (n: number, key: string) =>
     isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(Math.round(n));
   const fmtWeekly = (n: number, key: string) =>
-    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "/sem" : `~${Math.round(n)}/sem`;
+    isVgh(key) ? "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "/sem" : `${Math.round(n)}/sem`;
 
   const today = new Date();
   const isCurrentWeek = formatDate(getMondayOfWeek(today)) === weekStartStr;
@@ -444,6 +481,19 @@ export default function Planner() {
           {!isCurrentWeek && (
             <Button variant="outline" size="sm" onClick={() => setWeekStart(getMondayOfWeek(new Date()))}>
               Semana atual
+            </Button>
+          )}
+
+          {canWrite && franchiseId && !isLoading && !isSubmitted && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2.5 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+              onClick={() => setConfirmReset(true)}
+              disabled={resetMutation.isPending}
+            >
+              <Trash2 className="h-3 w-3" />
+              Zerar semana
             </Button>
           )}
 
@@ -661,7 +711,7 @@ export default function Planner() {
                         Total
                       </th>
                       <th className="text-center px-2 py-2 font-medium text-muted-foreground text-xs min-w-[90px]">
-                        Meta/mês
+                        Meta/sem
                       </th>
                       <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs min-w-[120px]">
                         Status
@@ -671,11 +721,12 @@ export default function Planner() {
                   <tbody>
                     {section.indicators.map((ind, rowIdx) => {
                       const total = weekTotal(ind.key);
-                      const meta = metaForIndicator(ind.key);          // monthly
-                      const weeklyMeta = weeklyMetaForIndicator(ind.key); // monthly ÷ weeks
+                      const meta = metaForIndicator(ind.key);
+                      const weeklyMeta = weeklyMetaForIndicator(ind.key);
                       const isOver = weeklyMeta !== null && total >= weeklyMeta && weeklyMeta > 0;
                       const p = weeklyMeta && weeklyMeta > 0 ? Math.min(Math.round((total / weeklyMeta) * 100), 100) : null;
                       const isValueKey = isVgh(ind.key);
+                      const defaultMeta = (ind as any).defaultWeeklyMeta as number | undefined;
 
                       return (
                         <tr
@@ -707,6 +758,7 @@ export default function Planner() {
                                   serverValue={v}
                                   onChange={val => handleCellChange(ind.key, dayIdx, "value", val)}
                                   disabled={!canWrite || isSubmitted}
+                                  isInteger={!isValueKey}
                                 />
                               </td>
                             );
@@ -722,7 +774,7 @@ export default function Planner() {
                             </span>
                           </td>
 
-                          {/* Meta/mês input + derived weekly */}
+                          {/* Meta/sem input */}
                           <td className="p-0 text-center">
                             <div className="flex flex-col items-center">
                               <Input
@@ -732,7 +784,7 @@ export default function Planner() {
                                 defaultValue={meta ?? ""}
                                 key={`${ind.key}-meta-${weekStartStr}`}
                                 disabled={!canWrite || isSubmitted}
-                                placeholder="—"
+                                placeholder={defaultMeta != null ? String(defaultMeta) : "—"}
                                 className="h-8 w-full text-center text-xs font-medium border-0 bg-transparent rounded-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:bg-primary/5 disabled:opacity-40"
                                 onChange={e => handleCellChange(ind.key, 0, "meta", e.target.value)}
                               />
@@ -762,6 +814,44 @@ export default function Planner() {
                               <span className="text-xs text-muted-foreground/40">—</span>
                             )}
                           </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Net Gain rows — computed, read-only */}
+                    {"netGainRows" in section && (section.netGainRows as any[]).map((ng: any) => {
+                      const plusTotal = weekTotal(ng.plus);
+                      const minusTotal = weekTotal(ng.minus);
+                      const net = plusTotal - minusTotal;
+                      const isPos = net >= 0;
+                      return (
+                        <tr key={ng.label} className="border-t border-border/40 bg-muted/20">
+                          <td className="px-3 py-1 sticky left-0 bg-muted/20 w-[170px] min-w-[170px]">
+                            <span className={cn("text-xs font-semibold italic", isPos ? ng.colorPos : ng.colorNeg)}>
+                              {ng.label}
+                            </span>
+                          </td>
+                          {DAYS.map((_, dayIdx) => {
+                            const pVal = Number(getEntry(ng.plus, dayIdx).value) || 0;
+                            const mVal = Number(getEntry(ng.minus, dayIdx).value) || 0;
+                            const dayNet = pVal - mVal;
+                            const isZero = dayNet === 0 && pVal === 0 && mVal === 0;
+                            return (
+                              <td key={dayIdx} className={cn("text-center border-l border-border/20 py-1 text-xs font-semibold tabular-nums",
+                                isCurrentWeek && dayIdx === todayDayIdx ? "bg-primary/5" : "",
+                                isZero ? "text-muted-foreground/30" : dayNet >= 0 ? ng.colorPos : ng.colorNeg
+                              )}>
+                                {isZero ? "—" : (dayNet > 0 ? `+${dayNet}` : String(dayNet))}
+                              </td>
+                            );
+                          })}
+                          <td className="px-3 py-1 text-center border-l border-border/60">
+                            <span className={cn("text-sm font-bold tabular-nums", net === 0 ? "text-muted-foreground/40" : isPos ? ng.colorPos : ng.colorNeg)}>
+                              {net === 0 ? "—" : (net > 0 ? `+${net}` : String(net))}
+                            </span>
+                          </td>
+                          <td className="py-1" />
+                          <td className="py-1" />
                         </tr>
                       );
                     })}
@@ -1069,6 +1159,37 @@ export default function Planner() {
               onClick={() => { setConfirmReopen(false); reopenMutation.mutate(); }}
             >
               Sim, reabrir para correção
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm reset dialog */}
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-red-500" />
+              Zerar semana?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Todos os valores diários da semana <strong className="text-foreground">{formatWeekRange(weekStartStr, weekEndStr)}</strong> serão apagados permanentemente.
+                </p>
+                <p>
+                  As metas configuradas <strong>não</strong> serão apagadas. Esta ação não pode ser desfeita.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => { setConfirmReset(false); resetMutation.mutate(); }}
+            >
+              Sim, zerar semana
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
