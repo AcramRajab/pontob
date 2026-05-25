@@ -351,26 +351,36 @@ router.get("/checkins/pending-gate", requireAuth, async (req, res) => {
     const todayDow = now.getDay(); // 0=Sun … 6=Sat
 
     // ── Monthly gate ──────────────────────────────────────────────────────────
-    // Grace: until the 5th of the new month. After that, last month's check-in is required.
-    if (todayDay >= 5) {
-      const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth(); // 1-based
-      const prevYear  = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    // Window: day 1 through the first business day (Mon–Fri) of the current month.
+    // After the first business day the window CLOSES — the gate no longer blocks.
+    // Example: May 1 is a Friday → window = May 1 only.
+    //          June 1 is a Saturday → first BD = June 3 → window = June 1–3.
+    {
+      const firstDayDow = new Date(now.getFullYear(), now.getMonth(), 1).getDay(); // 0=Sun…6=Sat
+      // days to add to the 1st to reach the first Mon–Fri
+      const daysToFirstBD = firstDayDow === 0 ? 1 : firstDayDow === 6 ? 2 : 0;
+      const firstBDDay = 1 + daysToFirstBD; // day-of-month (1-based)
 
-      const [found] = await db
-        .select({ id: monthlyCheckinsTable.id })
-        .from(monthlyCheckinsTable)
-        .where(and(
-          eq(monthlyCheckinsTable.franchiseId, franchiseId),
-          eq(monthlyCheckinsTable.month, prevMonth),
-          eq(monthlyCheckinsTable.year, prevYear),
-        ))
-        .limit(1);
+      if (todayDay >= 1 && todayDay <= firstBDDay) {
+        const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth(); // 1-based
+        const prevYear  = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
-      if (!found) {
-        const label = new Date(prevYear, prevMonth - 1, 1)
-          .toLocaleString("pt-BR", { month: "long", year: "numeric" });
-        res.json({ overdue: true, type: "monthly", periodLabel: label, month: prevMonth, year: prevYear });
-        return;
+        const [found] = await db
+          .select({ id: monthlyCheckinsTable.id })
+          .from(monthlyCheckinsTable)
+          .where(and(
+            eq(monthlyCheckinsTable.franchiseId, franchiseId),
+            eq(monthlyCheckinsTable.month, prevMonth),
+            eq(monthlyCheckinsTable.year, prevYear),
+          ))
+          .limit(1);
+
+        if (!found) {
+          const label = new Date(prevYear, prevMonth - 1, 1)
+            .toLocaleString("pt-BR", { month: "long", year: "numeric" });
+          res.json({ overdue: true, type: "monthly", periodLabel: label, month: prevMonth, year: prevYear });
+          return;
+        }
       }
     }
 
