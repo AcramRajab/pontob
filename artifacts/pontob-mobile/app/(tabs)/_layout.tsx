@@ -7,9 +7,15 @@ import { SymbolView } from "expo-symbols";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
+import { useAuth } from "@/context/auth";
 import { useColors } from "@/hooks/useColors";
 
+const ADMIN_ROLES = ["master_admin", "staff_regional"];
+
 function NativeTabLayout() {
+  const { user } = useAuth();
+  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
@@ -29,6 +35,12 @@ function NativeTabLayout() {
         />
         <Label>Check-in</Label>
       </NativeTabs.Trigger>
+      {isAdmin && (
+        <NativeTabs.Trigger name="admin">
+          <Icon sf={{ default: "person.badge.clock", selected: "person.badge.clock.fill" }} />
+          <Label>Aprovações</Label>
+        </NativeTabs.Trigger>
+      )}
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Perfil</Label>
@@ -39,10 +51,12 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const { user } = useAuth();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
 
   return (
     <Tabs
@@ -120,6 +134,19 @@ function ClassicTabLayout() {
                 size={22}
                 color={color}
               />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: "Aprovações",
+          tabBarButton: isAdmin ? undefined : () => null,
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="person.badge.clock" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="time-outline" size={22} color={color} />
             ),
         }}
       />
