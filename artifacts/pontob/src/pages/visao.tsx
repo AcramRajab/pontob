@@ -708,7 +708,8 @@ export default function Visao() {
             const cfCres  = carryForward("actualCres");
             const cfVgh   = carryForward("actualVgh");
 
-            const hasData = cfCreci.value != null || cfCres.value != null || cfVgh.value != null;
+            // "com dados" only when this quarter has its OWN actuals (not carried from a prior quarter)
+            const hasData = actual?.actualCreci != null || actual?.actualCres != null || actual?.actualVgh != null;
 
             // Overall % average using effective (carried) actuals vs this quarter's targets
             const pCreci = pct(cfCreci.value, milestone?.targetCreci ?? null);
