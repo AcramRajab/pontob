@@ -22,9 +22,9 @@ router.get("/visao", requireAuth, async (req, res) => {
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
     const paramFranchiseId = req.query.franchiseId ? parseInt(req.query.franchiseId as string) : undefined;
 
-    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional")
+    const effectiveFranchiseId = (role === "master_admin" || role === "staff_regional" || role === "socio")
       ? paramFranchiseId
-      : req.session.franchiseId ?? undefined;
+      : (paramFranchiseId ?? req.session.franchiseId ?? undefined);
 
     if (!effectiveFranchiseId) {
       res.status(400).json({ error: "franchiseId required" });
