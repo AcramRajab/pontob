@@ -22,6 +22,7 @@ export * from "./catalogActivityEntryEntityType";
 export * from "./catalogAuditLogEntry";
 export * from "./catalogDeactivationImpact";
 export * from "./catalogToggleResult";
+export * from "./checkinComparison";
 export * from "./dailyCheckin";
 export * from "./dailyCheckinExecutedToday";
 export * from "./dailyCheckinInput";

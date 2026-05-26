@@ -1541,6 +1541,23 @@ export const UpdateMonthlyCheckinResponse = zod.object({
 });
 
 /**
+ * @summary Compare check-in activity across all franchises (admin/staff only)
+ */
+export const GetCheckinComparisonResponseItem = zod.object({
+  franchiseId: zod.number(),
+  franchiseName: zod.string(),
+  dailyCount: zod.number(),
+  weeklyCount: zod.number(),
+  monthlyCount: zod.number(),
+  lastDaily: zod.string().nullish(),
+  lastWeekly: zod.string().nullish(),
+  lastMonthly: zod.string().nullish(),
+});
+export const GetCheckinComparisonResponse = zod.array(
+  GetCheckinComparisonResponseItem,
+);
+
+/**
  * @summary List alerts
  */
 export const ListAlertsQueryParams = zod.object({

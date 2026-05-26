@@ -5,6 +5,8 @@ import {
   useListMonthlyCheckins, getListMonthlyCheckinsQueryKey,
   useUpdateDailyCheckin, useUpdateWeeklyCheckin, useUpdateMonthlyCheckin,
   WeeklyCheckinInputInitiativeDecision,
+  useGetCheckinComparison, getGetCheckinComparisonQueryKey,
+  CheckinComparison,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   History, TrendingUp, TrendingDown, CheckSquare, Calendar, BarChart2,
   CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand, Pencil, Filter,
+  LayoutList, TableProperties,
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -731,12 +734,113 @@ function getPresetRange(preset: DatePreset): { from: Date | null; to: Date | nul
   return { from: null, to: null };
 }
 
+function CountBadge({ count, last }: { count: number; last: string | null }) {
+  function recencyClass(iso: string | null): string {
+    if (!iso) return "text-muted-foreground";
+    const days = (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24);
+    if (days <= 7) return "text-green-600";
+    if (days <= 30) return "text-yellow-600";
+    return "text-red-500";
+  }
+  const cls = count > 0 ? recencyClass(last) : "text-muted-foreground";
+  return (
+    <div className="text-center min-w-[64px]">
+      <span className={`text-sm font-semibold ${cls}`}>{count}</span>
+      {last ? (
+        <p className={`text-[11px] leading-tight mt-0.5 ${cls} opacity-80`}>{formatDate(last)}</p>
+      ) : (
+        <p className="text-[11px] text-muted-foreground">—</p>
+      )}
+    </div>
+  );
+}
+
+function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number) => void }) {
+  const { data: rows = [], isLoading } = useGetCheckinComparison({
+    query: { queryKey: getGetCheckinComparisonQueryKey() },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+      </div>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+          <History className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">Nenhuma franquia encontrada</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+              Franquia
+            </th>
+            <th className="text-center px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />Diário
+              </div>
+            </th>
+            <th className="text-center px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                <Calendar className="h-3.5 w-3.5 text-blue-500 shrink-0" />Semanal
+              </div>
+            </th>
+            <th className="text-center px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="flex items-center justify-center gap-1 whitespace-nowrap">
+                <BarChart2 className="h-3.5 w-3.5 text-purple-500 shrink-0" />Mensal
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {(rows as CheckinComparison[]).map((row, i) => (
+            <tr
+              key={row.franchiseId}
+              className={`border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors ${i % 2 !== 0 ? "bg-muted/20" : ""}`}
+              onClick={() => onSelectFranchise(row.franchiseId)}
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium">{row.franchiseName}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
+                </div>
+              </td>
+              <td className="px-3 py-3">
+                <CountBadge count={row.dailyCount} last={row.lastDaily ?? null} />
+              </td>
+              <td className="px-3 py-3">
+                <CountBadge count={row.weeklyCount} last={row.lastWeekly ?? null} />
+              </td>
+              <td className="px-3 py-3">
+                <CountBadge count={row.monthlyCount} last={row.lastMonthly ?? null} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function HistoryPage() {
   const [tab, setTab] = useState("all");
   const [selected, setSelected] = useState<HistItem | null>(null);
   const [datePreset, setDatePreset] = useState<DatePreset>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [viewMode, setViewMode] = useState<"timeline" | "comparativo">("timeline");
   const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
   const fid = franchiseId ?? undefined;
@@ -804,11 +908,57 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Histórico</h1>
-        <p className="text-muted-foreground mt-1">Registro de check-ins e atualizações de progresso</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Histórico</h1>
+          <p className="text-muted-foreground mt-1">Registro de check-ins e atualizações de progresso</p>
+        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1 shrink-0">
+            <button
+              onClick={() => setViewMode("timeline")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "timeline"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              Histórico
+            </button>
+            <button
+              onClick={() => setViewMode("comparativo")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === "comparativo"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TableProperties className="h-3.5 w-3.5" />
+              Comparativo
+            </button>
+          </div>
+        )}
       </div>
 
+      {isAdmin && viewMode === "comparativo" ? (
+        <>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />Últimos 7 dias</span>
+            <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500" />8–30 dias</span>
+            <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />Mais de 30 dias</span>
+            <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />Nenhum</span>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-3">Clique em uma franquia para ver o histórico detalhado.</p>
+          <ComparativoView
+            onSelectFranchise={id => {
+              setAdminFranchiseId(id);
+              setViewMode("timeline");
+            }}
+          />
+        </>
+      ) : (
+        <>
       {(isAdmin || isSocio) && (
         <FranchisePicker franchises={franchises} value={isSocio ? socioFranchiseId : adminFranchiseId} onChange={isSocio ? setSocioFranchiseId : setAdminFranchiseId} />
       )}
@@ -918,6 +1068,8 @@ export default function HistoryPage() {
               </div>
             </div>
           )}
+        </>
+      )}
         </>
       )}
 

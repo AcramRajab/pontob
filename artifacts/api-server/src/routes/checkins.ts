@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, dailyCheckinsTable, weeklyCheckinsTable, monthlyCheckinsTable, goalsTable, usersTable } from "@workspace/db";
+import { db, dailyCheckinsTable, weeklyCheckinsTable, monthlyCheckinsTable, goalsTable, usersTable, franchisesTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
@@ -320,6 +320,74 @@ router.patch("/monthly-checkins/:id", requireAuth, requireWriteAccess, async (re
 
     const [updated] = await db.update(monthlyCheckinsTable).set(updates).where(eq(monthlyCheckinsTable.id, id)).returning();
     res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /checkins/comparison — cross-franchise check-in summary for admins
+router.get("/checkins/comparison", requireAuth, async (req, res) => {
+  try {
+    const role = req.session.userRole!;
+    if (role !== "master_admin" && role !== "staff_regional") {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const allFranchises = await db
+      .select({ id: franchisesTable.id, name: franchisesTable.name })
+      .from(franchisesTable)
+      .orderBy(franchisesTable.name);
+
+    const dailyStats = await db
+      .select({
+        franchiseId: dailyCheckinsTable.franchiseId,
+        count: sql<number>`count(*)`.mapWith(Number),
+        lastDate: sql<string | null>`max(${dailyCheckinsTable.createdAt})`,
+      })
+      .from(dailyCheckinsTable)
+      .groupBy(dailyCheckinsTable.franchiseId);
+
+    const weeklyStats = await db
+      .select({
+        franchiseId: weeklyCheckinsTable.franchiseId,
+        count: sql<number>`count(*)`.mapWith(Number),
+        lastDate: sql<string | null>`max(${weeklyCheckinsTable.createdAt})`,
+      })
+      .from(weeklyCheckinsTable)
+      .groupBy(weeklyCheckinsTable.franchiseId);
+
+    const monthlyStats = await db
+      .select({
+        franchiseId: monthlyCheckinsTable.franchiseId,
+        count: sql<number>`count(*)`.mapWith(Number),
+        lastDate: sql<string | null>`max(${monthlyCheckinsTable.createdAt})`,
+      })
+      .from(monthlyCheckinsTable)
+      .groupBy(monthlyCheckinsTable.franchiseId);
+
+    const dailyMap = new Map(dailyStats.map(s => [s.franchiseId, s]));
+    const weeklyMap = new Map(weeklyStats.map(s => [s.franchiseId, s]));
+    const monthlyMap = new Map(monthlyStats.map(s => [s.franchiseId, s]));
+
+    const result = allFranchises.map(f => {
+      const d = dailyMap.get(f.id);
+      const w = weeklyMap.get(f.id);
+      const m = monthlyMap.get(f.id);
+      return {
+        franchiseId: f.id,
+        franchiseName: f.name,
+        dailyCount: d?.count ?? 0,
+        weeklyCount: w?.count ?? 0,
+        monthlyCount: m?.count ?? 0,
+        lastDaily: d?.lastDate instanceof Date ? d.lastDate.toISOString() : (d?.lastDate ?? null),
+        lastWeekly: w?.lastDate instanceof Date ? w.lastDate.toISOString() : (w?.lastDate ?? null),
+        lastMonthly: m?.lastDate instanceof Date ? m.lastDate.toISOString() : (m?.lastDate ?? null),
+      };
+    });
+
+    res.json(result);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

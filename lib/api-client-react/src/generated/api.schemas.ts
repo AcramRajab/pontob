@@ -847,6 +847,20 @@ export interface MonthlyCheckin {
   createdAt: string;
 }
 
+export interface CheckinComparison {
+  franchiseId: number;
+  franchiseName: string;
+  dailyCount: number;
+  weeklyCount: number;
+  monthlyCount: number;
+  /** @nullable */
+  lastDaily?: string | null;
+  /** @nullable */
+  lastWeekly?: string | null;
+  /** @nullable */
+  lastMonthly?: string | null;
+}
+
 export interface MonthlyCheckinInput {
   goalId: number;
   franchiseId: number;

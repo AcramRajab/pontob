@@ -27,6 +27,7 @@ import type {
   CatalogAuditLogEntry,
   CatalogDeactivationImpact,
   CatalogToggleResult,
+  CheckinComparison,
   DailyCheckin,
   DailyCheckinInput,
   DailyCheckinUpdateInput,
@@ -5274,6 +5275,81 @@ export const useUpdateMonthlyCheckin = <
 > => {
   return useMutation(getUpdateMonthlyCheckinMutationOptions(options));
 };
+
+/**
+ * @summary Compare check-in activity across all franchises (admin/staff only)
+ */
+export const getGetCheckinComparisonUrl = () => {
+  return `/api/checkins/comparison`;
+};
+
+export const getCheckinComparison = async (
+  options?: RequestInit,
+): Promise<CheckinComparison[]> => {
+  return customFetch<CheckinComparison[]>(getGetCheckinComparisonUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCheckinComparisonQueryKey = () => {
+  return [`/api/checkins/comparison`] as const;
+};
+
+export const getGetCheckinComparisonQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCheckinComparison>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckinComparison>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCheckinComparisonQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCheckinComparison>>
+  > = ({ signal }) => getCheckinComparison({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckinComparison>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCheckinComparisonQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCheckinComparison>>
+>;
+export type GetCheckinComparisonQueryError = ErrorType<void>;
+
+/**
+ * @summary Compare check-in activity across all franchises (admin/staff only)
+ */
+
+export function useGetCheckinComparison<
+  TData = Awaited<ReturnType<typeof getCheckinComparison>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCheckinComparison>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCheckinComparisonQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List alerts

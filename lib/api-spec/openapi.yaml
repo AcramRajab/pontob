@@ -1291,6 +1291,23 @@ paths:
         "404":
           description: Not found
 
+  /checkins/comparison:
+    get:
+      operationId: getCheckinComparison
+      tags: [checkins]
+      summary: Compare check-in activity across all franchises (admin/staff only)
+      responses:
+        "200":
+          description: Comparison summary per franchise
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CheckinComparison"
+        "403":
+          description: Forbidden
+
   /alerts:
     get:
       operationId: listAlerts
@@ -2741,6 +2758,27 @@ components:
           type: ["string", "null"]
         createdAt:
           type: string
+
+    CheckinComparison:
+      type: object
+      required: [franchiseId, franchiseName, dailyCount, weeklyCount, monthlyCount]
+      properties:
+        franchiseId:
+          type: integer
+        franchiseName:
+          type: string
+        dailyCount:
+          type: integer
+        weeklyCount:
+          type: integer
+        monthlyCount:
+          type: integer
+        lastDaily:
+          type: ["string", "null"]
+        lastWeekly:
+          type: ["string", "null"]
+        lastMonthly:
+          type: ["string", "null"]
 
     MonthlyCheckinInput:
       type: object
