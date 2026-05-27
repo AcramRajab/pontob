@@ -161,6 +161,8 @@ export default function AdminApprovalsScreen() {
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  const [catalogSearch, setCatalogSearch] = useState("");
+
   const [historyEntityFilter, setHistoryEntityFilter] = useState<HistoryEntityFilter>("all");
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
@@ -792,6 +794,25 @@ export default function AdminApprovalsScreen() {
     },
     catalogTypeBtnTextActive: {
       color: colors.primaryForeground,
+    },
+    catalogSearchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.card,
+      borderRadius: colors.radius * 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 8,
+      marginBottom: 12,
+    },
+    catalogSearchInput: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      paddingVertical: 0,
     },
     catalogItem: {
       backgroundColor: colors.card,
@@ -1441,7 +1462,7 @@ export default function AdminApprovalsScreen() {
                   <Pressable
                     key={type}
                     style={[s.catalogTypeBtn, catalogTab === type && s.catalogTypeBtnActive]}
-                    onPress={() => setCatalogTab(type)}
+                    onPress={() => { setCatalogTab(type); setCatalogSearch(""); }}
                   >
                     <Text
                       style={[
@@ -1456,6 +1477,27 @@ export default function AdminApprovalsScreen() {
               )}
             </ScrollView>
 
+            {/* Search bar */}
+            <View style={s.catalogSearchBar}>
+              <Ionicons name="search-outline" size={16} color={colors.mutedForeground} style={{ flexShrink: 0 }} />
+              <TextInput
+                style={s.catalogSearchInput}
+                placeholder="Buscar..."
+                placeholderTextColor={colors.mutedForeground}
+                value={catalogSearch}
+                onChangeText={setCatalogSearch}
+                returnKeyType="search"
+                clearButtonMode="never"
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
+              {catalogSearch.length > 0 && (
+                <Pressable hitSlop={8} onPress={() => setCatalogSearch("")}>
+                  <Ionicons name="close-circle" size={17} color={colors.mutedForeground} />
+                </Pressable>
+              )}
+            </View>
+
             {catalogLoading ? (
               <View style={{ alignItems: "center", padding: 40 }}>
                 <ActivityIndicator size="large" color={colors.primary} />
@@ -1465,8 +1507,22 @@ export default function AdminApprovalsScreen() {
                 <Ionicons name="cube-outline" size={36} color={colors.mutedForeground} />
                 <Text style={s.emptyText}>Nenhum item encontrado</Text>
               </View>
+            ) : catalogItems.filter((item) =>
+                catalogSearch.trim() === "" ||
+                item.name.toLowerCase().includes(catalogSearch.trim().toLowerCase())
+              ).length === 0 ? (
+              <View style={s.emptyCard}>
+                <Ionicons name="search-outline" size={36} color={colors.mutedForeground} />
+                <Text style={s.emptyText}>Nenhum item corresponde à busca</Text>
+              </View>
             ) : (
-              catalogItems.map((item) => (
+              catalogItems
+                .filter(
+                  (item) =>
+                    catalogSearch.trim() === "" ||
+                    item.name.toLowerCase().includes(catalogSearch.trim().toLowerCase())
+                )
+                .map((item) => (
                 <Pressable
                   key={item.id}
                   style={({ pressed }) => [s.catalogItem, pressed && { opacity: 0.7 }]}
