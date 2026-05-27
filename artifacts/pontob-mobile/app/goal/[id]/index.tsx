@@ -707,7 +707,7 @@ export default function GoalDetailScreen() {
 
   const statusColor = getStatusColor(data.status, data.riskStatus);
   const pct = Math.min(data.progressPercentage, 100);
-  const activeInitiatives = data.initiatives.filter((i) => i.status !== "cancelada" && i.status !== "concluida");
+  const activeInitiatives = data.initiatives.filter((i) => i.status === "ativa");
 
   return (
     <View style={s.container}>
@@ -819,7 +819,7 @@ export default function GoalDetailScreen() {
         <View style={s.section}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <Text style={[s.sectionTitle, { marginBottom: 0 }]}>Iniciativas</Text>
-            {(user?.role === "franqueado" || user?.role === "responsavel_interno") && data.activeInitiativesCount < 3 && (
+            {(user?.role === "franqueado" || user?.role === "responsavel_interno") && activeInitiatives.length < 3 && (
               <Pressable
                 style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: colors.primary + "14", borderRadius: colors.radius }}
                 onPress={() => router.push(`/goal/${id}/initiative-new` as Parameters<typeof router.push>[0])}
