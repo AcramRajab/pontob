@@ -49,3 +49,40 @@ jobs:
 
       - name: Run typecheck
         run: pnpm run typecheck
+
+  api-contract:
+    name: API contract (codegen drift check)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate API hooks and Zod schemas
+        run: pnpm --filter @workspace/api-spec run codegen
+
+      - name: Assert no generated files changed
+        run: |
+          DIRTY=$(git status --porcelain -- \
+            lib/api-client-react/src/generated \
+            lib/api-zod/src/generated)
+          if [ -n "$DIRTY" ]; then
+            echo ""
+            echo "ERROR: Generated API files are out of sync with the OpenAPI spec."
+            echo "Run 'pnpm --filter @workspace/api-spec run codegen' locally and commit the result."
+            echo ""
+            echo "Changed files:"
+            echo "$DIRTY"
+            exit 1
+          fi
