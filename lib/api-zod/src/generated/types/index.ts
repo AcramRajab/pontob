@@ -42,6 +42,7 @@ export * from "./franchiseKri";
 export * from "./franchiseKriInput";
 export * from "./franchiseRankingItem";
 export * from "./franchiseUpdate";
+export * from "./getCheckinComparisonParams";
 export * from "./getFranchiseDashboardParams";
 export * from "./getFranchiseRankingBy";
 export * from "./getFranchiseRankingParams";

@@ -1334,6 +1334,17 @@ paths:
       operationId: getCheckinComparison
       tags: [checkins]
       summary: Compare check-in activity across all franchises (admin/staff only)
+      parameters:
+        - name: from
+          in: query
+          description: ISO date string (YYYY-MM-DD) to filter check-ins from (inclusive)
+          schema:
+            type: string
+        - name: to
+          in: query
+          description: ISO date string (YYYY-MM-DD) to filter check-ins to (inclusive)
+          schema:
+            type: string
       responses:
         "200":
           description: Comparison summary per franchise

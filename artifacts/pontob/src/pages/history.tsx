@@ -7,6 +7,7 @@ import {
   WeeklyCheckinInputInitiativeDecision,
   useGetCheckinComparison, getGetCheckinComparisonQueryKey,
   CheckinComparison,
+  GetCheckinComparisonParams,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -882,13 +883,62 @@ function CountBadge({ count, last }: { count: number; last: string | null }) {
   );
 }
 
+type CompPreset = "all" | "month" | "lastMonth" | "quarter" | "custom";
+
+const COMP_PRESETS: { value: CompPreset; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "month", label: "Este mês" },
+  { value: "lastMonth", label: "Último mês" },
+  { value: "quarter", label: "Este trimestre" },
+  { value: "custom", label: "Personalizado" },
+];
+
+function getCompPresetRange(preset: CompPreset): { from: string | undefined; to: string | undefined } {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  if (preset === "month") {
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { from: toISO(from), to: toISO(now) };
+  }
+  if (preset === "lastMonth") {
+    const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastOfPrevMonth = new Date(firstOfThisMonth.getTime() - 1);
+    const firstOfPrevMonth = new Date(lastOfPrevMonth.getFullYear(), lastOfPrevMonth.getMonth(), 1);
+    return { from: toISO(firstOfPrevMonth), to: toISO(lastOfPrevMonth) };
+  }
+  if (preset === "quarter") {
+    const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return { from: toISO(qStart), to: toISO(now) };
+  }
+  return { from: undefined, to: undefined };
+}
+
 function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number) => void }) {
-  const { data: rows = [], isLoading } = useGetCheckinComparison({
-    query: { queryKey: getGetCheckinComparisonQueryKey() },
+  const [compPreset, setCompPreset] = useState<CompPreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  const compParams = useMemo((): GetCheckinComparisonParams | undefined => {
+    if (compPreset === "all") return undefined;
+    if (compPreset === "custom") {
+      if (!customFrom && !customTo) return undefined;
+      return { from: customFrom || undefined, to: customTo || undefined };
+    }
+    const range = getCompPresetRange(compPreset);
+    return { from: range.from, to: range.to };
+  }, [compPreset, customFrom, customTo]);
+
+  const { data: rows = [], isLoading } = useGetCheckinComparison(compParams, {
+    query: { queryKey: getGetCheckinComparisonQueryKey(compParams) },
   });
 
   function handleExport() {
-    window.location.href = "/api/exports/checkin-comparison";
+    const params = compParams
+      ? `?${new URLSearchParams(Object.fromEntries(Object.entries(compParams).filter(([, v]) => v != null) as [string, string][])).toString()}`
+      : "";
+    window.location.href = `/api/exports/checkin-comparison${params}`;
   }
 
   if (isLoading) {
@@ -899,7 +949,7 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
     );
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && compPreset === "all") {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -911,13 +961,72 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
-        <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" />
+          <span>Período:</span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {COMP_PRESETS.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setCompPreset(p.value)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                compPreset === p.value
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <Button variant="outline" size="sm" onClick={handleExport} className="ml-auto gap-1.5 h-7 px-2.5 text-xs shrink-0">
           <Download className="h-3.5 w-3.5" />
           Exportar
         </Button>
       </div>
+
+      {compPreset === "custom" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">De:</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={e => setCustomFrom(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">Até:</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={e => setCustomTo(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+          {(customFrom || customTo) && (
+            <button
+              onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+      )}
+
+      {rows.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <History className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">Nenhum check-in no período selecionado</p>
+          </CardContent>
+        </Card>
+      ) : (
     <div className="rounded-lg border overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -969,6 +1078,7 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
         </tbody>
       </table>
     </div>
+      )}
     </div>
   );
 }

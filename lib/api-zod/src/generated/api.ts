@@ -1582,6 +1582,21 @@ export const UpdateMonthlyCheckinResponse = zod.object({
 /**
  * @summary Compare check-in activity across all franchises (admin/staff only)
  */
+export const GetCheckinComparisonQueryParams = zod.object({
+  from: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "ISO date string (YYYY-MM-DD) to filter check-ins from (inclusive)",
+    ),
+  to: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "ISO date string (YYYY-MM-DD) to filter check-ins to (inclusive)",
+    ),
+});
+
 export const GetCheckinComparisonResponseItem = zod.object({
   franchiseId: zod.number(),
   franchiseName: zod.string(),

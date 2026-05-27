@@ -1580,6 +1580,17 @@ export type ListMonthlyCheckinsParams = {
   franchiseId?: number;
 };
 
+export type GetCheckinComparisonParams = {
+  /**
+   * ISO date string (YYYY-MM-DD) to filter check-ins from (inclusive)
+   */
+  from?: string;
+  /**
+   * ISO date string (YYYY-MM-DD) to filter check-ins to (inclusive)
+   */
+  to?: string;
+};
+
 export type ListAlertsParams = {
   franchiseId?: number;
   status?: string;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, dailyCheckinsTable, weeklyCheckinsTable, monthlyCheckinsTable, goalsTable, usersTable, franchisesTable } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
 import { requireAuth, requireWriteAccess } from "../middlewares/auth";
 
 const router = Router();
@@ -335,10 +335,18 @@ router.get("/checkins/comparison", requireAuth, async (req, res) => {
       return;
     }
 
+    const { from, to } = req.query as { from?: string; to?: string };
+    const fromDate = from ? new Date(from + "T00:00:00.000Z") : null;
+    const toDate = to ? new Date(to + "T23:59:59.999Z") : null;
+
     const allFranchises = await db
       .select({ id: franchisesTable.id, name: franchisesTable.name })
       .from(franchisesTable)
       .orderBy(franchisesTable.name);
+
+    const dailyConditions: any[] = [];
+    if (fromDate) dailyConditions.push(gte(dailyCheckinsTable.createdAt, fromDate));
+    if (toDate) dailyConditions.push(lte(dailyCheckinsTable.createdAt, toDate));
 
     const dailyStats = await db
       .select({
@@ -347,7 +355,12 @@ router.get("/checkins/comparison", requireAuth, async (req, res) => {
         lastDate: sql<string | null>`max(${dailyCheckinsTable.createdAt})`,
       })
       .from(dailyCheckinsTable)
+      .where(dailyConditions.length > 0 ? and(...dailyConditions) : undefined)
       .groupBy(dailyCheckinsTable.franchiseId);
+
+    const weeklyConditions: any[] = [];
+    if (fromDate) weeklyConditions.push(gte(weeklyCheckinsTable.createdAt, fromDate));
+    if (toDate) weeklyConditions.push(lte(weeklyCheckinsTable.createdAt, toDate));
 
     const weeklyStats = await db
       .select({
@@ -356,7 +369,12 @@ router.get("/checkins/comparison", requireAuth, async (req, res) => {
         lastDate: sql<string | null>`max(${weeklyCheckinsTable.createdAt})`,
       })
       .from(weeklyCheckinsTable)
+      .where(weeklyConditions.length > 0 ? and(...weeklyConditions) : undefined)
       .groupBy(weeklyCheckinsTable.franchiseId);
+
+    const monthlyConditions: any[] = [];
+    if (fromDate) monthlyConditions.push(gte(monthlyCheckinsTable.createdAt, fromDate));
+    if (toDate) monthlyConditions.push(lte(monthlyCheckinsTable.createdAt, toDate));
 
     const monthlyStats = await db
       .select({
@@ -365,6 +383,7 @@ router.get("/checkins/comparison", requireAuth, async (req, res) => {
         lastDate: sql<string | null>`max(${monthlyCheckinsTable.createdAt})`,
       })
       .from(monthlyCheckinsTable)
+      .where(monthlyConditions.length > 0 ? and(...monthlyConditions) : undefined)
       .groupBy(monthlyCheckinsTable.franchiseId);
 
     const dailyMap = new Map(dailyStats.map(s => [s.franchiseId, s]));
