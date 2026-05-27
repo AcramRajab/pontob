@@ -48,6 +48,15 @@ interface Initiative {
   ownerName: string | null;
   startDate: string | null;
   endDate: string | null;
+  frequency: string | null;
+  estimatedTime: string | null;
+  whatWillBeDone: string | null;
+  whyItMatters: string | null;
+  whoIsResponsible: string | null;
+  whereItWillBeDone: string | null;
+  howItWillBeDone: string | null;
+  investmentOrEffort: string | null;
+  notes: string | null;
 }
 
 interface GoalDetail {
@@ -106,6 +115,35 @@ export default function GoalDetailScreen() {
   const [editingKpi, setEditingKpi] = useState<Kpi | null>(null);
   const [kpiValueInput, setKpiValueInput] = useState("");
   const [statusModalInitiative, setStatusModalInitiative] = useState<Initiative | null>(null);
+  const [expandedInitiatives, setExpandedInitiatives] = useState<Set<number>>(new Set());
+
+  const toggleInitiativeExpand = (id: number) => {
+    setExpandedInitiatives((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return null;
+    const d = new Date(iso + (iso.includes("T") ? "" : "T00:00:00"));
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  const FREQUENCY_LABELS: Record<string, string> = {
+    diaria: "Diária",
+    semanal: "Semanal",
+    quinzenal: "Quinzenal",
+    mensal: "Mensal",
+    trimestral: "Trimestral",
+    semestral: "Semestral",
+    anual: "Anual",
+  };
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 16);
@@ -558,6 +596,80 @@ export default function GoalDetailScreen() {
       fontSize: 14,
       fontFamily: "Inter_400Regular",
     },
+    detailsToggle: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: 3,
+      marginTop: 6,
+      paddingVertical: 2,
+    },
+    detailsToggleText: {
+      fontSize: 11,
+      fontFamily: "Inter_500Medium",
+      color: colors.mutedForeground,
+    },
+    detailsBox: {
+      marginTop: 10,
+      backgroundColor: colors.muted,
+      borderRadius: colors.radius,
+      padding: 12,
+      gap: 8,
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    detailLabel: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      minWidth: 72,
+      lineHeight: 17,
+    },
+    detailValue: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      lineHeight: 18,
+    },
+    detailDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 2,
+    },
+    fivewLabel: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginBottom: 6,
+    },
+    fivewRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 6,
+      marginBottom: 6,
+    },
+    fivewKey: {
+      fontSize: 11,
+      fontFamily: "Inter_700Bold",
+      color: colors.primary,
+      minWidth: 30,
+      lineHeight: 17,
+    },
+    fivewValue: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      lineHeight: 18,
+    },
   });
 
   if (isLoading) {
@@ -726,6 +838,31 @@ export default function GoalDetailScreen() {
               const statusLabel = INITIATIVE_STATUSES.find((s) => s.value === ini.status)?.label ?? ini.status;
               const iniPct = Math.min(ini.progressPercentage, 100);
               const canEdit = user?.role === "franqueado" || user?.role === "responsavel_interno";
+              const isExpanded = expandedInitiatives.has(ini.id);
+              const hasDetails =
+                ini.desiredResult ||
+                ini.ownerName ||
+                ini.startDate ||
+                ini.endDate ||
+                ini.frequency ||
+                ini.estimatedTime ||
+                ini.whatWillBeDone ||
+                ini.whyItMatters ||
+                ini.whoIsResponsible ||
+                ini.whereItWillBeDone ||
+                ini.howItWillBeDone ||
+                ini.investmentOrEffort ||
+                ini.notes;
+
+              const fivew = [
+                { key: "O quê", value: ini.whatWillBeDone },
+                { key: "Por quê", value: ini.whyItMatters },
+                { key: "Quem", value: ini.whoIsResponsible },
+                { key: "Onde", value: ini.whereItWillBeDone },
+                { key: "Como", value: ini.howItWillBeDone },
+                { key: "Esforço", value: ini.investmentOrEffort },
+              ].filter((f) => !!f.value);
+
               return (
                 <View key={ini.id} style={isLast ? s.initiativeCardLast : s.initiativeCard}>
                   <View style={s.initiativeTop}>
@@ -770,20 +907,105 @@ export default function GoalDetailScreen() {
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                     <Text style={s.initiativePct}>{iniPct}%</Text>
-                    {canEdit && (
-                      <Pressable
-                        style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.7 }]}
-                        onPress={() =>
-                          router.push(
-                            `/goal/${id}/initiative-edit?initiativeId=${ini.id}` as Parameters<typeof router.push>[0]
-                          )
-                        }
-                      >
-                        <Ionicons name="pencil-outline" size={12} color={colors.primary} />
-                        <Text style={s.editBtnText}>Editar</Text>
-                      </Pressable>
-                    )}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {hasDetails && (
+                        <Pressable
+                          style={s.detailsToggle}
+                          onPress={() => toggleInitiativeExpand(ini.id)}
+                        >
+                          <Text style={s.detailsToggleText}>
+                            {isExpanded ? "Fechar" : "Detalhes"}
+                          </Text>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={11}
+                            color={colors.mutedForeground}
+                          />
+                        </Pressable>
+                      )}
+                      {canEdit && (
+                        <Pressable
+                          style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.7 }]}
+                          onPress={() =>
+                            router.push(
+                              `/goal/${id}/initiative-edit?initiativeId=${ini.id}` as Parameters<typeof router.push>[0]
+                            )
+                          }
+                        >
+                          <Ionicons name="pencil-outline" size={12} color={colors.primary} />
+                          <Text style={s.editBtnText}>Editar</Text>
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
+
+                  {isExpanded && (
+                    <View style={s.detailsBox}>
+                      {ini.desiredResult ? (
+                        <View style={s.detailRow}>
+                          <Text style={s.detailLabel}>Resultado</Text>
+                          <Text style={s.detailValue}>{ini.desiredResult}</Text>
+                        </View>
+                      ) : null}
+
+                      {(ini.startDate || ini.endDate) ? (
+                        <View style={s.detailRow}>
+                          <Text style={s.detailLabel}>Período</Text>
+                          <Text style={s.detailValue}>
+                            {[formatDate(ini.startDate), formatDate(ini.endDate)]
+                              .filter(Boolean)
+                              .join(" → ")}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {ini.ownerName ? (
+                        <View style={s.detailRow}>
+                          <Text style={s.detailLabel}>Responsável</Text>
+                          <Text style={s.detailValue}>{ini.ownerName}</Text>
+                        </View>
+                      ) : null}
+
+                      {ini.frequency ? (
+                        <View style={s.detailRow}>
+                          <Text style={s.detailLabel}>Frequência</Text>
+                          <Text style={s.detailValue}>
+                            {FREQUENCY_LABELS[ini.frequency] ?? ini.frequency}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {ini.estimatedTime ? (
+                        <View style={s.detailRow}>
+                          <Text style={s.detailLabel}>Tempo est.</Text>
+                          <Text style={s.detailValue}>{ini.estimatedTime}</Text>
+                        </View>
+                      ) : null}
+
+                      {fivew.length > 0 ? (
+                        <>
+                          <View style={s.detailDivider} />
+                          <Text style={s.fivewLabel}>Planejamento 5W2H</Text>
+                          {fivew.map((f) => (
+                            <View key={f.key} style={s.fivewRow}>
+                              <Text style={s.fivewKey}>{f.key}</Text>
+                              <Text style={s.fivewValue}>{f.value}</Text>
+                            </View>
+                          ))}
+                        </>
+                      ) : null}
+
+                      {ini.notes ? (
+                        <>
+                          <View style={s.detailDivider} />
+                          <View style={s.detailRow}>
+                            <Text style={s.detailLabel}>Notas</Text>
+                            <Text style={s.detailValue}>{ini.notes}</Text>
+                          </View>
+                        </>
+                      ) : null}
+                    </View>
+                  )}
                 </View>
               );
             })
