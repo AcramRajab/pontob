@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Target, Pencil, Clock, HelpingHand, History, BarChart2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
@@ -143,6 +143,9 @@ export default function DailyCheckin() {
   const [isEditing, setIsEditing] = useState(false);
   const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
+  const search = useSearch();
+  const goalIdParam = new URLSearchParams(search).get("goalId");
+
   const today = new Date().toISOString().split("T")[0];
 
   const goalParams = { franchiseId: franchiseId ?? undefined };
@@ -183,7 +186,9 @@ export default function DailyCheckin() {
     { query: { enabled: !!franchiseId, queryKey: getListDailyCheckinsQueryKey(dailyParams) } }
   );
 
-  const existingCheckin = todaysCheckins[0] ?? null;
+  const existingCheckin = goalIdParam
+    ? ((todaysCheckins as any[]).find((c: any) => String(c.goalId) === goalIdParam) ?? todaysCheckins[0] ?? null)
+    : (todaysCheckins[0] ?? null);
 
   const create = useCreateDailyCheckin();
   const update = useUpdateDailyCheckin();

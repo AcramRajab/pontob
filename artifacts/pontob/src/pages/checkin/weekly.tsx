@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Target, Pencil, History } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
 
@@ -116,6 +116,9 @@ export default function WeeklyCheckin() {
   const week = getWeekDates();
   const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
+  const search = useSearch();
+  const goalIdParam = new URLSearchParams(search).get("goalId");
+
   const goalParams = { franchiseId: franchiseId ?? undefined };
   const { data: goals = [] } = useListGoals(
     goalParams,
@@ -129,7 +132,10 @@ export default function WeeklyCheckin() {
     { query: { enabled: !!franchiseId, queryKey: getListWeeklyCheckinsQueryKey(weeklyParams) } }
   );
 
-  const existingCheckin = (weeklyCheckins as any[]).find((c: any) => c.weekStartDate === week.start) ?? null;
+  const thisWeeksCheckins = (weeklyCheckins as any[]).filter((c: any) => c.weekStartDate === week.start);
+  const existingCheckin = goalIdParam
+    ? (thisWeeksCheckins.find((c: any) => String(c.goalId) === goalIdParam) ?? thisWeeksCheckins[0] ?? null)
+    : (thisWeeksCheckins[0] ?? null);
 
   const create = useCreateWeeklyCheckin();
   const update = useUpdateWeeklyCheckin();

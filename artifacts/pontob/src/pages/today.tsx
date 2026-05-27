@@ -68,66 +68,65 @@ interface CheckinSummaryProps {
   dailyCheckins: any[];
   weeklyCheckins: any[];
   monthlyCheckins: any[];
+  goals: any[];
 }
 
-function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins }: CheckinSummaryProps) {
-  const dailyDone = dailyCheckins.length > 0;
-  const weeklyDone = weeklyCheckins.length > 0;
-  const monthlyDone = monthlyCheckins.length > 0;
+function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins, goals }: CheckinSummaryProps) {
+  function goalTitle(goalId: number): string | undefined {
+    return (goals as any[]).find((g: any) => g.id === goalId)?.title;
+  }
 
-  const firstDaily = dailyCheckins[0];
-  const firstWeekly = weeklyCheckins[0];
-  const firstMonthly = monthlyCheckins[0];
-
-  function dailyDetail(): string {
-    if (!firstDaily) return "";
+  function dailyDetailForCheckin(c: any): string {
     const parts: string[] = [];
-    if (firstDaily.executedToday) parts.push(executedTodayLabel(firstDaily.executedToday));
-    if (firstDaily.progressToday != null) parts.push(`${firstDaily.progressToday}% progresso`);
-    if (dailyCheckins.length > 1) parts.push(`${dailyCheckins.length} metas`);
+    const title = goalTitle(c.goalId);
+    if (title) parts.push(title);
+    if (c.executedToday) parts.push(executedTodayLabel(c.executedToday));
+    if (c.progressToday != null) parts.push(`${c.progressToday}% progresso`);
     return parts.join(" · ");
   }
 
-  function weeklyDetail(): string {
-    if (!firstWeekly) return "";
+  function weeklyDetailForCheckin(c: any): string {
     const parts: string[] = [];
-    if (firstWeekly.executionPercentage != null) parts.push(`${firstWeekly.executionPercentage}% execução`);
-    if (firstWeekly.checkinDaysCount != null) parts.push(`${firstWeekly.checkinDaysCount} dias`);
-    if (weeklyCheckins.length > 1) parts.push(`${weeklyCheckins.length} metas`);
+    const title = goalTitle(c.goalId);
+    if (title) parts.push(title);
+    if (c.executionPercentage != null) parts.push(`${c.executionPercentage}% execução`);
+    if (c.checkinDaysCount != null) parts.push(`${c.checkinDaysCount} dias`);
     return parts.join(" · ");
   }
 
-  function monthlyDetail(): string {
-    if (!firstMonthly) return "";
+  function monthlyDetailForCheckin(c: any): string {
     const parts: string[] = [];
-    if (firstMonthly.kriProgress) parts.push(firstMonthly.kriProgress.slice(0, 40));
-    if (monthlyCheckins.length > 1) parts.push(`${monthlyCheckins.length} metas`);
+    const title = goalTitle(c.goalId);
+    if (title) parts.push(title);
+    if (c.kriProgress) parts.push(c.kriProgress.slice(0, 40));
     return parts.join(" · ");
   }
 
-  const items = [
-    {
-      label: "Diário",
-      done: dailyDone,
-      detail: dailyDetail(),
-      ctaHref: "/checkin/daily",
-      ctaLabel: "check-in diário",
-    },
-    {
-      label: "Semanal",
-      done: weeklyDone,
-      detail: weeklyDetail(),
-      ctaHref: "/checkin/weekly",
-      ctaLabel: "check-in semanal",
-    },
-    {
-      label: "Mensal",
-      done: monthlyDone,
-      detail: monthlyDetail(),
-      ctaHref: "/checkin/monthly",
-      ctaLabel: "check-in mensal",
-    },
-  ];
+  const items: { label: string; done: boolean; detail: string; ctaHref: string; ctaLabel: string }[] = [];
+
+  if (dailyCheckins.length === 0) {
+    items.push({ label: "Diário", done: false, detail: "", ctaHref: "/checkin/daily", ctaLabel: "check-in diário" });
+  } else {
+    for (const c of dailyCheckins) {
+      items.push({ label: "Diário", done: true, detail: dailyDetailForCheckin(c), ctaHref: `/checkin/daily?goalId=${c.goalId}`, ctaLabel: "check-in diário" });
+    }
+  }
+
+  if (weeklyCheckins.length === 0) {
+    items.push({ label: "Semanal", done: false, detail: "", ctaHref: "/checkin/weekly", ctaLabel: "check-in semanal" });
+  } else {
+    for (const c of weeklyCheckins) {
+      items.push({ label: "Semanal", done: true, detail: weeklyDetailForCheckin(c), ctaHref: `/checkin/weekly?goalId=${c.goalId}`, ctaLabel: "check-in semanal" });
+    }
+  }
+
+  if (monthlyCheckins.length === 0) {
+    items.push({ label: "Mensal", done: false, detail: "", ctaHref: "/checkin/monthly", ctaLabel: "check-in mensal" });
+  } else {
+    for (const c of monthlyCheckins) {
+      items.push({ label: "Mensal", done: true, detail: monthlyDetailForCheckin(c), ctaHref: `/checkin/monthly?goalId=${c.goalId}`, ctaLabel: "check-in mensal" });
+    }
+  }
 
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
@@ -387,6 +386,7 @@ export default function Today() {
             dailyCheckins={todayDailyCheckins as any[]}
             weeklyCheckins={thisWeekCheckins}
             monthlyCheckins={thisMonthCheckins}
+            goals={allGoals as any[]}
           />
 
           {/* ── Visão Anual KRI strip ───────────────────────────── */}
