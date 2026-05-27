@@ -24,6 +24,24 @@ uri = "file://attached_assets/icon-pontob-v3.png"
 type = "image"
 title = "ponto-b-icon-split-remax"
 
+[[generated]]
+id = "IzzOkr-XhmqMdU7iALk5F"
+uri = "file://attached_assets/icon-v2-v1.png"
+type = "image"
+title = "ponto-b-futuristic-target"
+
+[[generated]]
+id = "vHBsrrGn3wd7uCdRWt-MI"
+uri = "file://attached_assets/icon-v2-v2.png"
+type = "image"
+title = "ponto-b-futuristic-arrow"
+
+[[generated]]
+id = "K_fIu3AiWuqzeCYvaxCrI"
+uri = "file://attached_assets/icon-v2-v3.png"
+type = "image"
+title = "ponto-b-futuristic-path"
+
 [[outputs]]
 id = "7KIs6kZUN4ujzlK9OPXlV"
 uri = "file://artifacts/pontob/public/pontob-mobile.tar"
@@ -59,3 +77,21 @@ id = "Tb5Osg4EHqfTwG-iUXPDK"
 uri = "file://attached_assets/icon-pontob-v3.png"
 type = "image"
 title = "Opção 3 — Split vermelho/azul RE/MAX"
+
+[[outputs]]
+id = "F_YpXb9P6nnCKCRVJZx9y"
+uri = "file://attached_assets/icon-v2-v1.png"
+type = "image"
+title = "Opção A — Alvo / Crosshair"
+
+[[outputs]]
+id = "R6B7WNw4c-J7GqpXdib7-"
+uri = "file://attached_assets/icon-v2-v2.png"
+type = "image"
+title = "Opção B — Trajetória ascendente"
+
+[[outputs]]
+id = "ZXC2flExJ2rkyQ2fg4id1"
+uri = "file://attached_assets/icon-v2-v3.png"
+type = "image"
+title = "Opção C — Caminho ao destino"
