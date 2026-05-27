@@ -91,14 +91,16 @@ const W2H_FIELDS: Array<{ key: keyof PlanningFields; label: string; placeholder:
 ];
 
 export default function InitiativeNewScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, keyProcessId: keyProcessIdParam } = useLocalSearchParams<{ id: string; keyProcessId?: string }>();
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState<Step>("choose");
+  const preselectedKeyProcessId = keyProcessIdParam ? parseInt(keyProcessIdParam) : null;
+
+  const [step, setStep] = useState<Step>(preselectedKeyProcessId ? "catalog-list" : "choose");
   const [selectedInitiative, setSelectedInitiative] = useState<CatalogInitiative | null>(null);
   const [customName, setCustomName] = useState("");
   const [planning, setPlanning] = useState<PlanningFields>(emptyPlanning());
@@ -121,10 +123,18 @@ export default function InitiativeNewScreen() {
     staleTime: 30_000,
   });
 
+  const effectiveKeyProcessId = preselectedKeyProcessId ?? null;
+
   const { data: catalogItems = [], isLoading: catalogLoading } = useQuery({
-    queryKey: ["strategic-initiatives", goal?.dimensionId],
+    queryKey: ["strategic-initiatives", goal?.dimensionId, effectiveKeyProcessId],
     queryFn: async () => {
-      const params = goal?.dimensionId ? `?dimensionId=${goal.dimensionId}` : "";
+      const qs = new URLSearchParams();
+      if (effectiveKeyProcessId) {
+        qs.set("keyProcessId", String(effectiveKeyProcessId));
+      } else if (goal?.dimensionId) {
+        qs.set("dimensionId", String(goal.dimensionId));
+      }
+      const params = qs.toString() ? `?${qs.toString()}` : "";
       const res = await apiFetch(`/strategic-initiatives${params}`);
       if (!res.ok) throw new Error("Failed");
       return res.json() as Promise<CatalogInitiative[]>;
@@ -1008,9 +1018,13 @@ export default function InitiativeNewScreen() {
   }
 
   if (step === "catalog-list") {
+    const catalogContextLabel = effectiveKeyProcessId
+      ? (goal?.keyProcessName ?? goal?.dimensionName ?? undefined)
+      : (goal?.dimensionName ?? undefined);
+    const onCatalogBack = preselectedKeyProcessId ? () => router.back() : () => setStep("choose");
     return (
       <View style={s.container}>
-        {renderHeader(goal?.dimensionName ?? undefined, () => setStep("choose"))}
+        {renderHeader(catalogContextLabel, onCatalogBack)}
         <ScrollView style={s.content} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
           {catalogLoading ? (
             <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
@@ -1019,7 +1033,7 @@ export default function InitiativeNewScreen() {
           ) : (
             <>
               <Text style={s.sectionLabel}>
-                {goal?.dimensionName ?? "Iniciativas"} · {catalogItems.length} disponíveis
+                {catalogContextLabel ?? "Iniciativas"} · {catalogItems.length} disponíveis
               </Text>
               {catalogItems.map((item) => (
                 <Pressable

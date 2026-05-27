@@ -749,7 +749,13 @@ export default function GoalDetailScreen() {
                           Esta iniciativa foi desativada do catálogo.{" "}
                           <Text
                             style={s.deactivatedBannerLink}
-                            onPress={() => router.push(`/goal/${id}/initiative-new` as Parameters<typeof router.push>[0])}
+                            onPress={() => {
+                              const kpId = data?.keyProcessId;
+                              const path = kpId
+                                ? `/goal/${id}/initiative-new?keyProcessId=${kpId}`
+                                : `/goal/${id}/initiative-new`;
+                              router.push(path as Parameters<typeof router.push>[0]);
+                            }}
                           >
                             Adicionar substituta
                           </Text>
