@@ -92,7 +92,11 @@ export default function CatalogHistory() {
   }
 
   function handleExport() {
-    const url = `${import.meta.env.BASE_URL}api/catalog-audit-logs/export`;
+    const params = new URLSearchParams();
+    if (filterDateFrom) params.set("from", filterDateFrom);
+    if (filterDateTo) params.set("to", filterDateTo);
+    const qs = params.toString();
+    const url = `${import.meta.env.BASE_URL}api/catalog-audit-logs/export${qs ? `?${qs}` : ""}`;
     window.open(url, "_blank");
   }
 
