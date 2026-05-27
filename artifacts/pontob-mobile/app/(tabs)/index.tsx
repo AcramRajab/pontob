@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/auth";
+import { useNotifications } from "@/context/notifications";
 import { useColors } from "@/hooks/useColors";
 import { apiFetch } from "@/lib/api";
 
@@ -71,11 +72,18 @@ interface MonthlyCheckin {
   kriProgress: string | null;
 }
 
+function formatPauseDate(dateStr: string): string {
+  const [, mm, dd] = dateStr.split("-");
+  return `${dd}/${mm}`;
+}
+
 export default function TodayScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const router = useRouter();
+  const { pauseUntil, setPauseUntil } = useNotifications();
+  const [pauseBannerDismissed, setPauseBannerDismissed] = React.useState(false);
 
   const today = new Date();
   const isMonday = today.getDay() === 1;
@@ -386,6 +394,33 @@ export default function TodayScreen() {
       color: colors.primaryForeground,
       fontFamily: "Inter_600SemiBold",
     },
+    pauseBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.primary + "18",
+      borderRadius: colors.radius + 4,
+      borderWidth: 1,
+      borderColor: colors.primary + "40",
+    },
+    pauseBannerText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: "Inter_500Medium",
+      color: colors.foreground,
+    },
+    pauseBannerResume: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.primary,
+    },
+    pauseBannerDismiss: {
+      paddingLeft: 4,
+    },
   });
 
   const firstName = user?.name?.split(" ")[0] ?? "Olá";
@@ -515,6 +550,24 @@ export default function TodayScreen() {
         <Text style={s.greeting}>Olá, {firstName}</Text>
         <Text style={s.dateText}>{dateStr}</Text>
       </View>
+
+      {pauseUntil && !pauseBannerDismissed && (
+        <View style={s.pauseBanner}>
+          <Ionicons name="pause-circle-outline" size={16} color={colors.primary} />
+          <Text style={s.pauseBannerText}>
+            Lembretes pausados até {formatPauseDate(pauseUntil)}
+          </Text>
+          <Pressable onPress={() => setPauseUntil(null)}>
+            <Text style={s.pauseBannerResume}>Retomar</Text>
+          </Pressable>
+          <Pressable
+            style={s.pauseBannerDismiss}
+            onPress={() => setPauseBannerDismissed(true)}
+          >
+            <Ionicons name="close" size={16} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+      )}
 
       <View style={s.content}>
         <View style={s.statsRow}>
