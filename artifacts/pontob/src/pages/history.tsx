@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   History, TrendingUp, TrendingDown, CheckSquare, Calendar, BarChart2,
   CheckCircle2, MinusCircle, XCircle, AlertCircle, ChevronRight, Clock, HelpingHand, Pencil, Filter,
-  LayoutList, TableProperties,
+  LayoutList, TableProperties, Download,
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
@@ -742,6 +742,89 @@ function HistoryCard({ item, onClick }: { item: HistItem; onClick: () => void })
   );
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  daily: "Diário",
+  weekly: "Semanal",
+  monthly: "Mensal",
+  progress: "Progresso",
+};
+
+const EXECUTION_CSV: Record<string, string> = {
+  sim: "Sim",
+  parcialmente: "Parcialmente",
+  nao: "Não",
+};
+
+const MONTHS_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function exportCheckinCSV(items: HistItem[], filename: string) {
+  const escape = (val: any) => {
+    const s = val == null ? "" : String(val);
+    return s.includes(",") || s.includes('"') || s.includes("\n")
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  const headers = [
+    "Data","Tipo","Meta",
+    "Executou Hoje","Progresso (%)","Bloqueio","Próximo Passo","Tempo Dedicado","Precisa de Apoio","Notas",
+    "Semana de","Execução (%)","Planejado","Executado","Bloqueios","Prioridade Próxima Semana",
+    "Mês","Ano","Progresso KRI","Continuar Fazendo","Parar de Fazer","Começar a Fazer","Foco Próximo Mês",
+    "Entidade","Progresso Anterior (%)","Novo Progresso (%)","Nota",
+  ];
+  const rows = items.map(item => {
+    const d = item.data;
+    const dateStr = item.date ? new Date(item.date).toLocaleDateString("pt-BR") : "";
+    const type = TYPE_LABELS[item.type] ?? item.type;
+    const goal = d.goalTitle ?? "";
+    if (item.type === "daily") return [
+      dateStr, type, goal,
+      EXECUTION_CSV[d.executedToday] ?? d.executedToday ?? "",
+      d.progressToday ?? "", d.blocker ?? "", d.nextStep ?? "",
+      d.timeSpent ?? "", d.needsHelp ? "Sim" : "Não", d.notes ?? "",
+      "","","","","","",
+      "","","","","","","",
+      "","","","",
+    ];
+    if (item.type === "weekly") return [
+      dateStr, type, goal,
+      "","","","","","","",
+      d.weekStartDate ? new Date(d.weekStartDate + "T00:00:00").toLocaleDateString("pt-BR") : "",
+      d.executionPercentage ?? "", d.planned ?? "", d.executed ?? "",
+      d.blockers ?? "", d.nextWeekPriority ?? "",
+      "","","","","","","",
+      "","","","",
+    ];
+    if (item.type === "monthly") {
+      const monthStr = d.month && d.year
+        ? `${MONTHS_SHORT[(d.month as number) - 1]}/${d.year}`
+        : "";
+      return [
+        dateStr, type, goal,
+        "","","","","","","",
+        "","","","","","",
+        monthStr, d.year ?? "", d.kriProgress ?? "",
+        d.continueDoing ?? "", d.stopDoing ?? "", d.startDoing ?? "", d.nextMonthFocus ?? "",
+        "","","","",
+      ];
+    }
+    return [
+      dateStr, type, goal,
+      "","","","","","","",
+      "","","","","","",
+      "","","","","","","",
+      d.entityType ?? "", d.previousProgress ?? "", d.newProgress ?? "", d.note ?? "",
+    ];
+  });
+  const csv = "\uFEFF" + [headers.join(","), ...rows.map(r => r.map(escape).join(","))].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 type DatePreset = "all" | "7d" | "30d" | "month" | "custom";
 
 const VALID_PRESETS: DatePreset[] = ["all", "7d", "30d", "month", "custom"];
@@ -1064,6 +1147,20 @@ export default function HistoryPage() {
                   </button>
                 ))}
               </div>
+              {filtered.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto h-7 px-2.5 text-xs gap-1.5 shrink-0"
+                  onClick={() => {
+                    const date = new Date().toISOString().slice(0, 10);
+                    exportCheckinCSV(filtered, `historico-checkins-${date}.csv`);
+                  }}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Exportar
+                </Button>
+              )}
             </div>
 
             {datePreset === "custom" && (
