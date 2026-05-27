@@ -1,0 +1,1 @@
+artifacts/pontob/public/pontob-project.zip filter=lfs diff=lfs merge=lfs -text

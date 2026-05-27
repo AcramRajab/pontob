@@ -131,3 +131,9 @@ id = "5BfRzU-KwjmJqLmoLpEOy"
 uri = "file://attached_assets/icon-v3-v3.png"
 type = "image"
 title = "C — Seta circuito"
+
+[[outputs]]
+id = "P1ty4-7McDZqbPC1C7afm"
+uri = "file://artifacts/pontob/public/pontob-project.zip"
+type = "unspecified"
+title = "pontob-project.zip — projeto completo (66 MB)"
