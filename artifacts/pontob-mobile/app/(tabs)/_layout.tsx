@@ -5,7 +5,7 @@ import { Tabs } from "expo-router";
 import { Badge, Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "@/context/auth";
@@ -150,6 +150,38 @@ function BadgeDot() {
   );
 }
 
+function BadgeCount({ count }: { count: number }) {
+  if (count <= 0) return null;
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <View
+      style={{
+        position: "absolute",
+        top: -4,
+        right: -8,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: "#ef4444",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 3,
+      }}
+    >
+      <Text
+        style={{
+          color: "#ffffff",
+          fontSize: 10,
+          fontWeight: "700",
+          lineHeight: 13,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function NativeTabLayout() {
   const { user } = useAuth();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
@@ -182,8 +214,11 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       {isAdmin && (
         <NativeTabs.Trigger name="admin">
-          <Icon sf={{ default: "person.badge.clock", selected: "person.badge.clock.fill" }} />
-          <Badge hidden={pendingApprovalsCount === 0}>{String(pendingApprovalsCount)}</Badge>
+          <View style={{ position: "relative" }}>
+            <Icon sf={{ default: "person.badge.clock", selected: "person.badge.clock.fill" }} />
+            <BadgeCount count={pendingApprovalsCount} />
+          </View>
+          <Badge hidden />
           <Label>Aprovações</Label>
         </NativeTabs.Trigger>
       )}
