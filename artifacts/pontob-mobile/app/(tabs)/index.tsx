@@ -46,7 +46,7 @@ interface TodayOverview {
     progressPercentage: number | null;
     notes: string | null;
   }>;
-  todayCheckins: Array<{ id: number; executedToday: string; date: string }>;
+  todayCheckins: Array<{ id: number; executedToday: string; date: string; progressToday: number | null }>;
   pendingAlerts: Array<{
     id: number;
     type: string;
@@ -61,12 +61,14 @@ interface TodayOverview {
 interface WeeklyCheckin {
   id: number;
   weekStartDate: string;
+  executionPercentage: number | null;
 }
 
 interface MonthlyCheckin {
   id: number;
   month: number;
   year: number;
+  kriProgress: string | null;
 }
 
 export default function TodayScreen() {
@@ -117,7 +119,7 @@ export default function TodayScreen() {
       const all = (await res.json()) as WeeklyCheckin[];
       return all.find((c) => c.weekStartDate === weekStartDate) ?? null;
     },
-    enabled: !!user && isMonday,
+    enabled: !!user,
     staleTime: 30_000,
   });
 
@@ -131,7 +133,7 @@ export default function TodayScreen() {
       const all = (await res.json()) as MonthlyCheckin[];
       return all.find((c) => c.month === currentMonth && c.year === currentYear) ?? null;
     },
-    enabled: !!user && isFirstOfMonth,
+    enabled: !!user,
     staleTime: 30_000,
   });
 
@@ -287,57 +289,91 @@ export default function TodayScreen() {
       color: colors.mutedForeground,
       textAlign: "center",
     },
-    checkinCard: {
+    checkinSummaryCard: {
       backgroundColor: colors.card,
       borderRadius: colors.radius + 4,
-      padding: 14,
       borderWidth: 1,
       borderColor: colors.border,
       marginBottom: 20,
-      gap: 10,
+      overflow: "hidden",
     },
-    checkinCardHeader: {
+    checkinSummaryHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      backgroundColor: colors.muted + "55",
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
-    checkinCardTitle: {
-      flex: 1,
+    checkinSummaryHeaderText: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
+    checkinSummaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    checkinSummaryDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginHorizontal: 14,
+    },
+    checkinIndicatorDone: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.success + "18",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkinIndicatorPending: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.muted,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkinRowBody: { flex: 1, gap: 1 },
+    checkinRowLabel: {
       fontSize: 14,
       fontFamily: "Inter_600SemiBold",
       color: colors.foreground,
     },
-    checkinPills: {
-      flexDirection: "row",
-      gap: 8,
-      flexWrap: "wrap",
+    checkinRowDetail: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
     },
-    pill: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 20,
-      borderWidth: 1,
+    checkinRowPending: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground + "99",
     },
-    pillDone: {
+    checkinDoneBadge: {
+      fontSize: 10,
+      fontFamily: "Inter_700Bold",
+      color: colors.success,
       backgroundColor: colors.success + "18",
+      borderWidth: 1,
       borderColor: colors.success + "40",
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 20,
+      overflow: "hidden",
     },
-    pillPending: {
-      backgroundColor: colors.muted,
-      borderColor: colors.border,
-    },
-    pillText: {
+    checkinCtaText: {
       fontSize: 12,
       fontFamily: "Inter_500Medium",
-    },
-    pillTextDone: {
-      color: colors.success,
-    },
-    pillTextPending: {
-      color: colors.mutedForeground,
+      color: colors.primary,
     },
     retryBtn: {
       marginTop: 16,
@@ -357,19 +393,58 @@ export default function TodayScreen() {
   const alreadyDoneWeekly = !!thisWeekCheckin;
   const alreadyDoneMonthly = !!thisMonthCheckin;
 
-  function getPendingTab(): "daily" | "weekly" | "monthly" {
-    if (!alreadyDoneDaily) return "daily";
-    if (isMonday && !alreadyDoneWeekly) return "weekly";
-    if (isFirstOfMonth && !alreadyDoneMonthly) return "monthly";
-    return "daily";
+  function executedTodayLabel(value: string): string {
+    if (value === "sim") return "Executou";
+    if (value === "parcial" || value === "parcialmente") return "Parcialmente";
+    return "Não executou";
   }
 
-  function handleCheckinCardPress() {
-    router.push({
-      pathname: "/(tabs)/checkin",
-      params: { tab: getPendingTab() },
-    });
-  }
+  const firstDaily = data?.todayCheckins?.[0];
+  const dailyDetail = firstDaily
+    ? [
+        executedTodayLabel(firstDaily.executedToday),
+        firstDaily.progressToday != null ? `${firstDaily.progressToday}% progresso` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+
+  const weeklyDetail =
+    thisWeekCheckin?.executionPercentage != null
+      ? `${thisWeekCheckin.executionPercentage}% execução`
+      : alreadyDoneWeekly
+        ? "Concluído"
+        : "";
+
+  const monthlyDetail = thisMonthCheckin?.kriProgress
+    ? thisMonthCheckin.kriProgress.slice(0, 40)
+    : alreadyDoneMonthly
+      ? "Concluído"
+      : "";
+
+  const checkinItems = [
+    {
+      tab: "daily" as const,
+      label: "Diário",
+      done: alreadyDoneDaily,
+      detail: dailyDetail,
+      ctaLabel: "Registrar",
+    },
+    {
+      tab: "weekly" as const,
+      label: "Semanal",
+      done: alreadyDoneWeekly,
+      detail: weeklyDetail,
+      ctaLabel: "Registrar",
+    },
+    {
+      tab: "monthly" as const,
+      label: "Mensal",
+      done: alreadyDoneMonthly,
+      detail: monthlyDetail,
+      ctaLabel: "Registrar",
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -481,78 +556,76 @@ export default function TodayScreen() {
           )}
         </View>
 
-        <Pressable style={s.checkinCard} onPress={handleCheckinCardPress}>
-          <View style={s.checkinCardHeader}>
+        <View style={s.checkinSummaryCard}>
+          <View style={s.checkinSummaryHeader}>
             <Ionicons
-              name="checkmark-circle-outline"
-              size={16}
-              color={colors.mutedForeground}
-            />
-            <Text style={s.checkinCardTitle}>Check-ins</Text>
-            <Ionicons
-              name="chevron-forward"
+              name="calendar-outline"
               size={14}
-              color={colors.mutedForeground}
+              color={colors.primary + "bb"}
             />
+            <Text style={s.checkinSummaryHeaderText}>Check-ins de hoje</Text>
           </View>
-          <View style={s.checkinPills}>
-            <View
-              style={[s.pill, alreadyDoneDaily ? s.pillDone : s.pillPending]}
-            >
-              <Text style={{ fontSize: 13 }}>
-                {alreadyDoneDaily ? "✅" : "⏳"}
-              </Text>
-              <Text
-                style={[
-                  s.pillText,
-                  alreadyDoneDaily ? s.pillTextDone : s.pillTextPending,
-                ]}
+          {checkinItems.map((item, i) => (
+            <React.Fragment key={item.tab}>
+              {i > 0 && <View style={s.checkinSummaryDivider} />}
+              <Pressable
+                style={s.checkinSummaryRow}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(tabs)/checkin",
+                    params: { tab: item.tab },
+                  })
+                }
               >
-                Diário
-              </Text>
-            </View>
-            {isMonday && (
-              <View
-                style={[
-                  s.pill,
-                  alreadyDoneWeekly ? s.pillDone : s.pillPending,
-                ]}
-              >
-                <Text style={{ fontSize: 13 }}>
-                  {alreadyDoneWeekly ? "✅" : "⏳"}
-                </Text>
-                <Text
-                  style={[
-                    s.pillText,
-                    alreadyDoneWeekly ? s.pillTextDone : s.pillTextPending,
-                  ]}
+                <View
+                  style={
+                    item.done
+                      ? s.checkinIndicatorDone
+                      : s.checkinIndicatorPending
+                  }
                 >
-                  Semanal
-                </Text>
-              </View>
-            )}
-            {isFirstOfMonth && (
-              <View
-                style={[
-                  s.pill,
-                  alreadyDoneMonthly ? s.pillDone : s.pillPending,
-                ]}
-              >
-                <Text style={{ fontSize: 13 }}>
-                  {alreadyDoneMonthly ? "✅" : "⏳"}
-                </Text>
-                <Text
-                  style={[
-                    s.pillText,
-                    alreadyDoneMonthly ? s.pillTextDone : s.pillTextPending,
-                  ]}
-                >
-                  Mensal
-                </Text>
-              </View>
-            )}
-          </View>
-        </Pressable>
+                  {item.done ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={16}
+                      color={colors.success}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="calendar-outline"
+                      size={13}
+                      color={colors.mutedForeground + "66"}
+                    />
+                  )}
+                </View>
+                <View style={s.checkinRowBody}>
+                  <Text style={s.checkinRowLabel}>{item.label}</Text>
+                  {item.done && item.detail ? (
+                    <Text style={s.checkinRowDetail} numberOfLines={1}>
+                      {item.detail}
+                    </Text>
+                  ) : !item.done ? (
+                    <Text style={s.checkinRowPending}>Pendente</Text>
+                  ) : null}
+                </View>
+                {item.done ? (
+                  <Text style={s.checkinDoneBadge}>Feito</Text>
+                ) : (
+                  <View
+                    style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+                  >
+                    <Text style={s.checkinCtaText}>{item.ctaLabel}</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={12}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
+              </Pressable>
+            </React.Fragment>
+          ))}
+        </View>
 
         <View style={s.section}>
           <View style={s.sectionHeader}>
