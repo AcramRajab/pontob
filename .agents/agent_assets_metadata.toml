@@ -11,3 +11,9 @@ id = "7KIs6kZUN4ujzlK9OPXlV"
 uri = "file://artifacts/pontob/public/pontob-mobile.tar"
 type = "unspecified"
 title = "pontob-mobile.tar"
+
+[[outputs]]
+id = "jFH49zQb12zPrSqB8xNk0"
+uri = "file://artifacts/pontob/public/setup-pontob.py.gz"
+type = "unspecified"
+title = "setup-pontob.py.gz"
