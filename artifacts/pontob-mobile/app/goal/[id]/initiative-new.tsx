@@ -210,7 +210,9 @@ export default function InitiativeNewScreen() {
     },
   });
 
-  const activeGoalInits = (goal?.initiatives ?? []).filter(i => i.status === "ativa");
+  const activeGoalInits = [...(goal?.initiatives ?? []).filter(i => i.status === "ativa")].sort(
+    (a, b) => (b.progressPercentage ?? 0) - (a.progressPercentage ?? 0)
+  );
   const isAtLimit = !goalLoading && !!goal && activeGoalInits.length >= 3;
 
   const buildPayload = (base: { strategicInitiativeId?: number; customName?: string }) => {
@@ -730,6 +732,21 @@ export default function InitiativeNewScreen() {
       fontFamily: "Inter_600SemiBold",
       color: "#16a34a",
     },
+    closestBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: "#dcfce7",
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      marginBottom: 6,
+    },
+    closestBadgeText: {
+      fontSize: 10,
+      fontFamily: "Inter_600SemiBold",
+      color: "#15803d",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
   });
 
   if (goalLoading) {
@@ -927,12 +944,17 @@ export default function InitiativeNewScreen() {
           ))}
 
           <Text style={[s.sectionLabel, { marginTop: 16 }]}>Iniciativas ativas</Text>
-          {activeGoalInits.map(ini => (
+          {activeGoalInits.map((ini, idx) => (
             <View key={ini.id} style={s.limitInitCard}>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={s.limitInitName} numberOfLines={2}>
                   {ini.initiativeName ?? ini.customName ?? "Iniciativa"}
                 </Text>
+                {idx === 0 && (
+                  <View style={s.closestBadge}>
+                    <Text style={s.closestBadgeText}>Mais próxima de concluir</Text>
+                  </View>
+                )}
                 <View style={s.limitProgressRow}>
                   <View style={s.limitProgressTrack}>
                     <View style={[s.limitProgressFill, { width: `${ini.progressPercentage ?? 0}%` }]} />

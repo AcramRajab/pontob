@@ -85,7 +85,9 @@ export default function NewGoalInitiative() {
   const [completingId, setCompletingId] = useState<number | null>(null);
 
   const goalInitiatives = (goal as any)?.initiatives ?? [];
-  const activeGoalInits = goalInitiatives.filter((i: any) => i.status === "ativa");
+  const activeGoalInits = [...goalInitiatives.filter((i: any) => i.status === "ativa")].sort(
+    (a: any, b: any) => (b.progressPercentage ?? 0) - (a.progressPercentage ?? 0)
+  );
   const isAtLimit = !goalLoading && !!goal && activeGoalInits.length >= 3;
 
   const handleCompleteInitiative = async (initiativeId: number) => {
@@ -408,10 +410,17 @@ export default function NewGoalInitiative() {
         </div>
 
         <div className="space-y-2">
-          {activeGoalInits.map((ini: any) => (
+          {activeGoalInits.map((ini: any, idx: number) => (
             <div key={ini.id} className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3 bg-white">
-              <div className="min-w-0">
-                <p className="font-medium text-sm truncate">{ini.initiativeName || ini.customName || "Iniciativa"}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium text-sm truncate">{ini.initiativeName || ini.customName || "Iniciativa"}</p>
+                  {idx === 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 uppercase tracking-wide shrink-0">
+                      Mais próxima de concluir
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="h-1.5 w-20 bg-muted rounded-full overflow-hidden">
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${ini.progressPercentage ?? 0}%` }} />
