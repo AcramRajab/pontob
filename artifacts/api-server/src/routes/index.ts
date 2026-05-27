@@ -20,6 +20,7 @@ import invitesRouter from "./invites";
 import aiAssistantRouter from "./ai-assistant";
 import journeyRouter from "./journey";
 import aiCoachingRouter from "./ai-coaching";
+import downloadRouter from "./download";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(auditRouter);
 router.use(aiAssistantRouter);
 router.use(journeyRouter);
 router.use(aiCoachingRouter);
+router.use(downloadRouter);
 
 export default router;
