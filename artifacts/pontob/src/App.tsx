@@ -52,6 +52,8 @@ import Agents from "@/pages/agents";
 import Jornada from "@/pages/jornada";
 import Coaching from "@/pages/coaching";
 import Trash from "@/pages/trash";
+import Privacidade from "@/pages/privacidade";
+import Suporte from "@/pages/suporte";
 
 function RootRedirect() {
   window.location.replace("/today");
@@ -73,6 +75,8 @@ function Router() {
       <Switch>
         <Route path="/convite/:token" component={Convite} />
         <Route path="/solicitar-acesso" component={SolicitarAcesso} />
+        <Route path="/privacidade" component={Privacidade} />
+        <Route path="/suporte" component={Suporte} />
         <Route path="/login" component={Login} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/today">
