@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -222,6 +222,33 @@ export default function HistoryScreen() {
     },
     enabled: !!drillFranchise,
   });
+
+  // ── Sync selectedEntry with latest fetched data ───────────────────────────
+  // When queries are invalidated and refetched (e.g. after editing a check-in
+  // from the Check-in tab), the list cards re-render automatically.  But
+  // selectedEntry is a snapshot captured at tap-time, so the detail view
+  // would still show stale values.  This effect keeps it in sync.
+
+  useEffect(() => {
+    if (!selectedEntry) return;
+
+    const { kind } = selectedEntry;
+
+    if (kind === "daily" && allDailyCheckins) {
+      const fresh = allDailyCheckins.find((c) => c.id === selectedEntry.item.id);
+      if (fresh) setSelectedEntry({ kind: "daily", item: fresh, date: new Date(fresh.createdAt) });
+    } else if (kind === "weekly" && allWeeklyCheckins) {
+      const fresh = allWeeklyCheckins.find((c) => c.id === selectedEntry.item.id);
+      if (fresh) setSelectedEntry({ kind: "weekly", item: fresh, date: new Date(fresh.createdAt) });
+    } else if (kind === "monthly" && allMonthlyCheckins) {
+      const fresh = allMonthlyCheckins.find((c) => c.id === selectedEntry.item.id);
+      if (fresh) setSelectedEntry({ kind: "monthly", item: fresh, date: new Date(fresh.createdAt) });
+    }
+    // Intentionally excludes selectedEntry from deps: we only want to re-sync
+    // when the underlying query data changes, not when selectedEntry itself changes
+    // (which would cause an update loop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDailyCheckins, allWeeklyCheckins, allMonthlyCheckins]);
 
   // ── Styles ────────────────────────────────────────────────────────────────
 

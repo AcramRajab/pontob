@@ -630,6 +630,10 @@ export default function CheckinScreen() {
         queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-weekly-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-monthly-checkins"] });
+        if (historyEditEntry?.kind === "daily") {
+          queryClient.invalidateQueries({ queryKey: ["today-checkins"] });
+          queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+        }
         setHistoryEditDone(true);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
