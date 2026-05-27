@@ -146,6 +146,12 @@ export default function AdminApprovalsScreen() {
   const [rejectTarget, setRejectTarget] = useState<Invite | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  const [filterFranchise, setFilterFranchise] = useState<string | null>(null);
+  const [filterRole, setFilterRole] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"oldest" | "newest">("oldest");
+  const [showFranchisePicker, setShowFranchisePicker] = useState(false);
+  const [showRolePicker, setShowRolePicker] = useState(false);
+
   const [historyTarget, setHistoryTarget] = useState<HistoryTarget | null>(null);
   const [impactCheckingId, setImpactCheckingId] = useState<number | null>(null);
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
@@ -211,15 +217,23 @@ export default function AdminApprovalsScreen() {
     staleTime: 30_000,
   });
 
-  const pending = (data ?? [])
-    .filter(
-      (inv) => inv.status === "used" && !inv.approvedAt && !inv.rejectedAt
-    )
+  const allPending = (data ?? []).filter(
+    (inv) => inv.status === "used" && !inv.approvedAt && !inv.rejectedAt
+  );
+
+  const franchiseOptions = [...new Set(allPending.map((inv) => inv.franchiseName).filter(Boolean))] as string[];
+  const roleOptions = [...new Set(allPending.map((inv) => inv.role).filter(Boolean))] as string[];
+
+  const pending = allPending
+    .filter((inv) => !filterFranchise || inv.franchiseName === filterFranchise)
+    .filter((inv) => !filterRole || inv.role === filterRole)
     .sort((a, b) => {
       const ta = a.usedAt ? new Date(a.usedAt).getTime() : 0;
       const tb = b.usedAt ? new Date(b.usedAt).getTime() : 0;
-      return ta - tb;
+      return sortOrder === "oldest" ? ta - tb : tb - ta;
     });
+
+  const hasFilters = !!filterFranchise || !!filterRole;
 
   const approveMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -791,6 +805,60 @@ export default function AdminApprovalsScreen() {
       fontFamily: "Inter_600SemiBold",
       color: colors.foreground,
     },
+    filterBar: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 14,
+    },
+    filterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      maxWidth: 160,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: 12,
+      fontFamily: "Inter_500Medium",
+      color: colors.mutedForeground,
+      flexShrink: 1,
+    },
+    filterChipTextActive: {
+      color: colors.primaryForeground,
+    },
+    pickerOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 13,
+      paddingHorizontal: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerOptionActive: {
+      borderBottomColor: colors.border,
+    },
+    pickerOptionText: {
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      flex: 1,
+      marginRight: 8,
+    },
+    pickerOptionTextActive: {
+      fontFamily: "Inter_600SemiBold",
+      color: colors.primary,
+    },
   });
 
   if (!user || !["master_admin", "staff_regional"].includes(user.role)) {
@@ -885,17 +953,88 @@ export default function AdminApprovalsScreen() {
                 <View style={s.sectionHeader}>
                   <Ionicons name="hourglass-outline" size={18} color="#b45309" />
                   <Text style={s.sectionTitle}>Aguardando aprovação</Text>
-                  {pending.length > 0 && (
+                  {allPending.length > 0 && (
                     <View style={s.badge}>
-                      <Text style={s.badgeText}>{pending.length}</Text>
+                      <Text style={s.badgeText}>
+                        {hasFilters ? `${pending.length} de ${allPending.length}` : allPending.length}
+                      </Text>
                     </View>
                   )}
                 </View>
 
-                {pending.length === 0 ? (
+                {allPending.length > 0 && (
+                  <View style={s.filterBar}>
+                    <Pressable
+                      style={[s.filterChip, filterFranchise && s.filterChipActive]}
+                      onPress={() => setShowFranchisePicker(true)}
+                    >
+                      <Ionicons
+                        name="business-outline"
+                        size={13}
+                        color={filterFranchise ? colors.primaryForeground : colors.mutedForeground}
+                      />
+                      <Text
+                        style={[s.filterChipText, filterFranchise && s.filterChipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {filterFranchise ?? "Franquia"}
+                      </Text>
+                      {filterFranchise && (
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => setFilterFranchise(null)}
+                        >
+                          <Ionicons name="close-circle" size={14} color={colors.primaryForeground} />
+                        </Pressable>
+                      )}
+                    </Pressable>
+
+                    <Pressable
+                      style={[s.filterChip, filterRole && s.filterChipActive]}
+                      onPress={() => setShowRolePicker(true)}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={13}
+                        color={filterRole ? colors.primaryForeground : colors.mutedForeground}
+                      />
+                      <Text
+                        style={[s.filterChipText, filterRole && s.filterChipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {filterRole ? (ROLE_LABELS[filterRole] ?? filterRole) : "Perfil"}
+                      </Text>
+                      {filterRole && (
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => setFilterRole(null)}
+                        >
+                          <Ionicons name="close-circle" size={14} color={colors.primaryForeground} />
+                        </Pressable>
+                      )}
+                    </Pressable>
+
+                    <Pressable
+                      style={s.filterChip}
+                      onPress={() => setSortOrder(sortOrder === "oldest" ? "newest" : "oldest")}
+                    >
+                      <Ionicons name="swap-vertical-outline" size={13} color={colors.mutedForeground} />
+                      <Text style={s.filterChipText}>
+                        {sortOrder === "oldest" ? "Mais antigos" : "Mais recentes"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                {allPending.length === 0 ? (
                   <View style={s.emptyCard}>
                     <Ionicons name="checkmark-circle-outline" size={36} color={colors.mutedForeground} />
                     <Text style={s.emptyText}>Nenhum cadastro aguardando aprovação</Text>
+                  </View>
+                ) : pending.length === 0 ? (
+                  <View style={s.emptyCard}>
+                    <Ionicons name="filter-outline" size={36} color={colors.mutedForeground} />
+                    <Text style={s.emptyText}>Nenhum cadastro corresponde aos filtros selecionados</Text>
                   </View>
                 ) : (
                   pending.map((inv) => (
@@ -1176,6 +1315,86 @@ export default function AdminApprovalsScreen() {
                 </Text>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      )}
+
+      {/* Franchise filter picker */}
+      {showFranchisePicker && (
+        <Pressable style={s.overlay} onPress={() => setShowFranchisePicker(false)}>
+          <Pressable style={s.sheet} onPress={(e) => e.stopPropagation()}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={s.sheetTitle}>Filtrar por franquia</Text>
+              <Pressable onPress={() => setShowFranchisePicker(false)}>
+                <Ionicons name="close" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Pressable
+                style={[s.pickerOption, !filterFranchise && s.pickerOptionActive]}
+                onPress={() => { setFilterFranchise(null); setShowFranchisePicker(false); }}
+              >
+                <Text style={[s.pickerOptionText, !filterFranchise && s.pickerOptionTextActive]}>
+                  Todas as franquias
+                </Text>
+                {!filterFranchise && (
+                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                )}
+              </Pressable>
+              {franchiseOptions.map((name) => (
+                <Pressable
+                  key={name}
+                  style={[s.pickerOption, filterFranchise === name && s.pickerOptionActive]}
+                  onPress={() => { setFilterFranchise(name); setShowFranchisePicker(false); }}
+                >
+                  <Text style={[s.pickerOptionText, filterFranchise === name && s.pickerOptionTextActive]} numberOfLines={1}>
+                    {name}
+                  </Text>
+                  {filterFranchise === name && (
+                    <Ionicons name="checkmark" size={16} color={colors.primary} />
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      )}
+
+      {/* Role filter picker */}
+      {showRolePicker && (
+        <Pressable style={s.overlay} onPress={() => setShowRolePicker(false)}>
+          <Pressable style={s.sheet} onPress={(e) => e.stopPropagation()}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={s.sheetTitle}>Filtrar por perfil</Text>
+              <Pressable onPress={() => setShowRolePicker(false)}>
+                <Ionicons name="close" size={20} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Pressable
+              style={[s.pickerOption, !filterRole && s.pickerOptionActive]}
+              onPress={() => { setFilterRole(null); setShowRolePicker(false); }}
+            >
+              <Text style={[s.pickerOptionText, !filterRole && s.pickerOptionTextActive]}>
+                Todos os perfis
+              </Text>
+              {!filterRole && (
+                <Ionicons name="checkmark" size={16} color={colors.primary} />
+              )}
+            </Pressable>
+            {roleOptions.map((role) => (
+              <Pressable
+                key={role}
+                style={[s.pickerOption, filterRole === role && s.pickerOptionActive]}
+                onPress={() => { setFilterRole(role); setShowRolePicker(false); }}
+              >
+                <Text style={[s.pickerOptionText, filterRole === role && s.pickerOptionTextActive]}>
+                  {ROLE_LABELS[role] ?? role}
+                </Text>
+                {filterRole === role && (
+                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                )}
+              </Pressable>
+            ))}
           </Pressable>
         </Pressable>
       )}
