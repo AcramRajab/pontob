@@ -55,6 +55,7 @@ type PendingDeactivation = {
   name: string;
   activeGoalCount: number;
   affectedFranchises?: string[];
+  dimensionBecomesEmpty?: boolean;
 };
 
 export default function Catalog() {
@@ -166,13 +167,14 @@ export default function Catalog() {
     setImpactCheckingId(key);
     try {
       const impact = await getKeyProcessDeactivationImpact(kp.id);
-      if (impact.activeGoalCount > 0) {
+      if (impact.activeGoalCount > 0 || impact.dimensionBecomesEmpty) {
         setPendingDeactivation({
           type: "keyProcess",
           id: kp.id,
           name: kp.name,
           activeGoalCount: impact.activeGoalCount,
           affectedFranchises: impact.affectedFranchises,
+          dimensionBecomesEmpty: impact.dimensionBecomesEmpty,
         });
       } else {
         toggleKp.mutate({ id: kp.id });
@@ -425,21 +427,30 @@ export default function Catalog() {
                     </>
                   ) : (
                     <>
-                      <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
-                      {pendingDeactivation.activeGoalCount === 1
-                        ? "franquia tem metas ativas que referenciam este item"
-                        : "franquias têm metas ativas que referenciam este item"}
-                      :
-                      {pendingDeactivation.affectedFranchises && pendingDeactivation.affectedFranchises.length > 0 && (
-                        <ul className="mt-2 space-y-1 list-disc list-inside text-sm">
-                          {pendingDeactivation.affectedFranchises.map(name => (
-                            <li key={name} className="font-medium text-foreground">{name}</li>
-                          ))}
-                        </ul>
+                      {pendingDeactivation.activeGoalCount > 0 && (
+                        <>
+                          <strong>{pendingDeactivation.activeGoalCount}</strong>{" "}
+                          {pendingDeactivation.activeGoalCount === 1
+                            ? "franquia tem metas ativas que referenciam este item"
+                            : "franquias têm metas ativas que referenciam este item"}
+                          :
+                          {pendingDeactivation.affectedFranchises && pendingDeactivation.affectedFranchises.length > 0 && (
+                            <ul className="mt-2 space-y-1 list-disc list-inside text-sm">
+                              {pendingDeactivation.affectedFranchises.map(name => (
+                                <li key={name} className="font-medium text-foreground">{name}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <p className="mt-3">
+                            Desativá-lo pode causar confusão para as franquias afetadas.
+                          </p>
+                        </>
                       )}
-                      <p className="mt-3">
-                        Desativá-lo pode causar confusão para as franquias afetadas.
-                      </p>
+                      {pendingDeactivation.type === "keyProcess" && pendingDeactivation.dimensionBecomesEmpty && (
+                        <p className={pendingDeactivation.activeGoalCount > 0 ? "mt-3" : ""}>
+                          <strong>Atenção:</strong> este é o único processo-chave ativo da dimensão. Desativá-lo deixará a dimensão sem nenhum processo-chave ativo.
+                        </p>
+                      )}
                     </>
                   )}
                 </>

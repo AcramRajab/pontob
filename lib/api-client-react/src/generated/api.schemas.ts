@@ -260,6 +260,8 @@ export interface CatalogDeactivationImpact {
   activeGoalCount: number;
   /** Names of franchises that have active goals referencing this catalog item */
   affectedFranchises: string[];
+  /** True when deactivating this key process would leave its parent dimension with no remaining active key processes */
+  dimensionBecomesEmpty?: boolean;
 }
 
 export interface CatalogAuditLogEntry {

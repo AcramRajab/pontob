@@ -2176,6 +2176,9 @@ components:
           items:
             type: string
           description: Names of franchises that have active goals referencing this catalog item
+        dimensionBecomesEmpty:
+          type: boolean
+          description: True when deactivating this key process would leave its parent dimension with no remaining active key processes
 
     CatalogAuditLogEntry:
       type: object

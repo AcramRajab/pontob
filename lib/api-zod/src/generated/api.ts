@@ -477,6 +477,12 @@ export const GetDimensionDeactivationImpactResponse = zod.object({
     .describe(
       "Names of franchises that have active goals referencing this catalog item",
     ),
+  dimensionBecomesEmpty: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when deactivating this key process would leave its parent dimension with no remaining active key processes",
+    ),
 });
 
 /**
@@ -509,6 +515,12 @@ export const GetKeyProcessDeactivationImpactResponse = zod.object({
     .array(zod.string())
     .describe(
       "Names of franchises that have active goals referencing this catalog item",
+    ),
+  dimensionBecomesEmpty: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True when deactivating this key process would leave its parent dimension with no remaining active key processes",
     ),
 });
 

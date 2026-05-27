@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, dimensionsTable, keyProcessesTable, strategicInitiativesTable, auditLogsTable } from "@workspace/db";
 import { goalsTable, goalInitiativesTable, franchisesTable } from "@workspace/db";
-import { and, eq, notInArray, count, inArray, desc, isNotNull, gte, lte } from "drizzle-orm";
+import { and, eq, ne, notInArray, count, inArray, desc, isNotNull, gte, lte } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
@@ -518,18 +518,31 @@ router.get(
     try {
       const [row] = await db.select().from(keyProcessesTable).where(eq(keyProcessesTable.id, id));
       if (!row) { res.status(404).json({ error: "Not found" }); return; }
-      const rows = await db
-        .selectDistinct({ franchiseName: franchisesTable.name })
-        .from(goalsTable)
-        .innerJoin(franchisesTable, eq(goalsTable.franchiseId, franchisesTable.id))
-        .where(
-          and(
-            eq(goalsTable.keyProcessId, id),
-            notInArray(goalsTable.status, ["concluida", "cancelada"]),
+      const [goalRows, [{ remaining }]] = await Promise.all([
+        db
+          .selectDistinct({ franchiseName: franchisesTable.name })
+          .from(goalsTable)
+          .innerJoin(franchisesTable, eq(goalsTable.franchiseId, franchisesTable.id))
+          .where(
+            and(
+              eq(goalsTable.keyProcessId, id),
+              notInArray(goalsTable.status, ["concluida", "cancelada"]),
+            ),
           ),
-        );
-      const affectedFranchises = rows.map(r => r.franchiseName);
-      res.json({ activeGoalCount: affectedFranchises.length, affectedFranchises });
+        db
+          .select({ remaining: count() })
+          .from(keyProcessesTable)
+          .where(
+            and(
+              eq(keyProcessesTable.dimensionId, row.dimensionId),
+              eq(keyProcessesTable.active, true),
+              ne(keyProcessesTable.id, id),
+            ),
+          ),
+      ]);
+      const affectedFranchises = goalRows.map(r => r.franchiseName);
+      const dimensionBecomesEmpty = remaining === 0;
+      res.json({ activeGoalCount: affectedFranchises.length, affectedFranchises, dimensionBecomesEmpty });
     } catch (err) {
       req.log.error(err);
       res.status(500).json({ error: "Internal server error" });
