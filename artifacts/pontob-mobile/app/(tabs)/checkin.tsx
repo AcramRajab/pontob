@@ -197,6 +197,7 @@ export default function CheckinScreen() {
   const [historyEditEntry, setHistoryEditEntry] = useState<
     | { kind: "daily"; item: DailyCheckin }
     | { kind: "weekly"; item: WeeklyCheckin }
+    | { kind: "monthly"; item: MonthlyCheckin }
     | null
   >(null);
   const [editDailyExecuted, setEditDailyExecuted] = useState<ExecutedOption>("sim");
@@ -209,6 +210,13 @@ export default function CheckinScreen() {
   const [editWeeklyBlockers, setEditWeeklyBlockers] = useState("");
   const [editWeeklyNextPriority, setEditWeeklyNextPriority] = useState("");
   const [editWeeklyNeedsSupport, setEditWeeklyNeedsSupport] = useState(false);
+  const [editMonthlyKri, setEditMonthlyKri] = useState("");
+  const [editMonthlyWorked, setEditMonthlyWorked] = useState("");
+  const [editMonthlyDidntWork, setEditMonthlyDidntWork] = useState("");
+  const [editMonthlyContinue, setEditMonthlyContinue] = useState("");
+  const [editMonthlyStop, setEditMonthlyStop] = useState("");
+  const [editMonthlyStart, setEditMonthlyStart] = useState("");
+  const [editMonthlyNextFocus, setEditMonthlyNextFocus] = useState("");
   const [historyEditSubmitting, setHistoryEditSubmitting] = useState(false);
   const [historyEditDone, setHistoryEditDone] = useState(false);
 
@@ -362,13 +370,22 @@ export default function CheckinScreen() {
       setEditDailyBlocker(d.blocker ?? "");
       setEditDailyNextStep(d.nextStep ?? "");
       setEditDailyNeedsHelp(d.needsHelp);
-    } else {
+    } else if (historyEditEntry.kind === "weekly") {
       const w = historyEditEntry.item;
       setEditWeeklyExecPct(w.executionPercentage ?? 50);
       setEditWeeklyProgressSummary(w.progressSummary ?? "");
       setEditWeeklyBlockers(w.blockers ?? "");
       setEditWeeklyNextPriority(w.nextWeekPriority ?? "");
       setEditWeeklyNeedsSupport(w.needsRegionalSupport);
+    } else {
+      const m = historyEditEntry.item;
+      setEditMonthlyKri(m.kriProgress ?? "");
+      setEditMonthlyWorked(m.initiativesThatWorked ?? "");
+      setEditMonthlyDidntWork(m.initiativesThatDidNotWork ?? "");
+      setEditMonthlyContinue(m.continueDoing ?? "");
+      setEditMonthlyStop(m.stopDoing ?? "");
+      setEditMonthlyStart(m.startDoing ?? "");
+      setEditMonthlyNextFocus(m.nextMonthFocus ?? "");
     }
     setHistoryEditDone(false);
   }, [historyEditEntry]);
@@ -517,7 +534,7 @@ export default function CheckinScreen() {
           method: "PATCH",
           body: JSON.stringify(body),
         });
-      } else {
+      } else if (historyEditEntry.kind === "weekly") {
         const body = {
           progressSummary: editWeeklyProgressSummary.trim() || null,
           blockers: editWeeklyBlockers.trim() || null,
@@ -529,11 +546,26 @@ export default function CheckinScreen() {
           method: "PATCH",
           body: JSON.stringify(body),
         });
+      } else {
+        const body = {
+          kriProgress: editMonthlyKri.trim() || null,
+          initiativesThatWorked: editMonthlyWorked.trim() || null,
+          initiativesThatDidNotWork: editMonthlyDidntWork.trim() || null,
+          continueDoing: editMonthlyContinue.trim() || null,
+          stopDoing: editMonthlyStop.trim() || null,
+          startDoing: editMonthlyStart.trim() || null,
+          nextMonthFocus: editMonthlyNextFocus.trim() || null,
+        };
+        res = await apiFetch(`/monthly-checkins/${historyEditEntry.item.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
       }
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-weekly-checkins"] });
+        queryClient.invalidateQueries({ queryKey: ["all-monthly-checkins"] });
         setHistoryEditDone(true);
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -1400,10 +1432,6 @@ export default function CheckinScreen() {
               metaLine = m.nextMonthFocus ? `Foco: ${m.nextMonthFocus}` : m.kriProgress ?? "";
             }
 
-            const isEditable =
-              (entry.kind === "daily" && entry.item.date === yesterdayStr) ||
-              (entry.kind === "weekly" && entry.item.weekStartDate === lastWeekMondayStr);
-
             return (
               <Pressable
                 key={`${entry.kind}-${entry.item.id}-${idx}`}
@@ -1418,23 +1446,23 @@ export default function CheckinScreen() {
                     <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    {isEditable && (
-                      <Pressable
-                        style={s.historyEditBtn}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          setHistoryEditEntry(
-                            entry.kind === "daily"
-                              ? { kind: "daily", item: entry.item }
-                              : { kind: "weekly", item: entry.item as WeeklyCheckin },
-                          );
-                        }}
-                      >
-                        <Ionicons name="create-outline" size={12} color={colors.primary} />
-                        <Text style={s.historyEditBtnText}>Editar</Text>
-                      </Pressable>
-                    )}
+                    <Pressable
+                      style={s.historyEditBtn}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        if (entry.kind === "daily") {
+                          setHistoryEditEntry({ kind: "daily", item: entry.item });
+                        } else if (entry.kind === "weekly") {
+                          setHistoryEditEntry({ kind: "weekly", item: entry.item as WeeklyCheckin });
+                        } else {
+                          setHistoryEditEntry({ kind: "monthly", item: entry.item as MonthlyCheckin });
+                        }
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={12} color={colors.primary} />
+                      <Text style={s.historyEditBtnText}>Editar</Text>
+                    </Pressable>
                     <Ionicons name="chevron-forward" size={14} color={colors.mutedForeground} />
                     <Text style={s.historyDate}>{dateStr2}</Text>
                   </View>
@@ -1475,7 +1503,20 @@ export default function CheckinScreen() {
       );
     }
 
-    const isDaily = historyEditEntry.kind === "daily";
+    const editKind = historyEditEntry.kind;
+
+    let bannerText = "";
+    if (editKind === "daily") {
+      const d = historyEditEntry.item as DailyCheckin;
+      bannerText = `Editando check-in de ${new Date(d.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })} — suas alterações substituirão o registro atual.`;
+    } else if (editKind === "weekly") {
+      const w = historyEditEntry.item as WeeklyCheckin;
+      bannerText = `Editando check-in da semana de ${new Date(w.weekStartDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — suas alterações substituirão o registro atual.`;
+    } else {
+      const m = historyEditEntry.item as MonthlyCheckin;
+      const monthName = MONTHS_PT[m.month - 1];
+      bannerText = `Editando check-in de ${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${m.year} — suas alterações substituirão o registro atual.`;
+    }
 
     return (
       <>
@@ -1490,15 +1531,10 @@ export default function CheckinScreen() {
         <View style={s.content}>
           <View style={s.editBanner}>
             <Ionicons name="create-outline" size={16} color="#d97706" />
-            <Text style={s.editBannerText}>
-              {isDaily
-                ? `Editando check-in de ${new Date(historyEditEntry.item.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })} — suas alterações substituirão o registro atual.`
-                : `Editando check-in da semana de ${new Date((historyEditEntry.item as WeeklyCheckin).weekStartDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} — suas alterações substituirão o registro atual.`
-              }
-            </Text>
+            <Text style={s.editBannerText}>{bannerText}</Text>
           </View>
 
-          {isDaily ? (
+          {editKind === "daily" && (
             <>
               <View style={s.section}>
                 <Text style={s.secLabel}>Executei hoje?</Text>
@@ -1526,7 +1562,9 @@ export default function CheckinScreen() {
               {renderTextSection("Próximo passo", "O que você vai fazer amanhã?", editDailyNextStep, setEditDailyNextStep)}
               {renderSwitchRow("Preciso de ajuda", "Solicitar suporte à equipe regional", editDailyNeedsHelp, setEditDailyNeedsHelp)}
             </>
-          ) : (
+          )}
+
+          {editKind === "weekly" && (
             <>
               <View style={s.section}>
                 <Text style={s.secLabel}>Semana</Text>
@@ -1543,6 +1581,18 @@ export default function CheckinScreen() {
               {renderTextSection("Impedimentos e bloqueios", "O que dificultou a execução esta semana?", editWeeklyBlockers, setEditWeeklyBlockers)}
               {renderTextSection("Prioridades para a próxima semana", "Quais são os focos da próxima semana?", editWeeklyNextPriority, setEditWeeklyNextPriority)}
               {renderSwitchRow("Preciso de suporte regional", "Solicitar apoio da equipe RE/MAX SC", editWeeklyNeedsSupport, setEditWeeklyNeedsSupport)}
+            </>
+          )}
+
+          {editKind === "monthly" && (
+            <>
+              {renderTextSection("Progresso dos KRIs", "Como estão os KRIs em relação à meta?", editMonthlyKri, setEditMonthlyKri)}
+              {renderTextSection("Iniciativas que funcionaram", "O que trouxe resultado este mês?", editMonthlyWorked, setEditMonthlyWorked)}
+              {renderTextSection("Iniciativas que não funcionaram", "O que não gerou resultado esperado?", editMonthlyDidntWork, setEditMonthlyDidntWork)}
+              {renderTextSection("Continuar fazendo", "O que deve continuar sendo feito?", editMonthlyContinue, setEditMonthlyContinue)}
+              {renderTextSection("Parar de fazer", "O que deve ser descontinuado?", editMonthlyStop, setEditMonthlyStop)}
+              {renderTextSection("Começar a fazer", "O que precisa ser iniciado?", editMonthlyStart, setEditMonthlyStart)}
+              {renderTextSection("Foco do próximo mês", "Qual será o principal foco do próximo mês?", editMonthlyNextFocus, setEditMonthlyNextFocus)}
             </>
           )}
 
@@ -1612,9 +1662,7 @@ export default function CheckinScreen() {
     }
 
     let titleLine = "";
-    const isEditable =
-      (kind === "daily" && (item as DailyCheckin).date === yesterdayStr) ||
-      (kind === "weekly" && (item as WeeklyCheckin).weekStartDate === lastWeekMondayStr);
+    const isEditable = true;
 
     let content: React.ReactNode = null;
 
@@ -1694,11 +1742,13 @@ export default function CheckinScreen() {
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setSelectedHistoryEntry(null);
-                setHistoryEditEntry(
-                  kind === "daily"
-                    ? { kind: "daily", item: item as DailyCheckin }
-                    : { kind: "weekly", item: item as WeeklyCheckin },
-                );
+                if (kind === "daily") {
+                  setHistoryEditEntry({ kind: "daily", item: item as DailyCheckin });
+                } else if (kind === "weekly") {
+                  setHistoryEditEntry({ kind: "weekly", item: item as WeeklyCheckin });
+                } else {
+                  setHistoryEditEntry({ kind: "monthly", item: item as MonthlyCheckin });
+                }
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
