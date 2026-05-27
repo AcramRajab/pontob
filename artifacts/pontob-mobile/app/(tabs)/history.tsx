@@ -29,12 +29,14 @@ interface DailyCheckin {
   blocker: string | null;
   nextStep: string | null;
   needsHelp: boolean;
+  goalTitle: string | null;
   createdAt: string;
 }
 
 interface WeeklyCheckin {
   id: number;
   goalId: number | null;
+  goalTitle: string | null;
   weekStartDate: string;
   weekEndDate: string | null;
   progressSummary: string | null;
@@ -430,6 +432,7 @@ export default function HistoryScreen() {
           <DetailField label="Impedimento" value={d.blocker} />
           <DetailField label="Próximo passo" value={d.nextStep} />
           <DetailBool label="Precisa de ajuda" value={d.needsHelp} />
+          <DetailField label="Meta relacionada" value={d.goalTitle} />
         </>
       );
     } else if (kind === "weekly") {
@@ -444,6 +447,7 @@ export default function HistoryScreen() {
           <DetailField label="Impedimentos e bloqueios" value={w.blockers} />
           <DetailField label="Prioridades para a próxima semana" value={w.nextWeekPriority} />
           <DetailBool label="Precisa de suporte regional" value={w.needsRegionalSupport} />
+          <DetailField label="Meta relacionada" value={w.goalTitle} />
         </>
       );
     } else {

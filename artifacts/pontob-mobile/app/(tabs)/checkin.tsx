@@ -57,12 +57,14 @@ interface DailyCheckin {
   blocker: string | null;
   nextStep: string | null;
   needsHelp: boolean;
+  goalTitle: string | null;
   createdAt: string;
 }
 
 interface WeeklyCheckin {
   id: number;
   goalId: number | null;
+  goalTitle: string | null;
   weekStartDate: string;
   weekEndDate: string | null;
   progressSummary: string | null;
