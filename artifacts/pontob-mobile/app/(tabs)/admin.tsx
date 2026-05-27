@@ -126,8 +126,9 @@ function initials(name: string | null): string {
     .toUpperCase();
 }
 
-type AdminTab = "approvals" | "catalog";
+type AdminTab = "approvals" | "catalog" | "history";
 type CatalogTab = "dimension" | "key_process" | "strategic_initiative";
+type HistoryEntityFilter = "all" | "dimension" | "key_process" | "strategic_initiative";
 
 type PendingDeactivation = {
   id: number;
@@ -158,6 +159,8 @@ export default function AdminApprovalsScreen() {
   const [impactCheckingId, setImpactCheckingId] = useState<number | null>(null);
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const [historyEntityFilter, setHistoryEntityFilter] = useState<HistoryEntityFilter>("all");
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
@@ -217,6 +220,36 @@ export default function AdminApprovalsScreen() {
       return res.json() as Promise<AuditEntry[]>;
     },
     enabled: !!historyTarget,
+    staleTime: 30_000,
+  });
+
+  interface CatalogActivityEntry {
+    id: number;
+    entityType: "dimension" | "key_process" | "strategic_initiative";
+    entityId: number | null;
+    entityName: string | null;
+    action: string;
+    userName: string;
+    userEmail: string;
+    changedAt: string;
+  }
+
+  const {
+    data: allActivity = [],
+    isLoading: allActivityLoading,
+    isRefetching: allActivityRefetching,
+    refetch: refetchAllActivity,
+  } = useQuery({
+    queryKey: ["catalog-all-activity", historyEntityFilter],
+    queryFn: async () => {
+      const params = historyEntityFilter !== "all"
+        ? `?entityType=${historyEntityFilter}`
+        : "";
+      const res = await apiFetch(`/catalog-audit-logs/all${params}`);
+      if (!res.ok) throw new Error("Failed to fetch catalog activity");
+      return res.json() as Promise<CatalogActivityEntry[]>;
+    },
+    enabled: !!user && ["master_admin", "staff_regional"].includes(user.role) && adminTab === "history",
     staleTime: 30_000,
   });
 
@@ -923,6 +956,46 @@ export default function AdminApprovalsScreen() {
       fontFamily: "Inter_600SemiBold",
       color: colors.foreground,
     },
+    allHistoryEntry: {
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    allHistoryRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+    },
+    allHistoryIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: colors.background,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      flexShrink: 0,
+    },
+    allHistoryTypeBadge: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    allHistoryTypeBadgeText: {
+      fontSize: 11,
+      fontFamily: "Inter_500Medium",
+      color: colors.mutedForeground,
+    },
+    allHistoryItemName: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+      flexShrink: 1,
+    },
   });
 
   if (!user || !["master_admin", "staff_regional"].includes(user.role)) {
@@ -966,8 +1039,20 @@ export default function AdminApprovalsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={adminTab === "approvals" ? isRefetching : catalogRefreshing}
-            onRefresh={adminTab === "approvals" ? refetch : handleCatalogRefresh}
+            refreshing={
+              adminTab === "approvals"
+                ? isRefetching
+                : adminTab === "history"
+                ? allActivityRefetching
+                : catalogRefreshing
+            }
+            onRefresh={
+              adminTab === "approvals"
+                ? refetch
+                : adminTab === "history"
+                ? () => void refetchAllActivity()
+                : handleCatalogRefresh
+            }
             tintColor={colors.primary}
           />
         }
@@ -992,6 +1077,14 @@ export default function AdminApprovalsScreen() {
           >
             <Text style={[s.tabBtnText, adminTab === "catalog" && s.tabBtnTextActive]}>
               Catálogo
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.tabBtn, adminTab === "history" && s.tabBtnActive]}
+            onPress={() => setAdminTab("history")}
+          >
+            <Text style={[s.tabBtnText, adminTab === "history" && s.tabBtnTextActive]}>
+              Histórico
             </Text>
           </Pressable>
         </View>
@@ -1160,6 +1253,136 @@ export default function AdminApprovalsScreen() {
               </View>
             )}
           </>
+        ) : adminTab === "history" ? (
+          <View style={s.content}>
+            {/* History entity type filter */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={s.catalogTabRow}
+              contentContainerStyle={{ gap: 6, paddingRight: 4 }}
+            >
+              {(["all", "dimension", "key_process", "strategic_initiative"] as HistoryEntityFilter[]).map(
+                (type) => {
+                  const label =
+                    type === "all"
+                      ? "Todos"
+                      : ENTITY_TYPE_LABELS[type as CatalogEntityType];
+                  return (
+                    <Pressable
+                      key={type}
+                      style={[
+                        s.catalogTypeBtn,
+                        historyEntityFilter === type && s.catalogTypeBtnActive,
+                      ]}
+                      onPress={() => setHistoryEntityFilter(type)}
+                    >
+                      <Text
+                        style={[
+                          s.catalogTypeBtnText,
+                          historyEntityFilter === type && s.catalogTypeBtnTextActive,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </Pressable>
+                  );
+                }
+              )}
+            </ScrollView>
+
+            {allActivityLoading ? (
+              <View style={{ alignItems: "center", padding: 40 }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : allActivity.length === 0 ? (
+              <View style={s.emptyCard}>
+                <Ionicons name="time-outline" size={36} color={colors.mutedForeground} />
+                <Text style={s.emptyText}>
+                  {historyEntityFilter !== "all"
+                    ? "Nenhuma atividade para este tipo de item."
+                    : "Nenhuma atividade de catálogo registrada."}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: colors.radius * 2,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  overflow: "hidden",
+                }}
+              >
+                {allActivity.map((entry, idx) => {
+                  const isActivated = entry.action === "activated";
+                  const isLast = idx === allActivity.length - 1;
+                  const entityTypeIcon: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
+                    dimension: "layers-outline",
+                    key_process: "git-branch-outline",
+                    strategic_initiative: "sparkles-outline",
+                  };
+                  return (
+                    <View
+                      key={entry.id}
+                      style={[
+                        s.allHistoryEntry,
+                        isLast && s.historyEntryLast,
+                      ]}
+                    >
+                      <View style={s.allHistoryRow}>
+                        <View style={s.allHistoryIconWrap}>
+                          <Ionicons
+                            name={entityTypeIcon[entry.entityType] ?? "cube-outline"}
+                            size={14}
+                            color={colors.mutedForeground}
+                          />
+                        </View>
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                            <View
+                              style={[
+                                s.historyActionBadge,
+                                isActivated
+                                  ? s.historyActionBadgeActivated
+                                  : s.historyActionBadgeDeactivated,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  s.historyActionText,
+                                  isActivated
+                                    ? s.historyActionTextActivated
+                                    : s.historyActionTextDeactivated,
+                                ]}
+                              >
+                                {isActivated ? "Ativado" : "Desativado"}
+                              </Text>
+                            </View>
+                            <View style={s.allHistoryTypeBadge}>
+                              <Text style={s.allHistoryTypeBadgeText}>
+                                {ENTITY_TYPE_LABELS[entry.entityType as CatalogEntityType] ?? entry.entityType}
+                              </Text>
+                            </View>
+                            {entry.entityName ? (
+                              <Text style={s.allHistoryItemName} numberOfLines={1}>
+                                {entry.entityName}
+                              </Text>
+                            ) : null}
+                          </View>
+                          <Text style={s.historyMeta}>
+                            <Text style={s.historyMetaBold}>{entry.userName}</Text>
+                            {" · "}
+                            {formatDate(entry.changedAt)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
         ) : (
           <View style={s.content}>
             {/* Export log button */}
