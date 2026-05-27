@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -285,6 +286,11 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
   const [filterFranchise, setFilterFranchise] = useState<string>("all");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("oldest");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchApproveOpen, setBatchApproveOpen] = useState(false);
+  const [batchRejectOpen, setBatchRejectOpen] = useState(false);
+  const [batchRejectReason, setBatchRejectReason] = useState("");
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const pending = invites.filter(
     (inv) => inv.status === InviteTokenStatus.used && !inv.approvedAt && !inv.rejectedAt,
@@ -301,6 +307,36 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
       const tb = b.usedAt ? new Date(b.usedAt).getTime() : 0;
       return sortOrder === "oldest" ? ta - tb : tb - ta;
     });
+
+  const displayedIds = displayed.map((inv) => inv.id);
+  const allSelected = displayedIds.length > 0 && displayedIds.every((id) => selectedIds.has(id));
+  const someSelected = displayedIds.some((id) => selectedIds.has(id));
+  const selectedCount = displayedIds.filter((id) => selectedIds.has(id)).length;
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        displayedIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        displayedIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const approve = useApproveInvite({
     mutation: {
@@ -334,6 +370,74 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
     },
   });
 
+  async function handleBatchApprove() {
+    const ids = displayedIds.filter((id) => selectedIds.has(id));
+    setBatchLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/invites/${id}/approve`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) successCount++;
+        else errorCount++;
+      } catch {
+        errorCount++;
+      }
+    }
+    await qc.invalidateQueries({ queryKey: getListInvitesQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+    setBatchLoading(false);
+    setBatchApproveOpen(false);
+    setSelectedIds(new Set());
+    if (errorCount === 0) {
+      toast({ title: `${successCount} cadastro${successCount !== 1 ? "s" : ""} aprovado${successCount !== 1 ? "s" : ""} com sucesso` });
+    } else {
+      toast({
+        title: `${successCount} aprovado${successCount !== 1 ? "s" : ""}, ${errorCount} com erro`,
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function handleBatchReject() {
+    const ids = displayedIds.filter((id) => selectedIds.has(id));
+    const reason = batchRejectReason.trim() || undefined;
+    setBatchLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/invites/${id}/reject`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ reason }),
+        });
+        if (res.ok) successCount++;
+        else errorCount++;
+      } catch {
+        errorCount++;
+      }
+    }
+    await qc.invalidateQueries({ queryKey: getListInvitesQueryKey() });
+    await qc.invalidateQueries({ queryKey: getListUsersQueryKey({}) });
+    setBatchLoading(false);
+    setBatchRejectOpen(false);
+    setBatchRejectReason("");
+    setSelectedIds(new Set());
+    if (errorCount === 0) {
+      toast({ title: `${successCount} cadastro${successCount !== 1 ? "s" : ""} rejeitado${successCount !== 1 ? "s" : ""}` });
+    } else {
+      toast({
+        title: `${successCount} rejeitado${successCount !== 1 ? "s" : ""}, ${errorCount} com erro`,
+        variant: "destructive",
+      });
+    }
+  }
+
   if (pending.length === 0) return null;
 
   const hasFilters = filterFranchise !== "all" || filterRole !== "all";
@@ -351,7 +455,7 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
               <Filter className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-              <Select value={filterFranchise} onValueChange={setFilterFranchise}>
+              <Select value={filterFranchise} onValueChange={v => { setFilterFranchise(v); setSelectedIds(new Set()); }}>
                 <SelectTrigger
                   className="h-7 text-xs bg-white border-amber-200 text-amber-900 min-w-[140px]"
                   data-testid="select-filter-franchise"
@@ -366,7 +470,7 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
                 </SelectContent>
               </Select>
             </div>
-            <Select value={filterRole} onValueChange={setFilterRole}>
+            <Select value={filterRole} onValueChange={v => { setFilterRole(v); setSelectedIds(new Set()); }}>
               <SelectTrigger
                 className="h-7 text-xs bg-white border-amber-200 text-amber-900 min-w-[140px]"
                 data-testid="select-filter-role"
@@ -397,6 +501,52 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
             </div>
           </div>
         </div>
+
+        {displayed.length > 0 && (
+          <div className="flex items-center justify-between gap-2 px-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <Checkbox
+                data-testid="checkbox-select-all"
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+                className="border-amber-400 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600"
+                aria-label="Selecionar todos"
+              />
+              <span className="text-xs text-amber-800 font-medium">
+                {allSelected
+                  ? "Desmarcar todos"
+                  : someSelected
+                  ? `${selectedCount} selecionado${selectedCount !== 1 ? "s" : ""}`
+                  : "Selecionar todos"}
+              </span>
+            </label>
+            {selectedCount > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800"
+                  data-testid="button-batch-approve"
+                  onClick={() => setBatchApproveOpen(true)}
+                >
+                  <UserCheck className="h-3.5 w-3.5 mr-1" />
+                  Aprovar selecionados ({selectedCount})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                  data-testid="button-batch-reject"
+                  onClick={() => setBatchRejectOpen(true)}
+                >
+                  <UserX className="h-3.5 w-3.5 mr-1" />
+                  Rejeitar selecionados ({selectedCount})
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {displayed.length === 0 && (
           <p className="text-sm text-amber-700/70 text-center py-2">
             Nenhum cadastro corresponde aos filtros selecionados.
@@ -407,9 +557,16 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
             <div
               key={inv.id}
               data-testid={`card-pending-approval-${inv.id}`}
-              className="flex items-center justify-between gap-3 rounded-md bg-white border border-amber-100 px-4 py-3"
+              className={`flex items-center justify-between gap-3 rounded-md bg-white border px-4 py-3 transition-colors ${selectedIds.has(inv.id) ? "border-amber-400 ring-1 ring-amber-300" : "border-amber-100"}`}
             >
               <div className="flex items-center gap-3 min-w-0">
+                <Checkbox
+                  data-testid={`checkbox-select-${inv.id}`}
+                  checked={selectedIds.has(inv.id)}
+                  onCheckedChange={() => toggleSelect(inv.id)}
+                  className="border-amber-400 data-[state=checked]:bg-amber-600 data-[state=checked]:border-amber-600 shrink-0"
+                  aria-label={`Selecionar ${inv.usedByUserName ?? "usuário"}`}
+                />
                 <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-semibold text-sm shrink-0">
                   {(inv.usedByUserName ?? "?").charAt(0).toUpperCase()}
                 </div>
@@ -511,6 +668,65 @@ function PendingApprovalSection({ invites }: { invites: any[] }) {
               disabled={reject.isPending}
             >
               {reject.isPending ? "Rejeitando..." : "Rejeitar cadastro"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={batchApproveOpen} onOpenChange={v => { if (!v && !batchLoading) setBatchApproveOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprovar {selectedCount} cadastro{selectedCount !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedCount} usuário{selectedCount !== 1 ? "s" : ""} receberá{selectedCount !== 1 ? "ão" : ""} acesso imediato à plataforma e um e-mail de boas-vindas será enviado para cada um.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="button-confirm-batch-approve"
+              onClick={handleBatchApprove}
+              disabled={batchLoading}
+            >
+              {batchLoading ? "Aprovando..." : `Aprovar ${selectedCount}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={batchRejectOpen} onOpenChange={v => { if (!v && !batchLoading) { setBatchRejectOpen(false); setBatchRejectReason(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rejeitar {selectedCount} cadastro{selectedCount !== 1 ? "s" : ""}?</DialogTitle>
+            <DialogDescription>
+              {selectedCount} cadastro{selectedCount !== 1 ? "s" : ""} ser{selectedCount !== 1 ? "ão" : "á"} <strong>removido{selectedCount !== 1 ? "s" : ""} permanentemente</strong>.
+              Os usuários não terão acesso à plataforma.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="batch-reject-reason">Motivo da rejeição <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+            <Textarea
+              id="batch-reject-reason"
+              data-testid="textarea-batch-reject-reason"
+              placeholder="Ex: Franquia já possui responsável cadastrado, e-mail não reconhecido..."
+              value={batchRejectReason}
+              onChange={e => setBatchRejectReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+              disabled={batchLoading}
+            />
+            <p className="text-xs text-muted-foreground">Se informado, o mesmo motivo será incluído no e-mail de notificação enviado a cada usuário.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBatchRejectOpen(false); setBatchRejectReason(""); }} disabled={batchLoading}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              data-testid="button-confirm-batch-reject"
+              onClick={handleBatchReject}
+              disabled={batchLoading}
+            >
+              {batchLoading ? "Rejeitando..." : `Rejeitar ${selectedCount}`}
             </Button>
           </DialogFooter>
         </DialogContent>
