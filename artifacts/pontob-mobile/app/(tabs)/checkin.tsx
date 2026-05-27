@@ -1507,10 +1507,7 @@ export default function CheckinScreen() {
                     <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    {(entry.kind !== "monthly" || (
-                      (entry.item as MonthlyCheckin).month === currentMonth &&
-                      (entry.item as MonthlyCheckin).year === currentYear
-                    )) && (
+                    {(
                       <Pressable
                         style={s.historyEditBtn}
                         onPress={(e) => {
@@ -1728,10 +1725,7 @@ export default function CheckinScreen() {
     }
 
     let titleLine = "";
-    const isEditable = kind !== "monthly" || (
-      (item as MonthlyCheckin).month === currentMonth &&
-      (item as MonthlyCheckin).year === currentYear
-    );
+    const isEditable = true;
 
     let content: React.ReactNode = null;
 
