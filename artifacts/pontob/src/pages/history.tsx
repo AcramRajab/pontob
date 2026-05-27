@@ -124,10 +124,13 @@ function DailyDetailSheet({ item, open, onClose }: { item: any; open: boolean; o
         needsHelp: data.needsHelp,
         notes: data.notes || undefined,
       };
-      qc.setQueriesData<any[]>({ queryKey: ["/api/daily-checkins"] }, old =>
+      const dailyKey = getListDailyCheckinsQueryKey(
+        item.franchiseId ? { franchiseId: item.franchiseId } : undefined,
+      );
+      qc.setQueryData<any[]>(dailyKey, old =>
         old?.map(c => c.id === item.id ? { ...c, ...dailyPatch } : c)
       );
-      qc.invalidateQueries({ queryKey: ["/api/daily-checkins"] });
+      qc.invalidateQueries({ queryKey: dailyKey });
       toast({ title: "Check-in atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
@@ -376,10 +379,13 @@ function WeeklyDetailSheet({ item, open, onClose }: { item: any; open: boolean; 
         initiativeDecision: data.initiativeDecision || undefined,
         needsRegionalSupport: data.needsRegionalSupport,
       };
-      qc.setQueriesData<any[]>({ queryKey: ["/api/weekly-checkins"] }, old =>
+      const weeklyKey = getListWeeklyCheckinsQueryKey(
+        item.franchiseId ? { franchiseId: item.franchiseId } : undefined,
+      );
+      qc.setQueryData<any[]>(weeklyKey, old =>
         old?.map(c => c.id === item.id ? { ...c, ...weeklyPatch } : c)
       );
-      qc.invalidateQueries({ queryKey: ["/api/weekly-checkins"] });
+      qc.invalidateQueries({ queryKey: weeklyKey });
       toast({ title: "Check-in semanal atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
@@ -568,10 +574,13 @@ function MonthlyDetailSheet({ item, open, onClose }: { item: any; open: boolean;
         startDoing: data.startDoing || undefined,
         nextMonthFocus: data.nextMonthFocus || undefined,
       };
-      qc.setQueriesData<any[]>({ queryKey: ["/api/monthly-checkins"] }, old =>
+      const monthlyKey = getListMonthlyCheckinsQueryKey(
+        item.franchiseId ? { franchiseId: item.franchiseId } : undefined,
+      );
+      qc.setQueryData<any[]>(monthlyKey, old =>
         old?.map(c => c.id === item.id ? { ...c, ...monthlyPatch } : c)
       );
-      qc.invalidateQueries({ queryKey: ["/api/monthly-checkins"] });
+      qc.invalidateQueries({ queryKey: monthlyKey });
       toast({ title: "Check-in mensal atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
