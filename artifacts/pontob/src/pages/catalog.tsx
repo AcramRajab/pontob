@@ -40,6 +40,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
+import { Link } from "wouter";
 import { BookOpen, ClipboardList, TrendingUp, TrendingDown, Minus, Settings, Eye, EyeOff, Search, Clock, History, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -344,35 +345,46 @@ export default function Catalog() {
               Nenhuma alteração registrada
             </p>
           ) : (
-            <ScrollArea className="max-h-64">
-              <div className="divide-y">
-                {logs.map((entry: any) => {
-                  const date = new Date(entry.changedAt);
-                  const formatted = date.toLocaleString("pt-BR", {
-                    day: "2-digit", month: "2-digit", year: "numeric",
-                    hour: "2-digit", minute: "2-digit",
-                  });
-                  const isActivated = entry.action === "activated";
-                  return (
-                    <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs shrink-0 mt-0.5 ${isActivated
-                          ? "bg-green-50 text-green-700 border-green-200"
-                          : "bg-muted text-muted-foreground border-muted-foreground/30"
-                        }`}
-                      >
-                        {isActivated ? "Ativado" : "Desativado"}
-                      </Badge>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate">{entry.userName}</p>
-                        <p className="text-xs text-muted-foreground">{formatted}</p>
+            <>
+              <ScrollArea className="max-h-64">
+                <div className="divide-y">
+                  {logs.map((entry: any) => {
+                    const date = new Date(entry.changedAt);
+                    const formatted = date.toLocaleString("pt-BR", {
+                      day: "2-digit", month: "2-digit", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    });
+                    const isActivated = entry.action === "activated";
+                    return (
+                      <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs shrink-0 mt-0.5 ${isActivated
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-muted text-muted-foreground border-muted-foreground/30"
+                          }`}
+                        >
+                          {isActivated ? "Ativado" : "Desativado"}
+                        </Badge>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{entry.userName}</p>
+                          <p className="text-xs text-muted-foreground">{formatted}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              <div className="px-4 py-2 border-t">
+                <Link
+                  href="/admin/catalog-history"
+                  onClick={() => setOpen(false)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Ver histórico completo →
+                </Link>
               </div>
-            </ScrollArea>
+            </>
           )}
         </PopoverContent>
       </Popover>
