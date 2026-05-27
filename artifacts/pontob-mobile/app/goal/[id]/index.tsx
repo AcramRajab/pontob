@@ -725,6 +725,7 @@ export default function GoalDetailScreen() {
               const iniStatusColor = getInitiativeStatusColor(ini.status);
               const statusLabel = INITIATIVE_STATUSES.find((s) => s.value === ini.status)?.label ?? ini.status;
               const iniPct = Math.min(ini.progressPercentage, 100);
+              const canEdit = user?.role === "franqueado" || user?.role === "responsavel_interno";
               return (
                 <View key={ini.id} style={isLast ? s.initiativeCardLast : s.initiativeCard}>
                   <View style={s.initiativeTop}>
@@ -767,7 +768,22 @@ export default function GoalDetailScreen() {
                   <View style={s.initiativeBarBg}>
                     <View style={[s.initiativeBarFill, { width: `${iniPct}%`, backgroundColor: iniStatusColor }]} />
                   </View>
-                  <Text style={s.initiativePct}>{iniPct}%</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={s.initiativePct}>{iniPct}%</Text>
+                    {canEdit && (
+                      <Pressable
+                        style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.7 }]}
+                        onPress={() =>
+                          router.push(
+                            `/goal/${id}/initiative-edit?initiativeId=${ini.id}` as Parameters<typeof router.push>[0]
+                          )
+                        }
+                      >
+                        <Ionicons name="pencil-outline" size={12} color={colors.primary} />
+                        <Text style={s.editBtnText}>Editar</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </View>
               );
             })
