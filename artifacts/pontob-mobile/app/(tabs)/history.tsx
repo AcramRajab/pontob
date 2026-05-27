@@ -17,9 +17,14 @@ import { useAuth } from "@/context/auth";
 import { useColors } from "@/hooks/useColors";
 import { apiFetch } from "@/lib/api";
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES = ["master_admin", "staff_regional"];
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type HistoryFilter = "all" | "daily" | "weekly" | "monthly";
+type ViewMode = "history" | "comparativo";
 
 interface DailyCheckin {
   id: number;
@@ -61,6 +66,17 @@ interface MonthlyCheckin {
   createdAt: string;
 }
 
+interface CheckinComparison {
+  franchiseId: number;
+  franchiseName: string;
+  dailyCount: number;
+  weeklyCount: number;
+  monthlyCount: number;
+  lastDaily?: string | null;
+  lastWeekly?: string | null;
+  lastMonthly?: string | null;
+}
+
 type HistoryEntry =
   | { kind: "daily"; item: DailyCheckin; date: Date }
   | { kind: "weekly"; item: WeeklyCheckin; date: Date }
@@ -84,6 +100,23 @@ const BADGE_CONFIG = {
   monthly: { bg: "#8b5cf620", color: "#7c3aed", label: "Mensal" },
 };
 
+// ─── Recency helper ──────────────────────────────────────────────────────────
+
+function recencyColor(iso: string | null | undefined, count: number, fallback: string): string {
+  if (!iso || count === 0) return fallback;
+  const days = (Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24);
+  if (days <= 7) return "#16a34a";
+  if (days <= 30) return "#d97706";
+  return "#ef4444";
+}
+
+function formatShortDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "2-digit",
+  });
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function HistoryScreen() {
@@ -91,13 +124,17 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
+  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
 
+  const [viewMode, setViewMode] = useState<ViewMode>("history");
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null);
+  const [drillFranchise, setDrillFranchise] = useState<{ id: number; name: string } | null>(null);
 
-  // ── Queries ───────────────────────────────────────────────────────────────
+  // ── Own history queries ───────────────────────────────────────────────────
 
   const { data: allDailyCheckins, isLoading: loadingDaily } = useQuery({
     queryKey: ["all-daily-checkins", user?.franchiseId],
@@ -108,7 +145,7 @@ export default function HistoryScreen() {
       if (!res.ok) return [] as DailyCheckin[];
       return res.json() as Promise<DailyCheckin[]>;
     },
-    enabled: !!user,
+    enabled: !!user && viewMode === "history",
   });
 
   const { data: allWeeklyCheckins, isLoading: loadingWeekly } = useQuery({
@@ -120,7 +157,7 @@ export default function HistoryScreen() {
       if (!res.ok) return [] as WeeklyCheckin[];
       return res.json() as Promise<WeeklyCheckin[]>;
     },
-    enabled: !!user,
+    enabled: !!user && viewMode === "history",
   });
 
   const { data: allMonthlyCheckins, isLoading: loadingMonthly } = useQuery({
@@ -132,7 +169,58 @@ export default function HistoryScreen() {
       if (!res.ok) return [] as MonthlyCheckin[];
       return res.json() as Promise<MonthlyCheckin[]>;
     },
-    enabled: !!user,
+    enabled: !!user && viewMode === "history",
+  });
+
+  // ── Comparison query (admin only) ─────────────────────────────────────────
+
+  const { data: compRows = [], isLoading: loadingComp } = useQuery({
+    queryKey: ["checkins-comparison"],
+    queryFn: async () => {
+      const res = await apiFetch("/checkins/comparison");
+      if (!res.ok) return [] as CheckinComparison[];
+      return res.json() as Promise<CheckinComparison[]>;
+    },
+    enabled: isAdmin && viewMode === "comparativo" && drillFranchise === null,
+    staleTime: 60_000,
+  });
+
+  // ── Drill-down franchise queries (admin comparativo drill) ────────────────
+
+  const { data: drillDaily, isLoading: loadingDrillDaily } = useQuery({
+    queryKey: ["drill-daily-checkins", drillFranchise?.id],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      p.set("franchiseId", String(drillFranchise!.id));
+      const res = await apiFetch(`/daily-checkins?${p}`);
+      if (!res.ok) return [] as DailyCheckin[];
+      return res.json() as Promise<DailyCheckin[]>;
+    },
+    enabled: !!drillFranchise,
+  });
+
+  const { data: drillWeekly, isLoading: loadingDrillWeekly } = useQuery({
+    queryKey: ["drill-weekly-checkins", drillFranchise?.id],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      p.set("franchiseId", String(drillFranchise!.id));
+      const res = await apiFetch(`/weekly-checkins?${p}`);
+      if (!res.ok) return [] as WeeklyCheckin[];
+      return res.json() as Promise<WeeklyCheckin[]>;
+    },
+    enabled: !!drillFranchise,
+  });
+
+  const { data: drillMonthly, isLoading: loadingDrillMonthly } = useQuery({
+    queryKey: ["drill-monthly-checkins", drillFranchise?.id],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      p.set("franchiseId", String(drillFranchise!.id));
+      const res = await apiFetch(`/monthly-checkins?${p}`);
+      if (!res.ok) return [] as MonthlyCheckin[];
+      return res.json() as Promise<MonthlyCheckin[]>;
+    },
+    enabled: !!drillFranchise,
   });
 
   // ── Styles ────────────────────────────────────────────────────────────────
@@ -148,6 +236,33 @@ export default function HistoryScreen() {
       fontSize: 22,
       fontFamily: "Inter_700Bold",
       color: colors.foreground,
+    },
+    viewToggle: {
+      flexDirection: "row",
+      marginHorizontal: 16,
+      marginBottom: 14,
+      backgroundColor: colors.card,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: "hidden",
+    },
+    viewToggleBtn: {
+      flex: 1,
+      paddingVertical: 9,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    viewToggleBtnActive: {
+      backgroundColor: colors.primary,
+    },
+    viewToggleBtnText: {
+      fontSize: 13,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+    },
+    viewToggleBtnTextActive: {
+      color: colors.primaryForeground,
     },
     content: { paddingHorizontal: 16, paddingBottom: botPad },
     historyFilter: { flexDirection: "row", gap: 8, marginBottom: 16 },
@@ -252,13 +367,122 @@ export default function HistoryScreen() {
       fontSize: 12,
       fontFamily: "Inter_600SemiBold",
     },
+    // ── Comparativo styles ────────────────────────────────────────────────
+    compCard: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 10,
+      overflow: "hidden",
+    },
+    compCardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    compFranchiseName: {
+      flex: 1,
+      fontSize: 14,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+    },
+    compChevron: {
+      marginLeft: 6,
+    },
+    compDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    compCountRow: {
+      flexDirection: "row",
+    },
+    compCountCell: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+    },
+    compCountCellBorder: {
+      borderRightWidth: 1,
+      borderRightColor: colors.border,
+    },
+    compCountLabel: {
+      fontSize: 10,
+      fontFamily: "Inter_500Medium",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginBottom: 3,
+    },
+    compCountNumber: {
+      fontSize: 18,
+      fontFamily: "Inter_700Bold",
+    },
+    compCountDate: {
+      fontSize: 10,
+      fontFamily: "Inter_400Regular",
+      marginTop: 2,
+    },
+    compHeaderRow: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      paddingTop: 2,
+    },
+    compHeaderLabel: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    compLegendRow: {
+      flexDirection: "row",
+      gap: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 14,
+      flexWrap: "wrap",
+    },
+    compLegendItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+    },
+    compLegendDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    compLegendText: {
+      fontSize: 11,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+    },
+    drillFranchiseHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      gap: 10,
+    },
+    drillFranchiseName: {
+      flex: 1,
+      fontSize: 15,
+      fontFamily: "Inter_700Bold",
+      color: colors.foreground,
+    },
   });
 
-  // ── History list ──────────────────────────────────────────────────────────
+  // ── History list (shared between own history + franchise drill) ───────────
 
-  function renderList() {
-    const isLoading = loadingDaily || loadingWeekly || loadingMonthly;
-
+  function renderList(
+    daily: DailyCheckin[],
+    weekly: WeeklyCheckin[],
+    monthly: MonthlyCheckin[],
+    isLoading: boolean
+  ) {
     if (isLoading) {
       return (
         <View style={{ alignItems: "center", paddingTop: 40 }}>
@@ -270,17 +494,17 @@ export default function HistoryScreen() {
     const entries: HistoryEntry[] = [];
 
     if (historyFilter === "all" || historyFilter === "daily") {
-      (allDailyCheckins ?? []).forEach((item) =>
+      daily.forEach((item) =>
         entries.push({ kind: "daily", item, date: new Date(item.createdAt) })
       );
     }
     if (historyFilter === "all" || historyFilter === "weekly") {
-      (allWeeklyCheckins ?? []).forEach((item) =>
+      weekly.forEach((item) =>
         entries.push({ kind: "weekly", item, date: new Date(item.createdAt) })
       );
     }
     if (historyFilter === "all" || historyFilter === "monthly") {
-      (allMonthlyCheckins ?? []).forEach((item) =>
+      monthly.forEach((item) =>
         entries.push({ kind: "monthly", item, date: new Date(item.createdAt) })
       );
     }
@@ -467,6 +691,8 @@ export default function HistoryScreen() {
       );
     }
 
+    const backLabel = drillFranchise ? `Voltar a ${drillFranchise.name}` : "Voltar ao histórico";
+
     return (
       <>
         <Pressable
@@ -474,7 +700,7 @@ export default function HistoryScreen() {
           onPress={() => setSelectedEntry(null)}
         >
           <Ionicons name="chevron-back" size={20} color={colors.primary} />
-          <Text style={s.backBtnText}>Voltar ao histórico</Text>
+          <Text style={s.backBtnText}>{backLabel}</Text>
         </Pressable>
 
         <View style={s.content}>
@@ -491,7 +717,117 @@ export default function HistoryScreen() {
     );
   }
 
+  // ── Comparativo view ──────────────────────────────────────────────────────
+
+  function renderComparativo() {
+    if (loadingComp) {
+      return (
+        <View style={[s.content, { paddingTop: 8 }]}>
+          <View style={{ alignItems: "center", paddingTop: 40 }}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        </View>
+      );
+    }
+
+    if (compRows.length === 0) {
+      return (
+        <View style={[s.content, { paddingTop: 8 }]}>
+          <Text style={s.emptyText}>Nenhuma franquia encontrada.</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[s.content, { paddingTop: 4 }]}>
+        <View style={s.compLegendRow}>
+          <View style={s.compLegendItem}>
+            <View style={[s.compLegendDot, { backgroundColor: "#16a34a" }]} />
+            <Text style={s.compLegendText}>≤ 7 dias</Text>
+          </View>
+          <View style={s.compLegendItem}>
+            <View style={[s.compLegendDot, { backgroundColor: "#d97706" }]} />
+            <Text style={s.compLegendText}>≤ 30 dias</Text>
+          </View>
+          <View style={s.compLegendItem}>
+            <View style={[s.compLegendDot, { backgroundColor: "#ef4444" }]} />
+            <Text style={s.compLegendText}>{"> 30 dias"}</Text>
+          </View>
+        </View>
+
+        {compRows.map((row) => {
+          const dcColor = recencyColor(row.lastDaily, row.dailyCount, colors.mutedForeground);
+          const wcColor = recencyColor(row.lastWeekly, row.weeklyCount, colors.mutedForeground);
+          const mcColor = recencyColor(row.lastMonthly, row.monthlyCount, colors.mutedForeground);
+
+          return (
+            <Pressable
+              key={row.franchiseId}
+              style={({ pressed }) => [s.compCard, pressed && { opacity: 0.75 }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setDrillFranchise({ id: row.franchiseId, name: row.franchiseName });
+                setHistoryFilter("all");
+                setSelectedEntry(null);
+              }}
+            >
+              <View style={s.compCardRow}>
+                <Text style={s.compFranchiseName} numberOfLines={1}>{row.franchiseName}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} style={s.compChevron} />
+              </View>
+              <View style={s.compDivider} />
+              <View style={s.compCountRow}>
+                <View style={[s.compCountCell, s.compCountCellBorder]}>
+                  <Text style={s.compCountLabel}>Diário</Text>
+                  <Text style={[s.compCountNumber, { color: dcColor }]}>{row.dailyCount}</Text>
+                  <Text style={[s.compCountDate, { color: dcColor }]}>{formatShortDate(row.lastDaily)}</Text>
+                </View>
+                <View style={[s.compCountCell, s.compCountCellBorder]}>
+                  <Text style={s.compCountLabel}>Semanal</Text>
+                  <Text style={[s.compCountNumber, { color: wcColor }]}>{row.weeklyCount}</Text>
+                  <Text style={[s.compCountDate, { color: wcColor }]}>{formatShortDate(row.lastWeekly)}</Text>
+                </View>
+                <View style={s.compCountCell}>
+                  <Text style={s.compCountLabel}>Mensal</Text>
+                  <Text style={[s.compCountNumber, { color: mcColor }]}>{row.monthlyCount}</Text>
+                  <Text style={[s.compCountDate, { color: mcColor }]}>{formatShortDate(row.lastMonthly)}</Text>
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
+
+  // ── Franchise drill-down ──────────────────────────────────────────────────
+
+  function renderDrillHeader() {
+    if (!drillFranchise) return null;
+    return (
+      <View style={s.drillFranchiseHeader}>
+        <Pressable
+          onPress={() => {
+            setDrillFranchise(null);
+            setSelectedEntry(null);
+          }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.primary} />
+          <Text style={s.backBtnText}>Comparativo</Text>
+        </Pressable>
+        <Text style={s.drillFranchiseName} numberOfLines={1}>{drillFranchise.name}</Text>
+      </View>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
+
+  const inHistoryMode = viewMode === "history";
+  const inComparativoMode = viewMode === "comparativo";
+  const isDrilling = inComparativoMode && !!drillFranchise;
+
+  const drillLoading = loadingDrillDaily || loadingDrillWeekly || loadingDrillMonthly;
 
   return (
     <ScrollView
@@ -503,7 +839,63 @@ export default function HistoryScreen() {
         <Text style={s.title}>Histórico</Text>
       </View>
 
-      {selectedEntry ? renderDetail() : renderList()}
+      {isAdmin && (
+        <View style={s.viewToggle}>
+          <Pressable
+            style={[s.viewToggleBtn, inHistoryMode && s.viewToggleBtnActive]}
+            onPress={() => {
+              setViewMode("history");
+              setDrillFranchise(null);
+              setSelectedEntry(null);
+            }}
+          >
+            <Text style={[s.viewToggleBtnText, inHistoryMode && s.viewToggleBtnTextActive]}>
+              Histórico
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.viewToggleBtn, inComparativoMode && s.viewToggleBtnActive]}
+            onPress={() => {
+              setViewMode("comparativo");
+              setDrillFranchise(null);
+              setSelectedEntry(null);
+            }}
+          >
+            <Text style={[s.viewToggleBtnText, inComparativoMode && s.viewToggleBtnTextActive]}>
+              Comparativo
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {inHistoryMode && (
+        selectedEntry
+          ? renderDetail()
+          : renderList(
+              allDailyCheckins ?? [],
+              allWeeklyCheckins ?? [],
+              allMonthlyCheckins ?? [],
+              loadingDaily || loadingWeekly || loadingMonthly
+            )
+      )}
+
+      {inComparativoMode && !isDrilling && renderComparativo()}
+
+      {isDrilling && (
+        selectedEntry
+          ? renderDetail()
+          : (
+            <>
+              {renderDrillHeader()}
+              {renderList(
+                drillDaily ?? [],
+                drillWeekly ?? [],
+                drillMonthly ?? [],
+                drillLoading
+              )}
+            </>
+          )
+      )}
     </ScrollView>
   );
 }
