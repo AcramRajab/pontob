@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "dH4q9leN4K41Ekuyi_BJ4"
 uri = "file://artifacts/pontob-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "7KIs6kZUN4ujzlK9OPXlV"
+uri = "file://artifacts/pontob/public/pontob-mobile.tar"
+type = "unspecified"
+title = "pontob-mobile.tar"
