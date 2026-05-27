@@ -176,6 +176,10 @@ function NativeTabLayout() {
         <Badge hidden={!checkinBadge} />
         <Label>Check-in</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
+        <Label>Histórico</Label>
+      </NativeTabs.Trigger>
       {isAdmin && (
         <NativeTabs.Trigger name="admin">
           <Icon sf={{ default: "person.badge.clock", selected: "person.badge.clock.fill" }} />
@@ -283,6 +287,18 @@ function ClassicTabLayout() {
               {checkinBadge && <BadgeDot />}
             </View>
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "Histórico",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="clock" tintColor={color} size={24} />
+            ) : (
+              <Ionicons name="time-outline" size={22} color={color} />
+            ),
         }}
       />
       <Tabs.Screen
