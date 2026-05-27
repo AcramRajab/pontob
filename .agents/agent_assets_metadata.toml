@@ -6,6 +6,24 @@ uri = "file://artifacts/pontob-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "Z7VxQD5_LTAlhZUwDVrzW"
+uri = "file://attached_assets/icon-pontob-v1.png"
+type = "image"
+title = "ponto-b-icon-red-pin"
+
+[[generated]]
+id = "VGbjJn-2vCzHwJfc9q9vy"
+uri = "file://attached_assets/icon-pontob-v2.png"
+type = "image"
+title = "ponto-b-icon-blue-circle"
+
+[[generated]]
+id = "2hSWuKCRiHGUX-_agydty"
+uri = "file://attached_assets/icon-pontob-v3.png"
+type = "image"
+title = "ponto-b-icon-split-remax"
+
 [[outputs]]
 id = "7KIs6kZUN4ujzlK9OPXlV"
 uri = "file://artifacts/pontob/public/pontob-mobile.tar"
@@ -23,3 +41,21 @@ id = "1jBanWEF9WmBAKmurQ82D"
 uri = "file://artifacts/pontob/public/pontob-mobile.zip"
 type = "unspecified"
 title = "pontob-mobile.zip"
+
+[[outputs]]
+id = "X_5LUVRMXaBGPlg7z7T4M"
+uri = "file://attached_assets/icon-pontob-v1.png"
+type = "image"
+title = "Opção 1 — Pin vermelho RE/MAX"
+
+[[outputs]]
+id = "ySXBJvxtXRWL7-hbC9fxg"
+uri = "file://attached_assets/icon-pontob-v2.png"
+type = "image"
+title = "Opção 2 — Círculo azul com ponto vermelho"
+
+[[outputs]]
+id = "Tb5Osg4EHqfTwG-iUXPDK"
+uri = "file://attached_assets/icon-pontob-v3.png"
+type = "image"
+title = "Opção 3 — Split vermelho/azul RE/MAX"
