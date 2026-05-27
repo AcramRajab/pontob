@@ -11,7 +11,10 @@ import {
   EXPECTED_PESSOAS_INIT_COUNT,
   EXPECTED_RE_INIT_COUNT,
   EXPECTED_TOTAL_INIT_COUNT,
+  type KeyProcessConfig,
+  type InitiativeTuple,
 } from "./seed-catalog-config.js";
+import { validateCatalogSeedData, type CatalogGroup } from "./seed-catalog-validation.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -292,5 +295,161 @@ describe("key process coverage — every key process has at least one initiative
         `RE key process [${i}] "${RE_KEY_PROCESSES[i].name}" has no initiatives`,
       ).toBe(true);
     }
+  });
+});
+
+// ── validateCatalogSeedData ───────────────────────────────────────────────────
+
+const MINIMAL_KPS: KeyProcessConfig[] = [
+  { name: "KP Zero", description: "First key process", orderIndex: 1 },
+  { name: "KP One",  description: "Second key process", orderIndex: 2 },
+];
+
+function makeGroup(initiatives: InitiativeTuple[]): CatalogGroup {
+  return { dimensionName: "Test", keyProcesses: MINIMAL_KPS, initiatives };
+}
+
+describe("validateCatalogSeedData — happy path", () => {
+  it("does not throw for the real PESSOAS catalog data", () => {
+    expect(() =>
+      validateCatalogSeedData([
+        { dimensionName: "Pessoas", keyProcesses: PESSOAS_KEY_PROCESSES, initiatives: PESSOAS_INITIATIVES },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("does not throw for the real Real Estate catalog data", () => {
+    expect(() =>
+      validateCatalogSeedData([
+        { dimensionName: "Real Estate", keyProcesses: RE_KEY_PROCESSES, initiatives: RE_INITIATIVES },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("does not throw for both groups together (full seed config)", () => {
+    expect(() =>
+      validateCatalogSeedData([
+        { dimensionName: "Pessoas",     keyProcesses: PESSOAS_KEY_PROCESSES, initiatives: PESSOAS_INITIATIVES },
+        { dimensionName: "Real Estate", keyProcesses: RE_KEY_PROCESSES,      initiatives: RE_INITIATIVES },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("does not throw for a minimal valid group", () => {
+    const valid: InitiativeTuple[] = [
+      [0, "Initiative A", "KRI A", "KPI A"],
+      [1, "Initiative B", "KRI B", "KPI B"],
+    ];
+    expect(() => validateCatalogSeedData([makeGroup(valid)])).not.toThrow();
+  });
+
+  it("does not throw when multiple initiatives share the same kpIndex but have different names", () => {
+    const valid: InitiativeTuple[] = [
+      [0, "Initiative X", "KRI X", "KPI X"],
+      [0, "Initiative Y", "KRI Y", "KPI Y"],
+    ];
+    expect(() => validateCatalogSeedData([makeGroup(valid)])).not.toThrow();
+  });
+});
+
+describe("validateCatalogSeedData — kpIndex out of range", () => {
+  it("throws when kpIndex equals the key-process array length (off-by-one)", () => {
+    const bad: InitiativeTuple[] = [[2, "Out of Range", "KRI", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/kpIndex 2 is out of range/);
+  });
+
+  it("throws when kpIndex is negative", () => {
+    const bad: InitiativeTuple[] = [[-1, "Negative Index", "KRI", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/kpIndex -1 is out of range/);
+  });
+
+  it("includes the dimension name in the error message", () => {
+    const bad: InitiativeTuple[] = [[99, "Way Out", "KRI", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/\[Test\]/);
+  });
+
+  it("reports all out-of-range errors in one throw", () => {
+    const bad: InitiativeTuple[] = [
+      [5, "First Bad",  "KRI", "KPI"],
+      [0, "Good One",   "KRI", "KPI"],
+      [9, "Second Bad", "KRI", "KPI"],
+    ];
+    const fn = () => validateCatalogSeedData([makeGroup(bad)]);
+    expect(fn).toThrow();
+    try { fn(); } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toMatch(/First Bad/);
+      expect(msg).toMatch(/Second Bad/);
+      expect(msg).not.toMatch(/Good One/);
+    }
+  });
+});
+
+describe("validateCatalogSeedData — blank fields", () => {
+  it("throws when initiative name is blank", () => {
+    const bad: InitiativeTuple[] = [[0, "  ", "KRI", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/name must not be blank/);
+  });
+
+  it("throws when KRI is blank", () => {
+    const bad: InitiativeTuple[] = [[0, "Valid Name", "", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/KRI must not be blank/);
+  });
+
+  it("throws when KRI is whitespace only", () => {
+    const bad: InitiativeTuple[] = [[0, "Valid Name", "   ", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/KRI must not be blank/);
+  });
+
+  it("throws when KPI is blank", () => {
+    const bad: InitiativeTuple[] = [[0, "Valid Name", "KRI", ""]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/KPI must not be blank/);
+  });
+
+  it("throws when KPI is whitespace only", () => {
+    const bad: InitiativeTuple[] = [[0, "Valid Name", "KRI", "   "]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/KPI must not be blank/);
+  });
+});
+
+describe("validateCatalogSeedData — duplicate names within a key process", () => {
+  it("throws when the same name appears twice under the same kpIndex", () => {
+    const bad: InitiativeTuple[] = [
+      [0, "Duplicate Name", "KRI 1", "KPI 1"],
+      [0, "Duplicate Name", "KRI 2", "KPI 2"],
+    ];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/duplicate name/i);
+  });
+
+  it("includes the key process name in the duplicate error", () => {
+    const bad: InitiativeTuple[] = [
+      [0, "Same Initiative", "KRI 1", "KPI 1"],
+      [0, "Same Initiative", "KRI 2", "KPI 2"],
+    ];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/KP Zero/);
+  });
+
+  it("does not throw when the same name appears under different kpIndexes", () => {
+    const ok: InitiativeTuple[] = [
+      [0, "Shared Name", "KRI 1", "KPI 1"],
+      [1, "Shared Name", "KRI 2", "KPI 2"],
+    ];
+    expect(() => validateCatalogSeedData([makeGroup(ok)])).not.toThrow();
+  });
+});
+
+describe("validateCatalogSeedData — error message format", () => {
+  it("mentions the total error count in the header", () => {
+    const bad: InitiativeTuple[] = [
+      [99, "A", "KRI", "KPI"],
+      [99, "B", "KRI", "KPI"],
+    ];
+    const fn = () => validateCatalogSeedData([makeGroup(bad)]);
+    expect(fn).toThrow(/2 errors/);
+  });
+
+  it("mentions seed-catalog-config.ts as the fix location", () => {
+    const bad: InitiativeTuple[] = [[5, "Out", "KRI", "KPI"]];
+    expect(() => validateCatalogSeedData([makeGroup(bad)])).toThrow(/seed-catalog-config\.ts/);
   });
 });

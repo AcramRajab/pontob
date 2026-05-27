@@ -9,6 +9,7 @@ import {
 } from "./schema/index.js";
 import bcrypt from "bcryptjs";
 import { validateSeedData } from "./seed-validation.js";
+import { validateCatalogSeedData } from "./seed-catalog-validation.js";
 import { USER_SEED_CONFIG, PERMANENTLY_DEACTIVATED_EMAILS } from "./seed-config.js";
 import {
   DIMENSION_SEED_DATA,
@@ -25,6 +26,22 @@ const SEED_USER_EMAILS = USER_SEED_CONFIG.map(u => u.email);
 
 async function seed() {
   console.log(`Seeding database${RESET ? " (reset mode — tables will be cleared first)" : ""}...`);
+
+  // Validate catalog config before touching the database. Throws with a clear
+  // message if any kpIndex is out of range, any field is blank, or any
+  // initiative name is duplicated within its key process.
+  validateCatalogSeedData([
+    {
+      dimensionName: "Pessoas",
+      keyProcesses:  PESSOAS_KEY_PROCESSES,
+      initiatives:   PESSOAS_INITIATIVES,
+    },
+    {
+      dimensionName: "Real Estate",
+      keyProcesses:  RE_KEY_PROCESSES,
+      initiatives:   RE_INITIATIVES,
+    },
+  ]);
 
   if (RESET) {
     console.log("Clearing catalog tables with cascade...");
