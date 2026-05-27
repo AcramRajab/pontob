@@ -31,6 +31,7 @@ export * from "./dailyCheckinUpdateInput";
 export * from "./dailyCheckinUpdateInputExecutedToday";
 export * from "./dimension";
 export * from "./dimensionProgress";
+export * from "./exportCatalogAuditLogsParams";
 export * from "./exportCheckinsCsvParams";
 export * from "./exportCheckinsCsvType";
 export * from "./exportGoalsCsvParams";

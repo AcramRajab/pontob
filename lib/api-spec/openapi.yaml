@@ -501,6 +501,21 @@ paths:
       operationId: exportCatalogAuditLogs
       tags: [dimensions]
       summary: Export full catalog audit log as CSV (admin/staff only)
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date (ISO 8601, inclusive) to filter audit log entries
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date (ISO 8601, inclusive) to filter audit log entries
       responses:
         "200":
           description: CSV file download

@@ -28,6 +28,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -61,6 +68,10 @@ export default function Catalog() {
   const [mgmtInactiveOnly, setMgmtInactiveOnly] = useState(false);
   const [mgmtDimensionId, setMgmtDimensionId] = useState<string>("");
   const [mgmtKeyProcessId, setMgmtKeyProcessId] = useState<string>("");
+
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
 
   const isAdmin = !authLoading && (user?.role === "master_admin" || user?.role === "staff_regional");
 
@@ -188,18 +199,26 @@ export default function Catalog() {
     }
   }
 
-  async function handleExportCsv() {
-    const res = await fetch("/api/catalog-audit-logs/export", { credentials: "include" });
+  async function handleExportCsv(from: string, to: string) {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`/api/catalog-audit-logs/export${qs}`, { credentials: "include" });
     if (!res.ok) return;
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "historico-catalogo.csv";
+    const filenameParts = ["historico-catalogo"];
+    if (from) filenameParts.push(from);
+    if (to) filenameParts.push(to);
+    a.download = filenameParts.join("_") + ".csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setExportDialogOpen(false);
   }
 
   function confirmDeactivation() {
@@ -424,6 +443,54 @@ export default function Catalog() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-sm" data-testid="export-dialog">
+          <DialogHeader>
+            <DialogTitle>Exportar histórico de catálogo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Escolha um intervalo de datas para filtrar o export. Deixe em branco para exportar todo o histórico.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="export-from">De</Label>
+                <Input
+                  id="export-from"
+                  type="date"
+                  value={exportFrom}
+                  onChange={e => setExportFrom(e.target.value)}
+                  data-testid="export-from-input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="export-to">Até</Label>
+                <Input
+                  id="export-to"
+                  type="date"
+                  value={exportTo}
+                  onChange={e => setExportTo(e.target.value)}
+                  data-testid="export-to-input"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => handleExportCsv(exportFrom, exportTo)}
+              className="gap-2"
+              data-testid="export-confirm-btn"
+            >
+              <Download className="h-4 w-4" />
+              Baixar CSV
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Tabs defaultValue="initiatives">
         <TabsList>
           <TabsTrigger value="initiatives" className="gap-2">
@@ -587,7 +654,11 @@ export default function Catalog() {
                 variant="outline"
                 size="sm"
                 className="gap-2 shrink-0"
-                onClick={handleExportCsv}
+                onClick={() => {
+                  setExportFrom("");
+                  setExportTo("");
+                  setExportDialogOpen(true);
+                }}
                 data-testid="export-audit-log-btn"
               >
                 <Download className="h-4 w-4" />

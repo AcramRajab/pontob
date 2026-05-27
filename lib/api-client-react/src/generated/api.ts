@@ -32,6 +32,7 @@ import type {
   DailyCheckinInput,
   DailyCheckinUpdateInput,
   Dimension,
+  ExportCatalogAuditLogsParams,
   ExportCheckinsCsvParams,
   ExportGoalsCsvParams,
   Franchise,
@@ -2001,42 +2002,66 @@ export function useListAllCatalogActivity<
 /**
  * @summary Export full catalog audit log as CSV (admin/staff only)
  */
-export const getExportCatalogAuditLogsUrl = () => {
-  return `/api/catalog-audit-logs/export`;
+export const getExportCatalogAuditLogsUrl = (
+  params?: ExportCatalogAuditLogsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/catalog-audit-logs/export?${stringifiedParams}`
+    : `/api/catalog-audit-logs/export`;
 };
 
 export const exportCatalogAuditLogs = async (
+  params?: ExportCatalogAuditLogsParams,
   options?: RequestInit,
 ): Promise<Blob> => {
-  return customFetch<Blob>(getExportCatalogAuditLogsUrl(), {
+  return customFetch<Blob>(getExportCatalogAuditLogsUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getExportCatalogAuditLogsQueryKey = () => {
-  return [`/api/catalog-audit-logs/export`] as const;
+export const getExportCatalogAuditLogsQueryKey = (
+  params?: ExportCatalogAuditLogsParams,
+) => {
+  return [
+    `/api/catalog-audit-logs/export`,
+    ...(params ? [params] : []),
+  ] as const;
 };
 
 export const getExportCatalogAuditLogsQueryOptions = <
   TData = Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: ExportCatalogAuditLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ?? getExportCatalogAuditLogsQueryKey();
+    queryOptions?.queryKey ?? getExportCatalogAuditLogsQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof exportCatalogAuditLogs>>
-  > = ({ signal }) => exportCatalogAuditLogs({ signal, ...requestOptions });
+  > = ({ signal }) =>
+    exportCatalogAuditLogs(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
@@ -2057,15 +2082,18 @@ export type ExportCatalogAuditLogsQueryError = ErrorType<unknown>;
 export function useExportCatalogAuditLogs<
   TData = Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getExportCatalogAuditLogsQueryOptions(options);
+>(
+  params?: ExportCatalogAuditLogsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportCatalogAuditLogs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportCatalogAuditLogsQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

@@ -414,6 +414,20 @@ export const ListAllCatalogActivityResponse = zod.array(
 );
 
 /**
+ * @summary Export full catalog audit log as CSV (admin/staff only)
+ */
+export const ExportCatalogAuditLogsQueryParams = zod.object({
+  from: zod
+    .date()
+    .optional()
+    .describe("Start date (ISO 8601, inclusive) to filter audit log entries"),
+  to: zod
+    .date()
+    .optional()
+    .describe("End date (ISO 8601, inclusive) to filter audit log entries"),
+});
+
+/**
  * @summary List full audit log history for a catalog item (admin/staff only)
  */
 export const ListCatalogAuditLogsQueryParams = zod.object({

@@ -1517,6 +1517,17 @@ export const ListAllCatalogActivityEntityType = {
   strategic_initiative: "strategic_initiative",
 } as const;
 
+export type ExportCatalogAuditLogsParams = {
+  /**
+   * Start date (ISO 8601, inclusive) to filter audit log entries
+   */
+  from?: string;
+  /**
+   * End date (ISO 8601, inclusive) to filter audit log entries
+   */
+  to?: string;
+};
+
 export type ListCatalogAuditLogsParams = {
   itemType: ListCatalogAuditLogsItemType;
   itemId: number;

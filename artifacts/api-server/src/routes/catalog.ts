@@ -234,10 +234,20 @@ router.get(
   requireRole("master_admin", "staff_regional"),
   async (req, res) => {
     try {
+      const fromParam = req.query.from as string | undefined;
+      const toParam = req.query.to as string | undefined;
+
+      const fromDate = fromParam ? new Date(`${fromParam}T00:00:00-03:00`) : undefined;
+      const toDate = toParam ? new Date(`${toParam}T23:59:59.999-03:00`) : undefined;
+
+      const conditions = [inArray(auditLogsTable.entityType, [...CATALOG_ENTITY_TYPES])];
+      if (fromDate) conditions.push(gte(auditLogsTable.createdAt, fromDate));
+      if (toDate) conditions.push(lte(auditLogsTable.createdAt, toDate));
+
       const logs = await db
         .select()
         .from(auditLogsTable)
-        .where(inArray(auditLogsTable.entityType, [...CATALOG_ENTITY_TYPES]))
+        .where(and(...conditions))
         .orderBy(desc(auditLogsTable.createdAt));
 
       const dimIds = [...new Set(logs.filter(l => l.entityType === "dimension" && l.entityId !== null).map(l => l.entityId as number))];
@@ -297,8 +307,13 @@ router.get(
 
       const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
 
+      const filenameParts = ["historico-catalogo"];
+      if (fromParam) filenameParts.push(fromParam);
+      if (toParam) filenameParts.push(toParam);
+      const filename = filenameParts.join("_") + ".csv";
+
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
-      res.setHeader("Content-Disposition", 'attachment; filename="historico-catalogo.csv"');
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send("\uFEFF" + csv);
     } catch (err) {
       req.log.error(err);
