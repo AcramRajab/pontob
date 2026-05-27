@@ -1,12 +1,62 @@
 import { Router } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { db, inviteTokensTable, usersTable, franchisesTable } from "@workspace/db";
+import { db, inviteTokensTable, usersTable, franchisesTable, pushTokensTable } from "@workspace/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { sendApprovalRequest, sendApprovalGranted, sendRejectionNotice, sendAdminError } from "../services/email";
+import { sendExpoPush } from "../services/expoPush";
 
 const router = Router();
+
+/**
+ * Send a push notification to all master_admin and staff_regional users
+ * who have a registered push token, informing them of a new pending registration.
+ */
+async function notifyAdminsOfNewRegistration(
+  userName: string,
+  franchiseName: string,
+  logger: { error: (...args: unknown[]) => void }
+): Promise<void> {
+  try {
+    const adminRows = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(inArray(usersTable.role, ["master_admin", "staff_regional"]));
+
+    if (adminRows.length === 0) return;
+
+    const ids = adminRows.map((r) => r.id);
+
+    const tokenRows = await db
+      .select({ token: pushTokensTable.token })
+      .from(pushTokensTable)
+      .where(inArray(pushTokensTable.userId, ids));
+
+    if (tokenRows.length === 0) return;
+
+    const tokens = tokenRows.map((r) => r.token);
+
+    const { invalidTokens } = await sendExpoPush(
+      tokens.map((token) => ({
+        to: token,
+        title: "Novo cadastro pendente",
+        body: `${userName} (${franchiseName}) está aguardando aprovação.`,
+        sound: "default" as const,
+        data: { screen: "approvals" },
+      }))
+    );
+
+    for (const token of invalidTokens) {
+      await db
+        .delete(pushTokensTable)
+        .where(eq(pushTokensTable.token, token))
+        .catch(() => {});
+    }
+  } catch (err) {
+    logger.error({ err }, "Failed to send admin push notifications for new registration");
+  }
+}
 
 function getAppUrl(req: import("express").Request): string {
   const domains = process.env.REPLIT_DOMAINS;
@@ -139,6 +189,8 @@ router.post("/trial-requests", async (req, res) => {
       approveUrl,
       rejectUrl,
     }).catch(err => req.log.error({ err }, "Failed to send trial approval email"));
+
+    notifyAdminsOfNewRegistration(user.name, franchise.name, req.log).catch(() => {});
 
     res.status(201).json({ status: "pending_approval" });
   } catch (err) {
@@ -447,6 +499,8 @@ router.post("/invites/:token/accept", async (req, res) => {
       approveUrl,
       rejectUrl,
     }).catch(err => req.log.error({ err }, "Failed to send approval request email"));
+
+    notifyAdminsOfNewRegistration(user.name, invite.franchiseName ?? "—", req.log).catch(() => {});
 
     res.status(201).json({ status: "pending_approval" });
   } catch (err) {

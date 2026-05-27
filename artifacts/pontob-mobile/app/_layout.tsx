@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -42,6 +43,20 @@ function AuthGate() {
       router.replace("/");
     }
   }, [user, loading]);
+
+  // Handle notification taps — deep-link to the appropriate screen
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown> | undefined;
+      if (!data) return;
+      if (data.screen === "approvals") {
+        // Navigate to admin/approvals tab — only meaningful for admins, but
+        // the route guard on the tab will show the right content.
+        router.push("/(tabs)/admin");
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
 
   return (
     <NotificationsProvider franchiseId={user?.franchiseId ?? null} userId={user?.id ?? null}>
