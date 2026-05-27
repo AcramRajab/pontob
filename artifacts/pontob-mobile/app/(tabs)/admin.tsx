@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { File as FSFile, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -155,6 +157,7 @@ export default function AdminApprovalsScreen() {
   const [historyTarget, setHistoryTarget] = useState<HistoryTarget | null>(null);
   const [impactCheckingId, setImpactCheckingId] = useState<number | null>(null);
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const topPad = insets.top + (Platform.OS === "web" ? 67 : 0);
   const botPad = insets.bottom + (Platform.OS === "web" ? 34 : 80);
@@ -421,6 +424,46 @@ export default function AdminApprovalsScreen() {
     if (catalogTab === "dimension") void refetchDim();
     else if (catalogTab === "key_process") void refetchKp();
     else void refetchInit();
+  }
+
+  async function handleExportLog() {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const res = await apiFetch("/catalog-audit-logs/export");
+      if (!res.ok) throw new Error("Erro ao exportar");
+      const csvText = await res.text();
+
+      if (Platform.OS === "web") {
+        const blob = new Blob([csvText], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "historico-catalogo.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      const file = new FSFile(Paths.cache, "historico-catalogo.csv");
+      file.write(csvText);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: "text/csv",
+          dialogTitle: "Exportar histórico do catálogo",
+          UTI: "public.comma-separated-values-text",
+        });
+      } else {
+        Alert.alert("Exportado", "Arquivo salvo no dispositivo.");
+      }
+    } catch (err) {
+      Alert.alert("Erro", (err as Error).message ?? "Não foi possível exportar o log");
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   const s = StyleSheet.create({
@@ -859,6 +902,27 @@ export default function AdminApprovalsScreen() {
       fontFamily: "Inter_600SemiBold",
       color: colors.primary,
     },
+    exportRow: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+      marginBottom: 14,
+    },
+    exportBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    exportBtnText: {
+      fontSize: 12,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.foreground,
+    },
   });
 
   if (!user || !["master_admin", "staff_regional"].includes(user.role)) {
@@ -1098,6 +1162,24 @@ export default function AdminApprovalsScreen() {
           </>
         ) : (
           <View style={s.content}>
+            {/* Export log button */}
+            <View style={s.exportRow}>
+              <Pressable
+                style={({ pressed }) => [s.exportBtn, (pressed || isExporting) && { opacity: 0.6 }]}
+                onPress={() => void handleExportLog()}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <ActivityIndicator size="small" color={colors.foreground} />
+                ) : (
+                  <Ionicons name="download-outline" size={14} color={colors.foreground} />
+                )}
+                <Text style={s.exportBtnText}>
+                  {isExporting ? "Exportando..." : "Exportar log"}
+                </Text>
+              </Pressable>
+            </View>
+
             {/* Catalog type tabs */}
             <ScrollView
               horizontal
