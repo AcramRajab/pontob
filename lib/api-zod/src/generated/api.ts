@@ -414,6 +414,19 @@ export const ListAllCatalogActivityResponse = zod.array(
 );
 
 /**
+ * @summary Undo a catalog activation or deactivation by re-toggling the item (master_admin only)
+ */
+export const UndoCatalogActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UndoCatalogActivityResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  active: zod.boolean(),
+});
+
+/**
  * @summary Export full catalog audit log as CSV (admin/staff only)
  */
 export const ExportCatalogAuditLogsQueryParams = zod.object({

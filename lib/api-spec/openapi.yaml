@@ -496,6 +496,29 @@ paths:
                 items:
                   $ref: "#/components/schemas/CatalogActivityEntry"
 
+  /catalog-audit-logs/{id}/undo:
+    post:
+      operationId: undoCatalogActivity
+      tags: [dimensions]
+      summary: Undo a catalog activation or deactivation by re-toggling the item (master_admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Toggle reversed and new audit entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogToggleResult"
+        "400":
+          description: Invalid id
+        "404":
+          description: Audit log entry or entity not found
+
   /catalog-audit-logs/export:
     get:
       operationId: exportCatalogAuditLogs

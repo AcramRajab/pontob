@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { History, Filter, AlertCircle, Download, TrendingUp, TrendingDown, Layers, GitBranch, Sparkles } from "lucide-react";
-import { useListAllCatalogActivity, getListAllCatalogActivityQueryKey } from "@workspace/api-client-react";
+import { History, Filter, AlertCircle, Download, TrendingUp, TrendingDown, Layers, GitBranch, Sparkles, Undo2, Loader2 } from "lucide-react";
+import { useListAllCatalogActivity, getListAllCatalogActivityQueryKey, useUndoCatalogActivity } from "@workspace/api-client-react";
+import { toast } from "@/hooks/use-toast";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   dimension: "Dimensão",
@@ -46,15 +48,19 @@ function formatDate(iso: string) {
 export default function CatalogHistory() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
 
   const [filterEntityType, setFilterEntityType] = useState<string>("all");
   const [filterDateFrom, setFilterDateFrom] = useState<string>("");
   const [filterDateTo, setFilterDateTo] = useState<string>("");
+  const [pendingUndoId, setPendingUndoId] = useState<number | null>(null);
 
   if (!user || (user.role !== "master_admin" && user.role !== "staff_regional")) {
     setTimeout(() => navigate("/today"), 0);
     return null;
   }
+
+  const isMasterAdmin = user.role === "master_admin";
 
   const queryParams = {
     entityType: filterEntityType !== "all" ? (filterEntityType as "dimension" | "key_process" | "strategic_initiative") : undefined,
@@ -65,6 +71,25 @@ export default function CatalogHistory() {
   const { data: entries = [], isLoading } = useListAllCatalogActivity(queryParams, {
     query: { queryKey: getListAllCatalogActivityQueryKey(queryParams) },
   });
+
+  const undoMutation = useUndoCatalogActivity({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        setPendingUndoId(null);
+        queryClient.invalidateQueries({ queryKey: getListAllCatalogActivityQueryKey(queryParams) });
+        toast({ title: "Ação desfeita com sucesso." });
+      },
+      onError: () => {
+        setPendingUndoId(null);
+        toast({ title: "Erro ao desfazer ação.", variant: "destructive" });
+      },
+    },
+  });
+
+  function handleUndo(entryId: number) {
+    setPendingUndoId(entryId);
+    undoMutation.mutate({ id: entryId });
+  }
 
   function handleExport() {
     const url = `${import.meta.env.BASE_URL}api/catalog-audit-logs/export`;
@@ -173,6 +198,7 @@ export default function CatalogHistory() {
           {entries.map(entry => {
             const Icon = ENTITY_ICONS[entry.entityType] ?? History;
             const isActivated = entry.action === "activated";
+            const isUndoing = pendingUndoId === entry.id;
             return (
               <Card key={entry.id}>
                 <CardContent className="pt-4">
@@ -204,6 +230,22 @@ export default function CatalogHistory() {
                         {formatDate(entry.changedAt)}
                       </p>
                     </div>
+                    {isMasterAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 gap-1.5"
+                        disabled={isUndoing || undoMutation.isPending}
+                        onClick={() => handleUndo(entry.id)}
+                      >
+                        {isUndoing ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-3.5 w-3.5" />
+                        )}
+                        Desfazer
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

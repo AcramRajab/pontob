@@ -2000,6 +2000,90 @@ export function useListAllCatalogActivity<
 }
 
 /**
+ * @summary Undo a catalog activation or deactivation by re-toggling the item (master_admin only)
+ */
+export const getUndoCatalogActivityUrl = (id: number) => {
+  return `/api/catalog-audit-logs/${id}/undo`;
+};
+
+export const undoCatalogActivity = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogToggleResult> => {
+  return customFetch<CatalogToggleResult>(getUndoCatalogActivityUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUndoCatalogActivityMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof undoCatalogActivity>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof undoCatalogActivity>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["undoCatalogActivity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof undoCatalogActivity>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return undoCatalogActivity(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UndoCatalogActivityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof undoCatalogActivity>>
+>;
+
+export type UndoCatalogActivityMutationError = ErrorType<void>;
+
+/**
+ * @summary Undo a catalog activation or deactivation by re-toggling the item (master_admin only)
+ */
+export const useUndoCatalogActivity = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof undoCatalogActivity>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof undoCatalogActivity>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUndoCatalogActivityMutationOptions(options));
+};
+
+/**
  * @summary Export full catalog audit log as CSV (admin/staff only)
  */
 export const getExportCatalogAuditLogsUrl = (

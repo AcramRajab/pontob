@@ -366,6 +366,119 @@ router.get(
   },
 );
 
+// ── Admin: undo catalog activation / deactivation ────────────────────────────
+
+router.post(
+  "/catalog-audit-logs/:id/undo",
+  requireRole("master_admin"),
+  async (req, res) => {
+    const logId = parseInt(req.params.id as string);
+    if (isNaN(logId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    try {
+      const [logEntry] = await db
+        .select()
+        .from(auditLogsTable)
+        .where(eq(auditLogsTable.id, logId));
+
+      if (!logEntry) { res.status(404).json({ error: "Audit log entry not found" }); return; }
+      if (!logEntry.entityId) { res.status(400).json({ error: "Log entry has no associated entity" }); return; }
+      if (logEntry.action !== "activated" && logEntry.action !== "deactivated") {
+        res.status(400).json({ error: "Only activated/deactivated entries can be undone" });
+        return;
+      }
+
+      const entityId = logEntry.entityId;
+      const entityType = logEntry.entityType as CatalogEntityType;
+      // Undo means reversing what the entry recorded:
+      // if the entry says "activated", we deactivate; if "deactivated", we activate.
+      const targetActive = logEntry.action === "deactivated";
+
+      if (entityType === "dimension") {
+        const [row] = await db.select().from(dimensionsTable).where(eq(dimensionsTable.id, entityId));
+        if (!row) { res.status(404).json({ error: "Dimension not found" }); return; }
+        const [updated] = await db
+          .update(dimensionsTable)
+          .set({ active: targetActive })
+          .where(eq(dimensionsTable.id, entityId))
+          .returning();
+        await db.insert(auditLogsTable).values({
+          entityType: "dimension",
+          entityId,
+          entityName: updated.name,
+          action: updated.active ? "activated" : "deactivated",
+          userId: req.session.userId ?? null,
+          userName: req.session.userName ?? "unknown",
+          userEmail: req.session.userEmail ?? "unknown",
+        });
+        res.json({ id: updated.id, name: updated.name, active: updated.active });
+        return;
+      }
+
+      if (entityType === "key_process") {
+        const [row] = await db.select().from(keyProcessesTable).where(eq(keyProcessesTable.id, entityId));
+        if (!row) { res.status(404).json({ error: "Key process not found" }); return; }
+        const [updated] = await db
+          .update(keyProcessesTable)
+          .set({ active: targetActive })
+          .where(eq(keyProcessesTable.id, entityId))
+          .returning();
+        await db.insert(auditLogsTable).values({
+          entityType: "key_process",
+          entityId,
+          entityName: updated.name,
+          action: updated.active ? "activated" : "deactivated",
+          userId: req.session.userId ?? null,
+          userName: req.session.userName ?? "unknown",
+          userEmail: req.session.userEmail ?? "unknown",
+        });
+        res.json({ id: updated.id, name: updated.name, active: updated.active });
+        return;
+      }
+
+      if (entityType === "strategic_initiative") {
+        const [row] = await db.select().from(strategicInitiativesTable).where(eq(strategicInitiativesTable.id, entityId));
+        if (!row) { res.status(404).json({ error: "Strategic initiative not found" }); return; }
+        const [updated] = await db
+          .update(strategicInitiativesTable)
+          .set({ active: targetActive })
+          .where(eq(strategicInitiativesTable.id, entityId))
+          .returning();
+        await db.insert(auditLogsTable).values({
+          entityType: "strategic_initiative",
+          entityId,
+          entityName: updated.name,
+          action: updated.active ? "activated" : "deactivated",
+          userId: req.session.userId ?? null,
+          userName: req.session.userName ?? "unknown",
+          userEmail: req.session.userEmail ?? "unknown",
+        });
+        const [impactResult] = await db
+          .select({ activeGoalCount: count() })
+          .from(goalInitiativesTable)
+          .where(
+            and(
+              eq(goalInitiativesTable.strategicInitiativeId, entityId),
+              notInArray(goalInitiativesTable.status, ["concluida", "cancelada"]),
+            ),
+          );
+        res.json({
+          id: updated.id,
+          name: updated.name,
+          active: updated.active,
+          activeGoalCount: impactResult?.activeGoalCount ?? 0,
+        });
+        return;
+      }
+
+      res.status(400).json({ error: "Unsupported entity type" });
+    } catch (err) {
+      req.log.error(err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
 // ── Admin: deactivation impact ───────────────────────────────────────────────
 
 router.get(
