@@ -428,6 +428,35 @@ export default function CheckinScreen() {
       const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const result = (await res.json()) as DailyCheckin;
+        // Immediately write to today-checkins cache (used by this screen)
+        queryClient.setQueryData<DailyCheckin[]>(
+          ["today-checkins", user.franchiseId, todayStr],
+          (old) =>
+            isEdit
+              ? (old ?? []).map((c) => (c.id === existingDailyCheckin!.id ? result : c))
+              : [result],
+        );
+        // Immediately write to dashboard-today cache (Today tab reads todayCheckins from here)
+        queryClient.setQueryData(
+          ["dashboard-today", user.franchiseId],
+          (old: Record<string, unknown> | undefined) => {
+            if (!old) return old;
+            const entry = {
+              id: result.id,
+              executedToday: result.executedToday,
+              date: result.date,
+              progressToday: result.progressToday,
+            };
+            const prev = (old.todayCheckins ?? []) as typeof entry[];
+            return {
+              ...old,
+              todayCheckins: isEdit
+                ? prev.map((c) => (c.id === existingDailyCheckin!.id ? entry : c))
+                : [entry],
+            };
+          },
+        );
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
         queryClient.invalidateQueries({ queryKey: ["today-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
@@ -470,6 +499,12 @@ export default function CheckinScreen() {
       const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const result = (await res.json()) as WeeklyCheckin;
+        // Immediately write to weekly-checkins cache (Today tab reads this key directly)
+        queryClient.setQueryData<WeeklyCheckin | null>(
+          ["weekly-checkins", user.franchiseId, weekStartDate],
+          result,
+        );
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
         queryClient.invalidateQueries({ queryKey: ["weekly-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-weekly-checkins"] });
@@ -513,16 +548,21 @@ export default function CheckinScreen() {
       const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const result = (await res.json()) as MonthlyCheckin;
         if (isEdit) {
-          const updated = (await res.json()) as MonthlyCheckin;
-          setMonthlyKri(updated.kriProgress ?? "");
-          setMonthlyWorked(updated.initiativesThatWorked ?? "");
-          setMonthlyDidntWork(updated.initiativesThatDidNotWork ?? "");
-          setMonthlyContinue(updated.continueDoing ?? "");
-          setMonthlyStop(updated.stopDoing ?? "");
-          setMonthlyStart(updated.startDoing ?? "");
-          setMonthlyNextFocus(updated.nextMonthFocus ?? "");
+          setMonthlyKri(result.kriProgress ?? "");
+          setMonthlyWorked(result.initiativesThatWorked ?? "");
+          setMonthlyDidntWork(result.initiativesThatDidNotWork ?? "");
+          setMonthlyContinue(result.continueDoing ?? "");
+          setMonthlyStop(result.stopDoing ?? "");
+          setMonthlyStart(result.startDoing ?? "");
+          setMonthlyNextFocus(result.nextMonthFocus ?? "");
         }
+        // Immediately write to monthly-checkins cache (Today tab reads this key directly)
+        queryClient.setQueryData<MonthlyCheckin | null>(
+          ["monthly-checkins", user.franchiseId, currentMonth, currentYear],
+          result,
+        );
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
         queryClient.invalidateQueries({ queryKey: ["monthly-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-monthly-checkins"] });
