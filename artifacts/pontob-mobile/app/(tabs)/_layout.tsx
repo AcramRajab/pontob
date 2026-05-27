@@ -37,6 +37,31 @@ function useDailyCheckinMissing(): boolean {
   return (data?.todayCheckins?.length ?? 0) === 0;
 }
 
+interface Invite {
+  status: string;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+}
+
+function usePendingApprovalsCount(): number {
+  const { user } = useAuth();
+  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+  const { data } = useQuery({
+    queryKey: ["invites"],
+    queryFn: async () => {
+      const res = await apiFetch("/invites");
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json() as Promise<Invite[]>;
+    },
+    enabled: isAdmin,
+    staleTime: 30_000,
+  });
+  if (!data) return 0;
+  return data.filter(
+    (inv) => inv.status === "used" && !inv.approvedAt && !inv.rejectedAt
+  ).length;
+}
+
 function BadgeDot() {
   return (
     <View
@@ -59,6 +84,7 @@ function NativeTabLayout() {
   const { user } = useAuth();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
   const dailyCheckinMissing = useDailyCheckinMissing();
+  const pendingApprovalsCount = usePendingApprovalsCount();
 
   return (
     <NativeTabs>
@@ -83,6 +109,7 @@ function NativeTabLayout() {
       {isAdmin && (
         <NativeTabs.Trigger name="admin">
           <Icon sf={{ default: "person.badge.clock", selected: "person.badge.clock.fill" }} />
+          <Badge hidden={pendingApprovalsCount === 0}>{String(pendingApprovalsCount)}</Badge>
           <Label>Aprovações</Label>
         </NativeTabs.Trigger>
       )}
@@ -103,6 +130,7 @@ function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
   const dailyCheckinMissing = useDailyCheckinMissing();
+  const pendingApprovalsCount = usePendingApprovalsCount();
 
   return (
     <Tabs
@@ -192,6 +220,7 @@ function ClassicTabLayout() {
         options={{
           title: "Aprovações",
           tabBarButton: isAdmin ? undefined : () => null,
+          tabBarBadge: isAdmin && pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="person.badge.clock" tintColor={color} size={24} />
