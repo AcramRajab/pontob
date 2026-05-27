@@ -42,6 +42,24 @@ uri = "file://attached_assets/icon-v2-v3.png"
 type = "image"
 title = "ponto-b-futuristic-path"
 
+[[generated]]
+id = "69sgLLNuGKueH4Qy1fnTo"
+uri = "file://attached_assets/icon-v3-v1.png"
+type = "image"
+title = "ponto-b-neon-diamond"
+
+[[generated]]
+id = "TVqT-c4ecNtXlnfqD0VwS"
+uri = "file://attached_assets/icon-v3-v2.png"
+type = "image"
+title = "ponto-b-holographic-globe"
+
+[[generated]]
+id = "Ebt13ZMkvZf72K2a7wP3L"
+uri = "file://attached_assets/icon-v3-v3.png"
+type = "image"
+title = "ponto-b-neon-arrow-circuit"
+
 [[outputs]]
 id = "7KIs6kZUN4ujzlK9OPXlV"
 uri = "file://artifacts/pontob/public/pontob-mobile.tar"
@@ -95,3 +113,21 @@ id = "ZXC2flExJ2rkyQ2fg4id1"
 uri = "file://attached_assets/icon-v2-v3.png"
 type = "image"
 title = "Opção C — Caminho ao destino"
+
+[[outputs]]
+id = "NrOYysxWXmMg7p5ncT8Th"
+uri = "file://attached_assets/icon-v3-v1.png"
+type = "image"
+title = "A — Diamante neon"
+
+[[outputs]]
+id = "gB0TrIexgQ_buaJSknfHe"
+uri = "file://attached_assets/icon-v3-v2.png"
+type = "image"
+title = "B — Globo holográfico"
+
+[[outputs]]
+id = "5BfRzU-KwjmJqLmoLpEOy"
+uri = "file://attached_assets/icon-v3-v3.png"
+type = "image"
+title = "C — Seta circuito"
