@@ -148,40 +148,89 @@ export default function CheckinScreen() {
     }
   }, [tabParam]);
 
+  // ── Read cached query data synchronously so we can pre-fill on first render ─
+
+  const cachedDailyCheckins = queryClient.getQueryData<DailyCheckin[]>(
+    ["today-checkins", user?.franchiseId, todayStr],
+  );
+  const cachedDailyCheckin = cachedDailyCheckins?.[0] ?? null;
+
+  const cachedWeeklyCheckin = queryClient.getQueryData<WeeklyCheckin | null>(
+    ["weekly-checkins", user?.franchiseId, weekStartDate],
+  ) ?? null;
+
+  const cachedMonthlyCheckin = queryClient.getQueryData<MonthlyCheckin | null>(
+    ["monthly-checkins", user?.franchiseId, currentMonth, currentYear],
+  ) ?? null;
+
   // ── Daily state ──────────────────────────────────────────────────────────
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null);
-  const [executed, setExecuted] = useState<ExecutedOption>("sim");
-  const [progress, setProgress] = useState(50);
-  const [blocker, setBlocker] = useState("");
-  const [nextStep, setNextStep] = useState("");
-  const [needsHelp, setNeedsHelp] = useState(false);
+  const [executed, setExecuted] = useState<ExecutedOption>(
+    () => (cachedDailyCheckin?.executedToday as ExecutedOption) ?? "sim",
+  );
+  const [progress, setProgress] = useState(
+    () => cachedDailyCheckin?.progressToday ?? 50,
+  );
+  const [blocker, setBlocker] = useState(
+    () => cachedDailyCheckin?.blocker ?? "",
+  );
+  const [nextStep, setNextStep] = useState(
+    () => cachedDailyCheckin?.nextStep ?? "",
+  );
+  const [needsHelp, setNeedsHelp] = useState(
+    () => cachedDailyCheckin?.needsHelp ?? false,
+  );
   const [dailySubmitting, setDailySubmitting] = useState(false);
   const [dailyDone, setDailyDone] = useState(false);
-  const [dailyPreFilled, setDailyPreFilled] = useState(false);
+  const [dailyPreFilled, setDailyPreFilled] = useState(() => !!cachedDailyCheckin);
 
   // ── Weekly state ─────────────────────────────────────────────────────────
   const [weeklyGoalId, setWeeklyGoalId] = useState<number | null>(null);
-  const [weeklyExecPct, setWeeklyExecPct] = useState(50);
-  const [weeklyProgressSummary, setWeeklyProgressSummary] = useState("");
-  const [weeklyBlockers, setWeeklyBlockers] = useState("");
-  const [weeklyNextPriority, setWeeklyNextPriority] = useState("");
-  const [weeklyNeedsSupport, setWeeklyNeedsSupport] = useState(false);
+  const [weeklyExecPct, setWeeklyExecPct] = useState(
+    () => cachedWeeklyCheckin?.executionPercentage ?? 50,
+  );
+  const [weeklyProgressSummary, setWeeklyProgressSummary] = useState(
+    () => cachedWeeklyCheckin?.progressSummary ?? "",
+  );
+  const [weeklyBlockers, setWeeklyBlockers] = useState(
+    () => cachedWeeklyCheckin?.blockers ?? "",
+  );
+  const [weeklyNextPriority, setWeeklyNextPriority] = useState(
+    () => cachedWeeklyCheckin?.nextWeekPriority ?? "",
+  );
+  const [weeklyNeedsSupport, setWeeklyNeedsSupport] = useState(
+    () => cachedWeeklyCheckin?.needsRegionalSupport ?? false,
+  );
   const [weeklySubmitting, setWeeklySubmitting] = useState(false);
   const [weeklyDone, setWeeklyDone] = useState(false);
-  const [weeklyPreFilled, setWeeklyPreFilled] = useState(false);
+  const [weeklyPreFilled, setWeeklyPreFilled] = useState(() => !!cachedWeeklyCheckin);
 
   // ── Monthly state ────────────────────────────────────────────────────────
   const [monthlyGoalId, setMonthlyGoalId] = useState<number | null>(null);
-  const [monthlyKri, setMonthlyKri] = useState("");
-  const [monthlyWorked, setMonthlyWorked] = useState("");
-  const [monthlyDidntWork, setMonthlyDidntWork] = useState("");
-  const [monthlyContinue, setMonthlyContinue] = useState("");
-  const [monthlyStop, setMonthlyStop] = useState("");
-  const [monthlyStart, setMonthlyStart] = useState("");
-  const [monthlyNextFocus, setMonthlyNextFocus] = useState("");
+  const [monthlyKri, setMonthlyKri] = useState(
+    () => cachedMonthlyCheckin?.kriProgress ?? "",
+  );
+  const [monthlyWorked, setMonthlyWorked] = useState(
+    () => cachedMonthlyCheckin?.initiativesThatWorked ?? "",
+  );
+  const [monthlyDidntWork, setMonthlyDidntWork] = useState(
+    () => cachedMonthlyCheckin?.initiativesThatDidNotWork ?? "",
+  );
+  const [monthlyContinue, setMonthlyContinue] = useState(
+    () => cachedMonthlyCheckin?.continueDoing ?? "",
+  );
+  const [monthlyStop, setMonthlyStop] = useState(
+    () => cachedMonthlyCheckin?.stopDoing ?? "",
+  );
+  const [monthlyStart, setMonthlyStart] = useState(
+    () => cachedMonthlyCheckin?.startDoing ?? "",
+  );
+  const [monthlyNextFocus, setMonthlyNextFocus] = useState(
+    () => cachedMonthlyCheckin?.nextMonthFocus ?? "",
+  );
   const [monthlySubmitting, setMonthlySubmitting] = useState(false);
   const [monthlyDone, setMonthlyDone] = useState(false);
-  const [monthlyPreFilled, setMonthlyPreFilled] = useState(false);
+  const [monthlyPreFilled, setMonthlyPreFilled] = useState(() => !!cachedMonthlyCheckin);
 
   // ── History state ────────────────────────────────────────────────────────
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
