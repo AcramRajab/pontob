@@ -1247,6 +1247,18 @@ export default function CheckinScreen() {
               : "Check-in mensal registrado com sucesso!"
             }
           </Text>
+          <Pressable
+            style={[s.submitBtn, { backgroundColor: colors.secondary, marginTop: 8, paddingHorizontal: 20, alignSelf: "stretch" }]}
+            onPress={() => {
+              setMonthlyDone(false);
+              setMonthlyPreFilled(false);
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center" }}>
+              <Ionicons name="create-outline" size={16} color={colors.foreground} />
+              <Text style={[s.submitBtnText, { color: colors.foreground }]}>Editar check-in</Text>
+            </View>
+          </Pressable>
         </View>
       );
     }
@@ -1446,23 +1458,28 @@ export default function CheckinScreen() {
                     <Text style={[s.historyTypeBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Pressable
-                      style={s.historyEditBtn}
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        if (entry.kind === "daily") {
-                          setHistoryEditEntry({ kind: "daily", item: entry.item });
-                        } else if (entry.kind === "weekly") {
-                          setHistoryEditEntry({ kind: "weekly", item: entry.item as WeeklyCheckin });
-                        } else {
-                          setHistoryEditEntry({ kind: "monthly", item: entry.item as MonthlyCheckin });
-                        }
-                      }}
-                    >
-                      <Ionicons name="create-outline" size={12} color={colors.primary} />
-                      <Text style={s.historyEditBtnText}>Editar</Text>
-                    </Pressable>
+                    {(entry.kind !== "monthly" || (
+                      (entry.item as MonthlyCheckin).month === currentMonth &&
+                      (entry.item as MonthlyCheckin).year === currentYear
+                    )) && (
+                      <Pressable
+                        style={s.historyEditBtn}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          if (entry.kind === "daily") {
+                            setHistoryEditEntry({ kind: "daily", item: entry.item });
+                          } else if (entry.kind === "weekly") {
+                            setHistoryEditEntry({ kind: "weekly", item: entry.item as WeeklyCheckin });
+                          } else {
+                            setHistoryEditEntry({ kind: "monthly", item: entry.item as MonthlyCheckin });
+                          }
+                        }}
+                      >
+                        <Ionicons name="create-outline" size={12} color={colors.primary} />
+                        <Text style={s.historyEditBtnText}>Editar</Text>
+                      </Pressable>
+                    )}
                     <Ionicons name="chevron-forward" size={14} color={colors.mutedForeground} />
                     <Text style={s.historyDate}>{dateStr2}</Text>
                   </View>
@@ -1662,7 +1679,10 @@ export default function CheckinScreen() {
     }
 
     let titleLine = "";
-    const isEditable = true;
+    const isEditable = kind !== "monthly" || (
+      (item as MonthlyCheckin).month === currentMonth &&
+      (item as MonthlyCheckin).year === currentYear
+    );
 
     let content: React.ReactNode = null;
 
