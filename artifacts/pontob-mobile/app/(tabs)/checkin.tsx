@@ -548,6 +548,16 @@ export default function CheckinScreen() {
       const res = await apiFetch(url, { method, body: JSON.stringify(body) });
       if (res.ok || res.status === 200) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (isEdit) {
+          const updated = (await res.json()) as MonthlyCheckin;
+          setMonthlyKri(updated.kriProgress ?? "");
+          setMonthlyWorked(updated.initiativesThatWorked ?? "");
+          setMonthlyDidntWork(updated.initiativesThatDidNotWork ?? "");
+          setMonthlyContinue(updated.continueDoing ?? "");
+          setMonthlyStop(updated.stopDoing ?? "");
+          setMonthlyStart(updated.startDoing ?? "");
+          setMonthlyNextFocus(updated.nextMonthFocus ?? "");
+        }
         queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
         queryClient.invalidateQueries({ queryKey: ["monthly-checkins"] });
         queryClient.invalidateQueries({ queryKey: ["all-monthly-checkins"] });
