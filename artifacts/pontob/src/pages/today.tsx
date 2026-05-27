@@ -111,21 +111,21 @@ function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins }: Chec
       done: dailyDone,
       detail: dailyDetail(),
       ctaHref: "/checkin/daily",
-      ctaLabel: "Registrar check-in diário",
+      ctaLabel: "check-in diário",
     },
     {
       label: "Semanal",
       done: weeklyDone,
       detail: weeklyDetail(),
       ctaHref: "/checkin/weekly",
-      ctaLabel: "Registrar check-in semanal",
+      ctaLabel: "check-in semanal",
     },
     {
       label: "Mensal",
       done: monthlyDone,
       detail: monthlyDetail(),
       ctaHref: "/checkin/monthly",
-      ctaLabel: "Registrar check-in mensal",
+      ctaLabel: "check-in mensal",
     },
   ];
 
@@ -139,7 +139,7 @@ function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins }: Chec
       </div>
       <div className="divide-y divide-border">
         {items.map(({ label, done, detail, ctaHref, ctaLabel }) => (
-          <div key={label} className="flex items-center gap-3 px-4 py-3">
+          <Link key={label} href={ctaHref} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
             <div className={cn(
               "h-7 w-7 rounded-full flex items-center justify-center shrink-0",
               done ? "bg-green-50" : "bg-muted/60"
@@ -161,16 +161,17 @@ function CheckinSummary({ dailyCheckins, weeklyCheckins, monthlyCheckins }: Chec
             </div>
 
             {done ? (
-              <span className="shrink-0 text-[10px] font-bold text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
-                Feito
+              <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-primary/70 hover:text-primary transition-colors">
+                Ver / editar
+                <ChevronRight className="h-3.5 w-3.5" />
               </span>
             ) : (
-              <Link href={ctaHref} className="shrink-0 flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
-                {ctaLabel.replace("Registrar ", "")}
+              <span className="shrink-0 flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+                Registrar {ctaLabel}
                 <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
+              </span>
             )}
-          </div>
+          </Link>
         ))}
       </div>
     </div>
