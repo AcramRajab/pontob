@@ -114,7 +114,19 @@ function DailyDetailSheet({ item, open, onClose }: { item: any; open: boolean; o
           notes: data.notes || undefined,
         },
       });
-      qc.invalidateQueries({ queryKey: getListDailyCheckinsQueryKey({}) });
+      const dailyPatch = {
+        executedToday: data.executedToday,
+        progressToday: data.progressToday,
+        blocker: data.blocker || undefined,
+        nextStep: data.nextStep || undefined,
+        timeSpent: data.timeSpent || undefined,
+        needsHelp: data.needsHelp,
+        notes: data.notes || undefined,
+      };
+      qc.setQueriesData<any[]>({ queryKey: ["/api/daily-checkins"] }, old =>
+        old?.map(c => c.id === item.id ? { ...c, ...dailyPatch } : c)
+      );
+      qc.invalidateQueries({ queryKey: ["/api/daily-checkins"] });
       toast({ title: "Check-in atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
@@ -353,7 +365,20 @@ function WeeklyDetailSheet({ item, open, onClose }: { item: any; open: boolean; 
           needsRegionalSupport: data.needsRegionalSupport,
         },
       });
-      qc.invalidateQueries({ queryKey: getListWeeklyCheckinsQueryKey({}) });
+      const weeklyPatch = {
+        planned: data.planned || undefined,
+        executed: data.executed || undefined,
+        progressSummary: data.progressSummary || undefined,
+        blockers: data.blockers || undefined,
+        adjustments: data.adjustments || undefined,
+        nextWeekPriority: data.nextWeekPriority || undefined,
+        initiativeDecision: data.initiativeDecision || undefined,
+        needsRegionalSupport: data.needsRegionalSupport,
+      };
+      qc.setQueriesData<any[]>({ queryKey: ["/api/weekly-checkins"] }, old =>
+        old?.map(c => c.id === item.id ? { ...c, ...weeklyPatch } : c)
+      );
+      qc.invalidateQueries({ queryKey: ["/api/weekly-checkins"] });
       toast({ title: "Check-in semanal atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
@@ -531,7 +556,21 @@ function MonthlyDetailSheet({ item, open, onClose }: { item: any; open: boolean;
           nextMonthFocus: data.nextMonthFocus || undefined,
         },
       });
-      qc.invalidateQueries({ queryKey: getListMonthlyCheckinsQueryKey({}) });
+      const monthlyPatch = {
+        kriProgress: data.kriProgress || undefined,
+        improvedKpis: data.improvedKpis || undefined,
+        worsenedKpis: data.worsenedKpis || undefined,
+        initiativesThatWorked: data.initiativesThatWorked || undefined,
+        initiativesThatDidNotWork: data.initiativesThatDidNotWork || undefined,
+        continueDoing: data.continueDoing || undefined,
+        stopDoing: data.stopDoing || undefined,
+        startDoing: data.startDoing || undefined,
+        nextMonthFocus: data.nextMonthFocus || undefined,
+      };
+      qc.setQueriesData<any[]>({ queryKey: ["/api/monthly-checkins"] }, old =>
+        old?.map(c => c.id === item.id ? { ...c, ...monthlyPatch } : c)
+      );
+      qc.invalidateQueries({ queryKey: ["/api/monthly-checkins"] });
       toast({ title: "Check-in mensal atualizado", description: "Suas alterações foram salvas." });
       setIsEditing(false);
       onClose();
