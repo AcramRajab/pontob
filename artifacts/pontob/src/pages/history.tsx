@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useFranchiseContext } from "@/hooks/use-franchise-context";
 import { FranchisePicker, AdminEmptyState } from "@/components/franchise-picker";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
@@ -744,6 +744,11 @@ function HistoryCard({ item, onClick }: { item: HistItem; onClick: () => void })
 
 type DatePreset = "all" | "7d" | "30d" | "month" | "custom";
 
+const VALID_PRESETS: DatePreset[] = ["all", "7d", "30d", "month", "custom"];
+const LS_PRESET = "pontob_history_datePreset";
+const LS_FROM = "pontob_history_customFrom";
+const LS_TO = "pontob_history_customTo";
+
 const DATE_PRESETS: { value: DatePreset; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "7d", label: "Últimos 7 dias" },
@@ -876,9 +881,37 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
 export default function HistoryPage() {
   const [tab, setTab] = useState("all");
   const [selected, setSelected] = useState<HistItem | null>(null);
-  const [datePreset, setDatePreset] = useState<DatePreset>("all");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [datePreset, setDatePreset] = useState<DatePreset>(() => {
+    try {
+      const v = localStorage.getItem(LS_PRESET);
+      if (v && (VALID_PRESETS as string[]).includes(v)) return v as DatePreset;
+    } catch {}
+    return "all";
+  });
+  const [customFrom, setCustomFrom] = useState(() => {
+    try { return localStorage.getItem(LS_FROM) ?? ""; } catch { return ""; }
+  });
+  const [customTo, setCustomTo] = useState(() => {
+    try { return localStorage.getItem(LS_TO) ?? ""; } catch { return ""; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_PRESET, datePreset); } catch {}
+  }, [datePreset]);
+
+  useEffect(() => {
+    try {
+      if (customFrom) localStorage.setItem(LS_FROM, customFrom);
+      else localStorage.removeItem(LS_FROM);
+    } catch {}
+  }, [customFrom]);
+
+  useEffect(() => {
+    try {
+      if (customTo) localStorage.setItem(LS_TO, customTo);
+      else localStorage.removeItem(LS_TO);
+    } catch {}
+  }, [customTo]);
   const [viewMode, setViewMode] = useState<"timeline" | "comparativo">("timeline");
   const { franchiseId, isAdmin, isSocio, franchises, adminFranchiseId, setAdminFranchiseId, socioFranchiseId, setSocioFranchiseId } = useFranchiseContext();
 
