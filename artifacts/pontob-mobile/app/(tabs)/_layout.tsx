@@ -14,13 +14,51 @@ import { apiFetch } from "@/lib/api";
 
 const ADMIN_ROLES = ["master_admin", "staff_regional"];
 
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+
+function getMondayOf(d: Date): Date {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(d.getDate() + diff);
+  m.setHours(0, 0, 0, 0);
+  return m;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface TodayOverview {
   todayCheckins: Array<{ id: number; executedToday: string; date: string }>;
 }
 
-function useDailyCheckinMissing(): boolean {
+interface WeeklyCheckin {
+  id: number;
+  weekStartDate: string;
+}
+
+interface MonthlyCheckin {
+  id: number;
+  month: number;
+  year: number;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+function useCheckinBadge(): boolean {
   const { user } = useAuth();
-  const { data, isSuccess } = useQuery({
+
+  const today = new Date();
+  const isMonday = today.getDay() === 1;
+  const isFirstOfMonth = today.getDate() === 1;
+  const weekStartDate = toISODate(getMondayOf(today));
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+
+  const { data: todayData, isSuccess: todaySuccess } = useQuery({
     queryKey: ["dashboard-today", user?.franchiseId],
     queryFn: async () => {
       const params = user?.franchiseId
@@ -33,8 +71,40 @@ function useDailyCheckinMissing(): boolean {
     enabled: !!user,
     staleTime: 30_000,
   });
-  if (!isSuccess) return false;
-  return (data?.todayCheckins?.length ?? 0) === 0;
+
+  const { data: thisWeekCheckin } = useQuery({
+    queryKey: ["weekly-checkins", user?.franchiseId, weekStartDate],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (user?.franchiseId) p.set("franchiseId", String(user.franchiseId));
+      const res = await apiFetch(`/weekly-checkins?${p}`);
+      if (!res.ok) return null;
+      const all = (await res.json()) as WeeklyCheckin[];
+      return all.find((c) => c.weekStartDate === weekStartDate) ?? null;
+    },
+    enabled: !!user && isMonday,
+    staleTime: 30_000,
+  });
+
+  const { data: thisMonthCheckin } = useQuery({
+    queryKey: ["monthly-checkins", user?.franchiseId, currentMonth, currentYear],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (user?.franchiseId) p.set("franchiseId", String(user.franchiseId));
+      const res = await apiFetch(`/monthly-checkins?${p}`);
+      if (!res.ok) return null;
+      const all = (await res.json()) as MonthlyCheckin[];
+      return all.find((c) => c.month === currentMonth && c.year === currentYear) ?? null;
+    },
+    enabled: !!user && isFirstOfMonth,
+    staleTime: 30_000,
+  });
+
+  const dailyMissing = todaySuccess && (todayData?.todayCheckins?.length ?? 0) === 0;
+  const weeklyMissing = isMonday && thisWeekCheckin === null;
+  const monthlyMissing = isFirstOfMonth && thisMonthCheckin === null;
+
+  return dailyMissing || weeklyMissing || monthlyMissing;
 }
 
 interface Invite {
@@ -83,7 +153,7 @@ function BadgeDot() {
 function NativeTabLayout() {
   const { user } = useAuth();
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
-  const dailyCheckinMissing = useDailyCheckinMissing();
+  const checkinBadge = useCheckinBadge();
   const pendingApprovalsCount = usePendingApprovalsCount();
 
   return (
@@ -103,7 +173,7 @@ function NativeTabLayout() {
             selected: "checkmark.circle.fill",
           }}
         />
-        <Badge hidden={!dailyCheckinMissing} />
+        <Badge hidden={!checkinBadge} />
         <Label>Check-in</Label>
       </NativeTabs.Trigger>
       {isAdmin && (
@@ -129,7 +199,7 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
-  const dailyCheckinMissing = useDailyCheckinMissing();
+  const checkinBadge = useCheckinBadge();
   const pendingApprovalsCount = usePendingApprovalsCount();
 
   return (
@@ -210,7 +280,7 @@ function ClassicTabLayout() {
                   color={color}
                 />
               )}
-              {dailyCheckinMissing && <BadgeDot />}
+              {checkinBadge && <BadgeDot />}
             </View>
           ),
         }}
