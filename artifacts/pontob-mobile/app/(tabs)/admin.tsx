@@ -72,6 +72,7 @@ interface HistoryTarget {
   itemType: CatalogEntityType;
   itemId: number;
   itemName: string;
+  itemActive: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -325,8 +326,15 @@ export default function AdminApprovalsScreen() {
       const res = await apiFetch(`/dimensions/${id}/toggle-active`, { method: "POST" });
       if (!res.ok) throw new Error("Erro ao alterar dimensão");
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       void qc.invalidateQueries({ queryKey: ["catalog-dimensions-admin"] });
+      void qc.invalidateQueries({ queryKey: ["catalog-history", "dimension", id] });
+      void qc.invalidateQueries({ queryKey: ["catalog-all-activity"] });
+      setHistoryTarget((prev) =>
+        prev && prev.itemType === "dimension" && prev.itemId === id
+          ? { ...prev, itemActive: !prev.itemActive }
+          : prev
+      );
     },
     onError: (err: Error) => Alert.alert("Erro", err.message),
   });
@@ -336,8 +344,15 @@ export default function AdminApprovalsScreen() {
       const res = await apiFetch(`/key-processes/${id}/toggle-active`, { method: "POST" });
       if (!res.ok) throw new Error("Erro ao alterar processo-chave");
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       void qc.invalidateQueries({ queryKey: ["catalog-key-processes-admin"] });
+      void qc.invalidateQueries({ queryKey: ["catalog-history", "key_process", id] });
+      void qc.invalidateQueries({ queryKey: ["catalog-all-activity"] });
+      setHistoryTarget((prev) =>
+        prev && prev.itemType === "key_process" && prev.itemId === id
+          ? { ...prev, itemActive: !prev.itemActive }
+          : prev
+      );
     },
     onError: (err: Error) => Alert.alert("Erro", err.message),
   });
@@ -347,18 +362,25 @@ export default function AdminApprovalsScreen() {
       const res = await apiFetch(`/strategic-initiatives/${id}/toggle-active`, { method: "POST" });
       if (!res.ok) throw new Error("Erro ao alterar iniciativa");
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       void qc.invalidateQueries({ queryKey: ["catalog-initiatives-admin"] });
+      void qc.invalidateQueries({ queryKey: ["catalog-history", "strategic_initiative", id] });
+      void qc.invalidateQueries({ queryKey: ["catalog-all-activity"] });
+      setHistoryTarget((prev) =>
+        prev && prev.itemType === "strategic_initiative" && prev.itemId === id
+          ? { ...prev, itemActive: !prev.itemActive }
+          : prev
+      );
     },
     onError: (err: Error) => Alert.alert("Erro", err.message),
   });
 
-  async function handleCatalogToggle(item: CatalogItem) {
-    if (catalogTab === "dimension") {
+  async function handleToggleByType(itemType: CatalogEntityType, item: CatalogItem) {
+    if (itemType === "dimension") {
       toggleDimMutation.mutate(item.id);
       return;
     }
-    if (catalogTab === "key_process") {
+    if (itemType === "key_process") {
       toggleKpMutation.mutate(item.id);
       return;
     }
@@ -386,6 +408,10 @@ export default function AdminApprovalsScreen() {
     } else {
       toggleInitMutation.mutate(item.id);
     }
+  }
+
+  async function handleCatalogToggle(item: CatalogItem) {
+    await handleToggleByType(catalogTab, item);
   }
 
   function confirmDeactivation() {
@@ -1449,6 +1475,7 @@ export default function AdminApprovalsScreen() {
                       itemType: catalogTab,
                       itemId: item.id,
                       itemName: item.name,
+                      itemActive: item.active,
                     })
                   }
                 >
@@ -1714,9 +1741,62 @@ export default function AdminApprovalsScreen() {
             <Text style={s.sheetTitle} numberOfLines={2}>
               {historyTarget.itemName}
             </Text>
-            <Text style={s.sheetSubtitle}>
-              {ENTITY_TYPE_LABELS[historyTarget.itemType]} · Histórico de alterações
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text style={[s.sheetSubtitle, { marginBottom: 0, flexShrink: 1, marginRight: 8 }]}>
+                {ENTITY_TYPE_LABELS[historyTarget.itemType]} · Histórico de alterações
+              </Text>
+              <Pressable
+                onPress={() =>
+                  void handleToggleByType(historyTarget.itemType, {
+                    id: historyTarget.itemId,
+                    name: historyTarget.itemName,
+                    active: historyTarget.itemActive,
+                    subtitle: null,
+                  })
+                }
+                disabled={
+                  impactCheckingId === historyTarget.itemId ||
+                  toggleDimMutation.isPending ||
+                  toggleKpMutation.isPending ||
+                  toggleInitMutation.isPending
+                }
+                style={({ pressed }) => [
+                  {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 5,
+                    paddingHorizontal: 11,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    opacity: pressed ? 0.6 : 1,
+                    borderColor: historyTarget.itemActive ? colors.destructive : "#16a34a",
+                    backgroundColor: historyTarget.itemActive ? "#fee2e2" : "#dcfce7",
+                  },
+                ]}
+              >
+                {impactCheckingId === historyTarget.itemId ? (
+                  <ActivityIndicator size="small" color={colors.mutedForeground} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={historyTarget.itemActive ? "eye-off-outline" : "eye-outline"}
+                      size={14}
+                      color={historyTarget.itemActive ? colors.destructive : "#16a34a"}
+                    />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "Inter_600SemiBold",
+                        color: historyTarget.itemActive ? colors.destructive : "#16a34a",
+                      }}
+                    >
+                      {historyTarget.itemActive ? "Desativar" : "Ativar"}
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
 
             {historyLoading ? (
               <View style={{ alignItems: "center", paddingVertical: 32 }}>
