@@ -297,7 +297,7 @@ export default function CheckinScreen() {
     enabled: !!user,
   });
 
-  const { data: thisMonthCheckin } = useQuery({
+  const { data: thisMonthCheckin, isLoading: loadingThisMonthCheckin } = useQuery({
     queryKey: ["monthly-checkins", user?.franchiseId, currentMonth, currentYear],
     queryFn: async () => {
       const p = new URLSearchParams();
@@ -1295,6 +1295,8 @@ export default function CheckinScreen() {
   // ── Monthly form ──────────────────────────────────────────────────────────
 
   function renderMonthlyForm() {
+    if (loadingThisMonthCheckin || (!!thisMonthCheckin && !monthlyPreFilled)) return renderFormSkeleton();
+
     if (monthlyDone) {
       return (
         <View style={s.doneCard}>
