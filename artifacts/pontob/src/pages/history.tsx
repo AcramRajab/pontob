@@ -887,6 +887,10 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
     query: { queryKey: getGetCheckinComparisonQueryKey() },
   });
 
+  function handleExport() {
+    window.location.href = "/api/exports/checkin-comparison";
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -907,6 +911,13 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
   }
 
   return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+          <Download className="h-3.5 w-3.5" />
+          Exportar
+        </Button>
+      </div>
     <div className="rounded-lg border overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
@@ -957,6 +968,7 @@ function ComparativoView({ onSelectFranchise }: { onSelectFranchise: (id: number
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
