@@ -17,3 +17,9 @@ id = "jFH49zQb12zPrSqB8xNk0"
 uri = "file://artifacts/pontob/public/setup-pontob.py.gz"
 type = "unspecified"
 title = "setup-pontob.py.gz"
+
+[[outputs]]
+id = "1jBanWEF9WmBAKmurQ82D"
+uri = "file://artifacts/pontob/public/pontob-mobile.zip"
+type = "unspecified"
+title = "pontob-mobile.zip"
