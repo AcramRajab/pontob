@@ -115,6 +115,7 @@ export default function Catalog() {
         queryClient.invalidateQueries({ queryKey: ["/api/dimensions"] });
         queryClient.invalidateQueries({ queryKey: ["/api/key-processes"] });
         queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/catalog-audit-logs"] });
       },
     },
   });
@@ -124,6 +125,7 @@ export default function Catalog() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/key-processes"] });
         queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/catalog-audit-logs"] });
       },
     },
   });
@@ -132,6 +134,7 @@ export default function Catalog() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["/api/strategic-initiatives"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/catalog-audit-logs"] });
       },
     },
   });
