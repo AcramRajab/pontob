@@ -132,6 +132,7 @@ type CatalogTab = "dimension" | "key_process" | "strategic_initiative";
 type HistoryEntityFilter = "all" | "dimension" | "key_process" | "strategic_initiative";
 
 type PendingDeactivation = {
+  entityType: CatalogEntityType;
   id: number;
   name: string;
   activeGoalCount: number;
@@ -378,37 +379,42 @@ export default function AdminApprovalsScreen() {
   });
 
   async function handleToggleByType(itemType: CatalogEntityType, item: CatalogItem) {
-    if (itemType === "dimension") {
-      toggleDimMutation.mutate(item.id);
+    if (!item.active) {
+      if (itemType === "dimension") toggleDimMutation.mutate(item.id);
+      else if (itemType === "key_process") toggleKpMutation.mutate(item.id);
+      else toggleInitMutation.mutate(item.id);
       return;
     }
-    if (itemType === "key_process") {
-      toggleKpMutation.mutate(item.id);
-      return;
-    }
-    if (item.active) {
-      setImpactCheckingId(item.id);
-      try {
-        const res = await apiFetch(`/strategic-initiatives/${item.id}/deactivation-impact`);
-        if (!res.ok) throw new Error("Erro ao verificar impacto");
-        const impact = (await res.json()) as { activeGoalCount: number; affectedFranchises: string[] };
-        if (impact.activeGoalCount > 0) {
-          setPendingDeactivation({
-            id: item.id,
-            name: item.name,
-            activeGoalCount: impact.activeGoalCount,
-            affectedFranchises: impact.affectedFranchises ?? [],
-          });
-          return;
-        }
-        toggleInitMutation.mutate(item.id);
-      } catch (err) {
-        Alert.alert("Erro", (err as Error).message);
-      } finally {
-        setImpactCheckingId(null);
+
+    const endpoint =
+      itemType === "dimension"
+        ? `/dimensions/${item.id}/deactivation-impact`
+        : itemType === "key_process"
+        ? `/key-processes/${item.id}/deactivation-impact`
+        : `/strategic-initiatives/${item.id}/deactivation-impact`;
+
+    setImpactCheckingId(item.id);
+    try {
+      const res = await apiFetch(endpoint);
+      if (!res.ok) throw new Error("Erro ao verificar impacto");
+      const impact = (await res.json()) as { activeGoalCount: number; affectedFranchises: string[] };
+      if (impact.activeGoalCount > 0) {
+        setPendingDeactivation({
+          entityType: itemType,
+          id: item.id,
+          name: item.name,
+          activeGoalCount: impact.activeGoalCount,
+          affectedFranchises: impact.affectedFranchises ?? [],
+        });
+        return;
       }
-    } else {
-      toggleInitMutation.mutate(item.id);
+      if (itemType === "dimension") toggleDimMutation.mutate(item.id);
+      else if (itemType === "key_process") toggleKpMutation.mutate(item.id);
+      else toggleInitMutation.mutate(item.id);
+    } catch (err) {
+      Alert.alert("Erro", (err as Error).message);
+    } finally {
+      setImpactCheckingId(null);
     }
   }
 
@@ -418,7 +424,10 @@ export default function AdminApprovalsScreen() {
 
   function confirmDeactivation() {
     if (!pendingDeactivation) return;
-    toggleInitMutation.mutate(pendingDeactivation.id);
+    const { entityType, id } = pendingDeactivation;
+    if (entityType === "dimension") toggleDimMutation.mutate(id);
+    else if (entityType === "key_process") toggleKpMutation.mutate(id);
+    else toggleInitMutation.mutate(id);
     setPendingDeactivation(null);
   }
 
@@ -1671,9 +1680,13 @@ export default function AdminApprovalsScreen() {
               <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground }}>
                 {pendingDeactivation.activeGoalCount}
               </Text>
-              {pendingDeactivation.activeGoalCount === 1
-                ? " franquia ainda tem esta iniciativa ativa em uma de suas metas:"
-                : " franquias ainda têm esta iniciativa ativa em suas metas:"}
+              {pendingDeactivation.entityType === "strategic_initiative"
+                ? pendingDeactivation.activeGoalCount === 1
+                  ? " franquia ainda tem esta iniciativa ativa em uma de suas metas:"
+                  : " franquias ainda têm esta iniciativa ativa em suas metas:"
+                : pendingDeactivation.activeGoalCount === 1
+                ? " franquia tem metas ativas que referenciam este item:"
+                : " franquias têm metas ativas que referenciam este item:"}
             </Text>
             <ScrollView style={s.franchiseList} showsVerticalScrollIndicator={false}>
               {pendingDeactivation.affectedFranchises.map((name) => (
@@ -1684,7 +1697,9 @@ export default function AdminApprovalsScreen() {
               ))}
             </ScrollView>
             <Text style={[s.sheetDesc, { marginBottom: 20 }]}>
-              Desativar esta iniciativa fará com que apareça como "(inativo)" para essas franquias.
+              {pendingDeactivation.entityType === "strategic_initiative"
+                ? "Desativar esta iniciativa fará com que apareça como \"(inativo)\" para essas franquias."
+                : "Desativá-lo pode causar confusão para as franquias afetadas."}
             </Text>
             <View style={s.sheetBtnRow}>
               <Pressable
@@ -1694,12 +1709,16 @@ export default function AdminApprovalsScreen() {
                 <Text style={s.sheetCancelText}>Cancelar</Text>
               </Pressable>
               <Pressable
-                style={[s.sheetBtn, s.sheetConfirmBtn, toggleInitMutation.isPending && { opacity: 0.6 }]}
+                style={[s.sheetBtn, s.sheetConfirmBtn,
+                  (toggleDimMutation.isPending || toggleKpMutation.isPending || toggleInitMutation.isPending) && { opacity: 0.6 }
+                ]}
                 onPress={confirmDeactivation}
-                disabled={toggleInitMutation.isPending}
+                disabled={toggleDimMutation.isPending || toggleKpMutation.isPending || toggleInitMutation.isPending}
               >
                 <Text style={s.sheetConfirmText}>
-                  {toggleInitMutation.isPending ? "Desativando..." : "Desativar mesmo assim"}
+                  {(toggleDimMutation.isPending || toggleKpMutation.isPending || toggleInitMutation.isPending)
+                    ? "Desativando..."
+                    : "Desativar mesmo assim"}
                 </Text>
               </Pressable>
             </View>
