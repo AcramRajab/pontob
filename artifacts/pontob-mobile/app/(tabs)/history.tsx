@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -123,6 +124,7 @@ export default function HistoryScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
 
@@ -500,6 +502,23 @@ export default function HistoryScreen() {
       fontFamily: "Inter_700Bold",
       color: colors.foreground,
     },
+    deleteBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 24,
+      paddingVertical: 14,
+      borderRadius: colors.radius,
+      borderWidth: 1.5,
+      borderColor: colors.destructive + "50",
+      backgroundColor: colors.destructive + "10",
+    },
+    deleteBtnText: {
+      fontSize: 15,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.destructive,
+    },
   });
 
   // ── History list (shared between own history + franchise drill) ───────────
@@ -719,6 +738,49 @@ export default function HistoryScreen() {
     }
 
     const backLabel = drillFranchise ? `Voltar a ${drillFranchise.name}` : "Voltar ao histórico";
+    const canDelete = !drillFranchise;
+
+    async function handleDelete() {
+      Alert.alert(
+        "Excluir check-in",
+        "Tem certeza que deseja excluir este check-in? Esta ação não pode ser desfeita.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Excluir",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                const endpoint =
+                  kind === "daily"
+                    ? `/daily-checkins/${item.id}`
+                    : kind === "weekly"
+                    ? `/weekly-checkins/${item.id}`
+                    : `/monthly-checkins/${item.id}`;
+                const res = await apiFetch(endpoint, { method: "DELETE" });
+                if (res.ok || res.status === 204) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  queryClient.invalidateQueries({ queryKey: ["all-daily-checkins"] });
+                  queryClient.invalidateQueries({ queryKey: ["all-weekly-checkins"] });
+                  queryClient.invalidateQueries({ queryKey: ["all-monthly-checkins"] });
+                  queryClient.invalidateQueries({ queryKey: ["today-checkins"] });
+                  queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+                  setSelectedEntry(null);
+                } else {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                  const err = (await res.json()) as { error?: string };
+                  Alert.alert("Erro", err.error ?? "Não foi possível excluir o check-in");
+                }
+              } catch {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert("Erro", "Erro de conexão. Tente novamente.");
+              }
+            },
+          },
+        ],
+      );
+    }
 
     return (
       <>
@@ -739,6 +801,16 @@ export default function HistoryScreen() {
           </View>
 
           {content}
+
+          {canDelete && (
+            <Pressable
+              style={({ pressed }) => [s.deleteBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={16} color={colors.destructive} />
+              <Text style={s.deleteBtnText}>Excluir check-in</Text>
+            </Pressable>
+          )}
         </View>
       </>
     );

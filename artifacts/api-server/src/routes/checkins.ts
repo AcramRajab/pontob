@@ -114,6 +114,20 @@ router.patch("/daily-checkins/:id", requireAuth, requireWriteAccess, async (req,
   }
 });
 
+router.delete("/daily-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(dailyCheckinsTable).where(eq(dailyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    await db.delete(dailyCheckinsTable).where(eq(dailyCheckinsTable.id, id));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Weekly check-ins
 router.get("/weekly-checkins", requireAuth, async (req, res) => {
   try {
@@ -213,6 +227,20 @@ router.patch("/weekly-checkins/:id", requireAuth, requireWriteAccess, async (req
 
     const [updated] = await db.update(weeklyCheckinsTable).set(updates).where(eq(weeklyCheckinsTable.id, id)).returning();
     res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/weekly-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(weeklyCheckinsTable).where(eq(weeklyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    await db.delete(weeklyCheckinsTable).where(eq(weeklyCheckinsTable.id, id));
+    res.status(204).end();
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -320,6 +348,20 @@ router.patch("/monthly-checkins/:id", requireAuth, requireWriteAccess, async (re
 
     const [updated] = await db.update(monthlyCheckinsTable).set(updates).where(eq(monthlyCheckinsTable.id, id)).returning();
     res.json({ ...updated, goalTitle: null, userName: null, createdAt: updated.createdAt.toISOString() });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/monthly-checkins/:id", requireAuth, requireWriteAccess, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [existing] = await db.select().from(monthlyCheckinsTable).where(eq(monthlyCheckinsTable.id, id)).limit(1);
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (!canAccessFranchise(req, existing.franchiseId)) { res.status(403).json({ error: "Forbidden" }); return; }
+    await db.delete(monthlyCheckinsTable).where(eq(monthlyCheckinsTable.id, id));
+    res.status(204).end();
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
