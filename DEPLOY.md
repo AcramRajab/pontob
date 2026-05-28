@@ -30,7 +30,19 @@ pnpm --filter @workspace/db run push    # cria as tabelas
 pnpm --filter @workspace/db run seed     # popula dimensões, iniciativas e usuários de teste
 ```
 
-> A tabela `session` (login) é criada automaticamente pelo servidor no primeiro start.
+A tabela `session` (login) precisa ser criada manualmente, pois o servidor é
+empacotado com esbuild e o `connect-pg-simple` não consegue criá-la sozinho.
+Rode uma vez no banco (psql/console do Neon):
+
+```sql
+CREATE TABLE IF NOT EXISTS "session" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+) WITH (OIDS=FALSE);
+ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid");
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+```
 
 Credenciais de teste criadas pelo seed:
 - `acramrajab@remax.com.br` / `admin123` (master_admin)

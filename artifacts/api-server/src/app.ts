@@ -54,7 +54,10 @@ app.use(
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       tableName: "session",
-      createTableIfMissing: true,
+      // false: connect-pg-simple reads a bundled `table.sql` to auto-create the
+      // table, but esbuild doesn't ship that asset. The `session` table is
+      // created out-of-band (see DEPLOY.md) instead.
+      createTableIfMissing: false,
     }),
     secret: process.env.SESSION_SECRET || "pontob-dev-secret",
     resave: false,
