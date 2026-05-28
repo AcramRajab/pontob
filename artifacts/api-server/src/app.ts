@@ -1,3 +1,4 @@
+import path from "node:path";
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -20,6 +21,9 @@ declare module "express-session" {
 const PgSession = connectPgSimple(session);
 
 const app: Express = express();
+
+// Behind a TLS-terminating proxy (Render, etc.) so secure session cookies work.
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -50,7 +54,7 @@ app.use(
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       tableName: "session",
-      createTableIfMissing: false,
+      createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "pontob-dev-secret",
     resave: false,
@@ -64,5 +68,24 @@ app.use(
 );
 
 app.use("/api", router);
+
+// In production the same service also serves the built React frontend.
+// The frontend lives at artifacts/pontob/dist/public relative to the repo
+// root (Render runs from the repo root). Override with CLIENT_DIST if needed.
+if (process.env.NODE_ENV === "production") {
+  const clientDist = process.env.CLIENT_DIST
+    ? path.resolve(process.env.CLIENT_DIST)
+    : path.resolve(process.cwd(), "artifacts/pontob/dist/public");
+
+  app.use(express.static(clientDist));
+
+  // SPA fallback: any non-API GET request returns index.html so client-side
+  // routing (wouter) can take over.
+  app.use((req, res, next) => {
+    if (req.method !== "GET") return next();
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(clientDist, "index.html"));
+  });
+}
 
 export default app;
