@@ -183,6 +183,17 @@ export default function Login() {
           </CardContent>
         </Card>
 
+        <p className="text-center text-sm text-muted-foreground">
+          Não tem uma conta?{" "}
+          <button
+            type="button"
+            className="font-medium text-primary hover:underline"
+            onClick={() => setLocation("/solicitar-acesso")}
+          >
+            Solicitar acesso
+          </button>
+        </p>
+
         <p className="text-center text-xs text-muted-foreground">
           Método Ponto B — RE/MAX SC &copy; {new Date().getFullYear()}
         </p>
